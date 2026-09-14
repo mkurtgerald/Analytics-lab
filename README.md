@@ -1,8 +1,7 @@
 # Analytics Lab
 
-Public research and development laboratory for next-generation video analytics intended for later integration into K5 Vision.
-
-This repository is separate from the core K5 Vision VMS. Its purpose is to prototype, benchmark, and mature new analytics using clean modular interfaces and carefully tracked third-party components.
+Public research and development laboratory for next-generation video analytics. 
+Its purpose is to prototype, benchmark, and mature new analytics using clean modular interfaces and carefully tracked third-party components.
 
 ## Goals
 
