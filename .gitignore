@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+!.env.example
+recordings/
+local-data/
+local-models/
+*.mp4
+*.avi
+*.mkv
+*.onnx
+*.pt
