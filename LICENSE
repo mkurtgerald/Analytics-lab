@@ -1,0 +1,42 @@
+K5 ANALYTICS LAB SOURCE-AVAILABLE LICENSE v1.0
+
+Copyright (c) 2026 Kurt Gerald. All rights reserved.
+
+1. PURPOSE
+The source code in this repository is made publicly viewable for evaluation, research review, testing, and collaboration under the terms below. Publication of source code does not place the software in the public domain and does not grant an open-source license.
+
+2. PERMITTED USE
+You may view, download, and evaluate the software for non-production, non-commercial purposes. You may make local modifications solely for evaluation or for preparing a contribution back to this repository.
+
+3. PROHIBITED USE WITHOUT A COMMERCIAL LICENSE
+Except with prior written permission from the copyright holder, you may not:
+(a) use the software or any substantial portion of it in production;
+(b) use the software for commercial purposes;
+(c) sell, rent, sublicense, host, monetize, or redistribute the software;
+(d) incorporate the software into a commercial product, service, appliance, platform, VMS, analytics product, SaaS offering, or managed service;
+(e) use the software to provide paid services to third parties;
+(f) remove or alter copyright, attribution, or license notices; or
+(g) represent that you own original project code authored by the copyright holder.
+
+4. CONTRIBUTIONS
+Contributions are accepted only under the contribution terms published in CONTRIBUTING.md. Submission of a contribution does not alter ownership of pre-existing project intellectual property.
+
+5. THIRD-PARTY SOFTWARE
+Third-party software, models, datasets, weights, libraries, and other components are governed by their respective licenses. Nothing in this license expands or restricts rights granted by a third-party license. See THIRD_PARTY.md and applicable notices.
+
+6. COMMERCIAL LICENSING
+Commercial, production, OEM, redistribution, embedded, appliance, SaaS, and enterprise rights are available only under a separate written commercial license from the copyright holder.
+
+7. NO TRADEMARK LICENSE
+No rights are granted to any project, product, company, or service marks except as expressly agreed in writing.
+
+8. DISCLAIMER
+THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, ACCURACY, SAFETY, OR FITNESS FOR SECURITY, LIFE-SAFETY, OR EVIDENTIARY PURPOSES.
+
+9. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+10. TERMINATION
+Any rights granted under this license terminate automatically upon material violation of these terms. Sections concerning ownership, third-party software, disclaimers, and liability survive termination.
+
+This is a source-available license, not an OSI-approved open-source license.
