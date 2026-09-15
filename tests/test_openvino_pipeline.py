@@ -33,7 +33,9 @@ class Tests(unittest.TestCase):
     @mock.patch("analytics_lab.openvino_omz.verify_artifact_set")
     def test_complete_frame_path_emits_evidence_linked_candidate(self, verify):
         verify.return_value = (SimpleNamespace(spec=SimpleNamespace(relative_path="x"), path=Path("/tmp/x")),)
-        frames = [Frame(index, index * 1000, Image()) for index in range(4)]
+        # Keep observation gaps inside the temporal engine's default 750 ms
+        # continuity window while spanning the required 3000 ms down duration.
+        frames = [Frame(index, index * 500, Image()) for index in range(7)]
         result = run_frame_source_openvino_omz(
             frames,
             artifact_root="/models",
@@ -43,8 +45,8 @@ class Tests(unittest.TestCase):
         )
         self.assertEqual(result.runtime_version, "2026.3.1-test")
         self.assertEqual(result.device, "CPU")
-        self.assertEqual(result.video.frames_processed, 4)
-        self.assertEqual(result.video.observations_processed, 4)
+        self.assertEqual(result.video.frames_processed, 7)
+        self.assertEqual(result.video.observations_processed, 7)
         self.assertEqual(len(result.video.events), 1)
         event = result.video.events[0]
         self.assertEqual(event["event_type"], "person_down_candidate")
