@@ -16,7 +16,8 @@ Components under copyleft, source-reciprocal, non-commercial, research-only, cus
 
 | Component | Upstream URL | Version / Commit | License | Purpose | Modified? | Redistribution Requirements | Approval |
 |---|---|---|---|---|---|---|---|
-| _None yet_ | | | | | | | |
+| Open Model Zoo `person-detection-retail-0013` FP16 artifact manifest | `https://github.com/openvinotoolkit/open_model_zoo` | `6697dead54ed1cdd664b0313189c2cb52ee6335e` | Apache-2.0 | Candidate local person-detector artifact identity | No donor code/model vendored | Preserve applicable Apache-2.0 license/notices; product redistribution not enabled by this admission | Engineering local-evaluation baseline; release review pending |
+| Open Model Zoo `human-pose-estimation-0001` FP16 artifact manifest | `https://github.com/openvinotoolkit/open_model_zoo` | `6697dead54ed1cdd664b0313189c2cb52ee6335e` | Apache-2.0 | Candidate local multi-person pose artifact identity | No donor code/model vendored | Preserve applicable Apache-2.0 license/notices; product redistribution not enabled by this admission | Engineering local-evaluation baseline; release review pending |
 
 ## Rules
 
