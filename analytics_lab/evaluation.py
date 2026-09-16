@@ -14,11 +14,18 @@ from typing import Iterable
 _MAX_TIMESTAMP_MS = 253402300799999
 _MAX_EVENTS = 100_000
 _MAX_LABELS = 100_000
+_MAX_SAMPLES = 100_000
+_MAX_ID_LENGTH = 128
 
 
 def _timestamp(value: int, name: str) -> None:
     if type(value) is not int or not 0 <= value <= _MAX_TIMESTAMP_MS:
         raise ValueError(f"{name} must be an integer timestamp in the supported UTC range")
+
+
+def _bounded_id(value: str, name: str) -> None:
+    if not isinstance(value, str) or not value or len(value) > _MAX_ID_LENGTH:
+        raise ValueError(f"{name} must be a bounded nonempty string")
 
 
 @dataclass(frozen=True, order=True)
@@ -32,8 +39,7 @@ class LabeledPersonDown:
         _timestamp(self.end_timestamp_ms, "end_timestamp_ms")
         if self.end_timestamp_ms < self.start_timestamp_ms:
             raise ValueError("label end must not precede label start")
-        if not isinstance(self.label_id, str) or not self.label_id or len(self.label_id) > 128:
-            raise ValueError("label_id must be a bounded nonempty string")
+        _bounded_id(self.label_id, "label_id")
 
 
 @dataclass(frozen=True)
@@ -58,6 +64,69 @@ class EvaluationResult:
     false_alerts_per_camera_hour: float
     median_alert_delay_ms: float | None
     matched_label_ids: tuple[str, ...]
+    alert_delays_ms: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
+class EvaluationSample:
+    """One independently evaluated, time-bounded camera sample."""
+
+    sample_id: str
+    site_id: str
+    camera_id: str
+    start_timestamp_ms: int
+    end_timestamp_ms: int
+    result: EvaluationResult
+
+    def __post_init__(self) -> None:
+        _bounded_id(self.sample_id, "sample_id")
+        _bounded_id(self.site_id, "site_id")
+        _bounded_id(self.camera_id, "camera_id")
+        _timestamp(self.start_timestamp_ms, "start_timestamp_ms")
+        _timestamp(self.end_timestamp_ms, "end_timestamp_ms")
+        if self.end_timestamp_ms <= self.start_timestamp_ms:
+            raise ValueError("sample interval must have positive duration")
+        if not isinstance(self.result, EvaluationResult):
+            raise ValueError("result must be an EvaluationResult")
+        if self.result.duration_ms != self.end_timestamp_ms - self.start_timestamp_ms:
+            raise ValueError("sample interval must match evaluation duration")
+
+
+@dataclass(frozen=True)
+class EvaluationGroupResult:
+    group_id: str
+    sample_count: int
+    duration_ms: int
+    camera_hours: float
+    positive_episodes: int
+    candidate_events: int
+    matched_events: int
+    missed_episodes: int
+    false_alerts: int
+    precision: float | None
+    recall: float | None
+    false_alerts_per_camera_hour: float
+    median_alert_delay_ms: float | None
+
+
+@dataclass(frozen=True)
+class EvaluationAggregate:
+    sample_count: int
+    site_count: int
+    camera_count: int
+    duration_ms: int
+    camera_hours: float
+    positive_episodes: int
+    candidate_events: int
+    matched_events: int
+    missed_episodes: int
+    false_alerts: int
+    precision: float | None
+    recall: float | None
+    false_alerts_per_camera_hour: float
+    median_alert_delay_ms: float | None
+    by_site: tuple[EvaluationGroupResult, ...]
+    by_camera: tuple[EvaluationGroupResult, ...]
 
 
 def _event_window(event: object) -> tuple[int, int]:
@@ -88,12 +157,7 @@ def evaluate_person_down_candidates(
     video_end_timestamp_ms: int,
     config: EvaluationConfig | None = None,
 ) -> EvaluationResult:
-    """Measure one camera/video interval with one-to-one alert/label matching.
-
-    A candidate matches a labeled episode when its evidence window overlaps the
-    label after applying the configured time tolerance. Each candidate and each
-    label can match at most once. Extra candidate alerts remain false alerts.
-    """
+    """Measure one camera/video interval with one-to-one alert/label matching."""
     _timestamp(video_start_timestamp_ms, "video_start_timestamp_ms")
     _timestamp(video_end_timestamp_ms, "video_end_timestamp_ms")
     if video_end_timestamp_ms <= video_start_timestamp_ms:
@@ -175,4 +239,90 @@ def evaluate_person_down_candidates(
         false_alerts_per_camera_hour=false_rate,
         median_alert_delay_ms=delay_median,
         matched_label_ids=tuple(matched_labels),
+        alert_delays_ms=tuple(delays),
+    )
+
+
+def _summarize(group_id: str, samples: list[EvaluationSample]) -> EvaluationGroupResult:
+    _bounded_id(group_id, "group_id")
+    duration_ms = sum(item.result.duration_ms for item in samples)
+    positive = sum(item.result.positive_episodes for item in samples)
+    events = sum(item.result.candidate_events for item in samples)
+    matched = sum(item.result.matched_events for item in samples)
+    missed = sum(item.result.missed_episodes for item in samples)
+    false_alerts = sum(item.result.false_alerts for item in samples)
+    delays = [delay for item in samples for delay in item.result.alert_delays_ms]
+    camera_hours = duration_ms / 3_600_000.0
+    precision = matched / events if events else None
+    recall = matched / positive if positive else None
+    false_rate = false_alerts / camera_hours
+    delay_median = float(median(delays)) if delays else None
+    return EvaluationGroupResult(
+        group_id=group_id,
+        sample_count=len(samples),
+        duration_ms=duration_ms,
+        camera_hours=camera_hours,
+        positive_episodes=positive,
+        candidate_events=events,
+        matched_events=matched,
+        missed_episodes=missed,
+        false_alerts=false_alerts,
+        precision=precision,
+        recall=recall,
+        false_alerts_per_camera_hour=false_rate,
+        median_alert_delay_ms=delay_median,
+    )
+
+
+def aggregate_person_down_evaluations(samples: Iterable[EvaluationSample]) -> EvaluationAggregate:
+    """Aggregate disjoint evaluated intervals across cameras and sites.
+
+    Overlapping intervals for the same camera are rejected so repeated or
+    partially duplicated footage cannot silently inflate camera-hours or event
+    counts. Aggregate precision/recall are micro-averaged from raw counts.
+    """
+    items = list(samples)
+    if not items:
+        raise ValueError("at least one evaluation sample is required")
+    if len(items) > _MAX_SAMPLES:
+        raise RuntimeError("evaluation sample limit exceeded")
+    if any(not isinstance(item, EvaluationSample) for item in items):
+        raise ValueError("samples must contain EvaluationSample values")
+    ids = [item.sample_id for item in items]
+    if len(set(ids)) != len(ids):
+        raise ValueError("sample_id values must be unique")
+
+    camera_intervals: dict[str, list[EvaluationSample]] = {}
+    site_groups: dict[str, list[EvaluationSample]] = {}
+    for item in items:
+        camera_intervals.setdefault(item.camera_id, []).append(item)
+        site_groups.setdefault(item.site_id, []).append(item)
+    for camera_id, group in camera_intervals.items():
+        ordered = sorted(group, key=lambda item: (item.start_timestamp_ms, item.end_timestamp_ms, item.sample_id))
+        previous_end = None
+        for item in ordered:
+            if previous_end is not None and item.start_timestamp_ms < previous_end:
+                raise ValueError(f"overlapping evaluation intervals for camera {camera_id}")
+            previous_end = item.end_timestamp_ms
+
+    total = _summarize("all", items)
+    by_site = tuple(_summarize(key, site_groups[key]) for key in sorted(site_groups))
+    by_camera = tuple(_summarize(key, camera_intervals[key]) for key in sorted(camera_intervals))
+    return EvaluationAggregate(
+        sample_count=total.sample_count,
+        site_count=len(site_groups),
+        camera_count=len(camera_intervals),
+        duration_ms=total.duration_ms,
+        camera_hours=total.camera_hours,
+        positive_episodes=total.positive_episodes,
+        candidate_events=total.candidate_events,
+        matched_events=total.matched_events,
+        missed_episodes=total.missed_episodes,
+        false_alerts=total.false_alerts,
+        precision=total.precision,
+        recall=total.recall,
+        false_alerts_per_camera_hour=total.false_alerts_per_camera_hour,
+        median_alert_delay_ms=total.median_alert_delay_ms,
+        by_site=by_site,
+        by_camera=by_camera,
     )
