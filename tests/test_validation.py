@@ -31,10 +31,10 @@ class Tests(unittest.TestCase):
         self.b = self.root / "b.mp4"
         self.b.write_bytes(b"b")
 
-    def spec(self, sample="s1", camera="c1", path=None, start=1000, end=5000, labels=()):
+    def spec(self, sample="s1", camera="c1", path=None, start=1000, end=5000, labels=(), site="site"):
         media = path or self.a
         digest = hashlib.sha256(media.read_bytes()).hexdigest() if media.exists() and not media.is_symlink() else "0" * 64
-        return ValidationSampleSpec(sample, "site", camera, "rights:test", media, digest, start, end, labels)
+        return ValidationSampleSpec(sample, site, camera, "rights:test", media, digest, start, end, labels)
 
     def test_runs_and_binds_identity_metrics_and_runtime(self):
         calls = []
@@ -62,6 +62,28 @@ class Tests(unittest.TestCase):
         self.assertAlmostEqual(out.sample_runs[0].frames_per_second, 5.0)
         self.assertEqual(calls[0][1]["source_id"], "c1")
         self.assertEqual(calls[0][1]["session_id"], "s1")
+
+    def test_validation_allows_same_camera_id_at_different_sites(self):
+        samples = [
+            self.spec("east", "cam-01", self.a, 1000, 5000, (), site="site-east"),
+            self.spec("west", "cam-01", self.b, 1000, 5000, (), site="site-west"),
+        ]
+        results = iter([
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(1, 0, ())),
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(1, 0, ())),
+        ])
+        ticks = iter([0, 1, 1, 2])
+        out = run_validation_suite(
+            samples,
+            artifact_root="/models",
+            runner=lambda *args, **kwargs: next(results),
+            clock_ns=lambda: next(ticks),
+        )
+        self.assertEqual(out.aggregate.camera_count, 2)
+        self.assertEqual(
+            [(item.site_id, item.camera_id) for item in out.aggregate.by_camera],
+            [("site-east", "cam-01"), ("site-west", "cam-01")],
+        )
 
     def test_preflight_rejects_missing_rights_urls_duplicates_and_overlap_before_runner(self):
         digest = hashlib.sha256(self.a.read_bytes()).hexdigest()

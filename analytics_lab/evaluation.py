@@ -107,6 +107,8 @@ class EvaluationGroupResult:
     recall: float | None
     false_alerts_per_camera_hour: float
     median_alert_delay_ms: float | None
+    site_id: str | None = None
+    camera_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -243,8 +245,18 @@ def evaluate_person_down_candidates(
     )
 
 
-def _summarize(group_id: str, samples: list[EvaluationSample]) -> EvaluationGroupResult:
+def _summarize(
+    group_id: str,
+    samples: list[EvaluationSample],
+    *,
+    site_id: str | None = None,
+    camera_id: str | None = None,
+) -> EvaluationGroupResult:
     _bounded_id(group_id, "group_id")
+    if site_id is not None:
+        _bounded_id(site_id, "site_id")
+    if camera_id is not None:
+        _bounded_id(camera_id, "camera_id")
     duration_ms = sum(item.result.duration_ms for item in samples)
     positive = sum(item.result.positive_episodes for item in samples)
     events = sum(item.result.candidate_events for item in samples)
@@ -271,15 +283,18 @@ def _summarize(group_id: str, samples: list[EvaluationSample]) -> EvaluationGrou
         recall=recall,
         false_alerts_per_camera_hour=false_rate,
         median_alert_delay_ms=delay_median,
+        site_id=site_id,
+        camera_id=camera_id,
     )
 
 
 def aggregate_person_down_evaluations(samples: Iterable[EvaluationSample]) -> EvaluationAggregate:
     """Aggregate disjoint evaluated intervals across cameras and sites.
 
-    Overlapping intervals for the same camera are rejected so repeated or
-    partially duplicated footage cannot silently inflate camera-hours or event
-    counts. Aggregate precision/recall are micro-averaged from raw counts.
+    Overlapping intervals for the same site-scoped camera are rejected so
+    repeated or partially duplicated footage cannot silently inflate
+    camera-hours or event counts. Aggregate precision/recall are micro-averaged
+    from raw counts.
     """
     items = list(samples)
     if not items:
@@ -292,22 +307,30 @@ def aggregate_person_down_evaluations(samples: Iterable[EvaluationSample]) -> Ev
     if len(set(ids)) != len(ids):
         raise ValueError("sample_id values must be unique")
 
-    camera_intervals: dict[str, list[EvaluationSample]] = {}
+    camera_intervals: dict[tuple[str, str], list[EvaluationSample]] = {}
     site_groups: dict[str, list[EvaluationSample]] = {}
     for item in items:
-        camera_intervals.setdefault(item.camera_id, []).append(item)
+        camera_intervals.setdefault((item.site_id, item.camera_id), []).append(item)
         site_groups.setdefault(item.site_id, []).append(item)
-    for camera_id, group in camera_intervals.items():
+    for group in camera_intervals.values():
         ordered = sorted(group, key=lambda item: (item.start_timestamp_ms, item.end_timestamp_ms, item.sample_id))
         previous_end = None
         for item in ordered:
             if previous_end is not None and item.start_timestamp_ms < previous_end:
-                raise ValueError(f"overlapping evaluation intervals for camera {camera_id}")
+                raise ValueError("overlapping evaluation intervals for the same site/camera")
             previous_end = item.end_timestamp_ms
 
     total = _summarize("all", items)
-    by_site = tuple(_summarize(key, site_groups[key]) for key in sorted(site_groups))
-    by_camera = tuple(_summarize(key, camera_intervals[key]) for key in sorted(camera_intervals))
+    by_site = tuple(_summarize(key, site_groups[key], site_id=key) for key in sorted(site_groups))
+    by_camera = tuple(
+        _summarize(
+            camera_id,
+            camera_intervals[(site_id, camera_id)],
+            site_id=site_id,
+            camera_id=camera_id,
+        )
+        for site_id, camera_id in sorted(camera_intervals)
+    )
     return EvaluationAggregate(
         sample_count=total.sample_count,
         site_count=len(site_groups),

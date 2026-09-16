@@ -116,7 +116,24 @@ class EvaluationTests(unittest.TestCase):
         self.assertAlmostEqual(aggregate.false_alerts_per_camera_hour, 0.8)
         self.assertEqual([item.group_id for item in aggregate.by_site], ["site-a", "site-b"])
         self.assertEqual([item.group_id for item in aggregate.by_camera], ["cam-1", "cam-2"])
+        self.assertEqual(
+            [(item.site_id, item.camera_id) for item in aggregate.by_camera],
+            [("site-a", "cam-1"), ("site-b", "cam-2")],
+        )
         self.assertEqual(aggregate.median_alert_delay_ms, 3000.0)
+
+    def test_camera_ids_are_scoped_by_site(self):
+        result = evaluate_person_down_candidates([], [], video_start_timestamp_ms=0, video_end_timestamp_ms=1000)
+        aggregate = aggregate_person_down_evaluations([
+            EvaluationSample("east", "site-east", "cam-01", 0, 1000, result),
+            EvaluationSample("west", "site-west", "cam-01", 0, 1000, result),
+        ])
+        self.assertEqual(aggregate.site_count, 2)
+        self.assertEqual(aggregate.camera_count, 2)
+        self.assertEqual(
+            [(item.site_id, item.camera_id, item.group_id) for item in aggregate.by_camera],
+            [("site-east", "cam-01", "cam-01"), ("site-west", "cam-01", "cam-01")],
+        )
 
     def test_aggregate_rejects_duplicate_samples_and_overlapping_camera_time(self):
         result = evaluate_person_down_candidates([], [], video_start_timestamp_ms=0, video_end_timestamp_ms=1000)
