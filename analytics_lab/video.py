@@ -63,6 +63,8 @@ class VideoRunResult:
     frames_processed: int
     observations_processed: int
     events: tuple[dict, ...]
+    first_frame_timestamp_ms: int | None = None
+    last_frame_timestamp_ms: int | None = None
 
 
 class PerceptionAdapter(Protocol):
@@ -86,6 +88,7 @@ def run_frame_source(
     observations_processed = 0
     last_index = -1
     last_timestamp = -1
+    first_timestamp: int | None = None
 
     for frame in frames:
         if frames_processed >= cfg.max_frames:
@@ -96,6 +99,8 @@ def run_frame_source(
             raise ValueError("frame source must provide strictly increasing indices and timestamps")
         last_index = frame.index
         last_timestamp = frame.timestamp_ms
+        if first_timestamp is None:
+            first_timestamp = frame.timestamp_ms
 
         raw = perception(frame.image, frame.index, frame.timestamp_ms)
         if raw is None:
@@ -122,7 +127,13 @@ def run_frame_source(
                     raise RuntimeError("video event limit exceeded")
         frames_processed += 1
 
-    return VideoRunResult(frames_processed, observations_processed, tuple(events))
+    return VideoRunResult(
+        frames_processed,
+        observations_processed,
+        tuple(events),
+        first_timestamp,
+        last_timestamp if frames_processed else None,
+    )
 
 
 class OpenCVVideoFileSource:

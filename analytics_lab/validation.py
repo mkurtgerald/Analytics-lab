@@ -283,6 +283,16 @@ def run_validation_suite(
             raise RuntimeError("validation suite mixed OpenVINO runtime versions")
         if result.video.frames_processed < 1:
             raise RuntimeError("validation sample decoded zero frames")
+        decoded_start = result.video.first_frame_timestamp_ms
+        decoded_end = result.video.last_frame_timestamp_ms
+        if type(decoded_start) is not int or type(decoded_end) is not int:
+            raise RuntimeError("validation result is missing decoded timestamp coverage")
+        if decoded_start != item.start_timestamp_ms:
+            raise RuntimeError("decoded video start does not match the declared sample start")
+        if decoded_end <= decoded_start:
+            raise RuntimeError("validation sample must span more than one decoded timestamp")
+        if decoded_end > item.end_timestamp_ms:
+            raise RuntimeError("decoded video exceeds the declared sample interval")
 
         elapsed_ns = after - before
         elapsed_ms = elapsed_ns / 1_000_000.0
@@ -292,16 +302,16 @@ def run_validation_suite(
         evaluation = evaluate_person_down_candidates(
             result.video.events,
             item.labels,
-            video_start_timestamp_ms=item.start_timestamp_ms,
-            video_end_timestamp_ms=item.end_timestamp_ms,
+            video_start_timestamp_ms=decoded_start,
+            video_end_timestamp_ms=decoded_end,
             config=evaluation_config,
         )
         evaluation_sample = EvaluationSample(
             item.sample_id,
             item.site_id,
             item.camera_id,
-            item.start_timestamp_ms,
-            item.end_timestamp_ms,
+            decoded_start,
+            decoded_end,
             evaluation,
         )
         evaluation_samples.append(evaluation_sample)

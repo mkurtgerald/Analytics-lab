@@ -22,6 +22,10 @@ def event(start, end):
     }
 
 
+def video_result(frames, observations, events, start, end):
+    return VideoRunResult(frames, observations, events, start, end)
+
+
 class Tests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -40,8 +44,8 @@ class Tests(unittest.TestCase):
     def test_runs_and_binds_identity_metrics_and_runtime(self):
         calls = []
         results = [
-            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(10, 8, (event(1000, 4000),))),
-            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(20, 15, ())),
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", video_result(10, 8, (event(1000, 4000),), 1000, 5000)),
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", video_result(20, 15, (), 6000, 10000)),
         ]
 
         def runner(path, **kwargs):
@@ -69,7 +73,10 @@ class Tests(unittest.TestCase):
     @mock.patch("analytics_lab.openvino_omz.verify_artifact_set")
     def test_default_suite_prepares_runtime_once_and_resets_per_sample_adapter(self, verify, run_video):
         verify.return_value = ()
-        run_video.side_effect = [VideoRunResult(1, 0, ()), VideoRunResult(1, 0, ())]
+        run_video.side_effect = [
+            video_result(1, 0, (), 1000, 5000),
+            video_result(1, 0, (), 6000, 10000),
+        ]
         factory_calls = []
 
         class Runtime:
@@ -105,8 +112,8 @@ class Tests(unittest.TestCase):
             self.spec("west", "cam-01", self.b, 1000, 5000, (), site="site-west"),
         ]
         results = iter([
-            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(1, 0, ())),
-            OpenVINOOMZRunResult("2026.3.1-test", "CPU", VideoRunResult(1, 0, ())),
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", video_result(1, 0, (), 1000, 5000)),
+            OpenVINOOMZRunResult("2026.3.1-test", "CPU", video_result(1, 0, (), 1000, 5000)),
         ])
         ticks = iter([0, 1, 1, 2])
         out = run_validation_suite(
@@ -120,6 +127,42 @@ class Tests(unittest.TestCase):
             [(item.site_id, item.camera_id) for item in out.aggregate.by_camera],
             [("site-east", "cam-01"), ("site-west", "cam-01")],
         )
+
+    def test_uses_decoded_timestamp_span_not_declared_manifest_duration(self):
+        sample = self.spec(start=1000, end=3_601_000)
+        result = OpenVINOOMZRunResult(
+            "2026.3.1-test",
+            "CPU",
+            video_result(2, 0, (event(1000, 2000),), 1000, 2000),
+        )
+        out = run_validation_suite(
+            [sample],
+            artifact_root="/models",
+            runner=lambda *args, **kwargs: result,
+            clock_ns=iter([0, 1]).__next__,
+        )
+        self.assertEqual(out.aggregate.duration_ms, 1000)
+        self.assertEqual(out.aggregate.false_alerts, 1)
+        self.assertAlmostEqual(out.aggregate.false_alerts_per_camera_hour, 3600.0)
+
+    def test_rejects_labels_or_declared_interval_that_exceed_decoded_coverage(self):
+        late = self.spec(labels=(LabeledPersonDown(3000, 4000, "late"),))
+        short = OpenVINOOMZRunResult(
+            "2026.3.1-test", "CPU", video_result(2, 0, (), 1000, 2000)
+        )
+        with self.assertRaises(ValueError):
+            run_validation_suite(
+                [late], artifact_root="/models", runner=lambda *a, **k: short,
+                clock_ns=iter([0, 1]).__next__,
+            )
+        overflow = OpenVINOOMZRunResult(
+            "2026.3.1-test", "CPU", video_result(2, 0, (), 1000, 6000)
+        )
+        with self.assertRaises(RuntimeError):
+            run_validation_suite(
+                [self.spec()], artifact_root="/models", runner=lambda *a, **k: overflow,
+                clock_ns=iter([0, 1]).__next__,
+            )
 
     def test_preflight_rejects_missing_rights_urls_duplicates_and_overlap_before_runner(self):
         digest = hashlib.sha256(self.a.read_bytes()).hexdigest()
@@ -161,12 +204,12 @@ class Tests(unittest.TestCase):
                 runner=lambda *a, **k: None,
             )
 
-    def test_rejects_mixed_runtime_device_zero_frames_and_bad_clock(self):
+    def test_rejects_mixed_runtime_device_zero_frames_bad_coverage_and_bad_clock(self):
         spec1 = self.spec()
         spec2 = self.spec("s2", "c2", self.b, 6000, 7000)
         mixed = [
-            OpenVINOOMZRunResult("2026.3.1-a", "CPU", VideoRunResult(1, 0, ())),
-            OpenVINOOMZRunResult("2026.3.1-b", "CPU", VideoRunResult(1, 0, ())),
+            OpenVINOOMZRunResult("2026.3.1-a", "CPU", video_result(1, 0, (), 1000, 5000)),
+            OpenVINOOMZRunResult("2026.3.1-b", "CPU", video_result(1, 0, (), 6000, 7000)),
         ]
         results = iter(mixed)
         ticks = iter([0, 1, 1, 2])
@@ -178,7 +221,7 @@ class Tests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             run_validation_suite(
                 [spec1], artifact_root="/m",
-                runner=lambda *a, **k: OpenVINOOMZRunResult("2026.3.1", "GPU", VideoRunResult(1, 0, ())),
+                runner=lambda *a, **k: OpenVINOOMZRunResult("2026.3.1", "GPU", video_result(1, 0, (), 1000, 5000)),
                 clock_ns=iter([0, 1]).__next__,
             )
         with self.assertRaises(RuntimeError):
@@ -191,6 +234,12 @@ class Tests(unittest.TestCase):
             run_validation_suite(
                 [spec1], artifact_root="/m",
                 runner=lambda *a, **k: OpenVINOOMZRunResult("2026.3.1", "CPU", VideoRunResult(1, 0, ())),
+                clock_ns=iter([0, 1]).__next__,
+            )
+        with self.assertRaises(RuntimeError):
+            run_validation_suite(
+                [spec1], artifact_root="/m",
+                runner=lambda *a, **k: OpenVINOOMZRunResult("2026.3.1", "CPU", video_result(1, 0, (), 1000, 5000)),
                 clock_ns=iter([2, 1]).__next__,
             )
 
