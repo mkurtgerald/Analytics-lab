@@ -26,6 +26,7 @@ from .evaluation import (
     aggregate_person_down_evaluations,
     evaluate_person_down_candidates,
 )
+from .openvino_omz import OpenVINOOMZPoseBackend
 from .openvino_pipeline import (
     OpenVINOOMZPipelineConfig,
     OpenVINOOMZRunResult,
@@ -49,6 +50,13 @@ def _bounded_text(value: str, name: str, *, maximum: int = 128) -> None:
 def _timestamp(value: int, name: str) -> None:
     if type(value) is not int or not 0 <= value <= _MAX_TIMESTAMP_MS:
         raise ValueError(f"{name} must be an integer timestamp in the supported UTC range")
+
+
+def _clock_tick(clock_ns: Callable[[], int], *, previous: int | None = None) -> int:
+    value = clock_ns()
+    if type(value) is not int or value < 0 or (previous is not None and value < previous):
+        raise RuntimeError("clock_ns must be monotonic nondecreasing integer nanoseconds")
+    return value
 
 
 @dataclass(frozen=True)
@@ -141,6 +149,7 @@ class ValidationSuiteResult:
     total_elapsed_ms: float
     total_frames_processed: int
     frames_per_second: float | None
+    preparation_elapsed_ms: float = 0.0
 
 
 def _artifact_identity() -> tuple[ModelArtifactIdentity, ...]:
@@ -201,9 +210,10 @@ def run_validation_suite(
     """Run a bounded comparable validation suite without retaining media.
 
     All sample rights references, local paths and camera intervals are validated
-    before the first inference call. The suite is restricted to one runtime
-    version and one required device so aggregate latency/accuracy evidence is
-    not silently mixed across incomparable execution environments.
+    before the first inference call. The default reviewed path verifies and
+    compiles one OpenVINO backend for the suite, then creates fresh tracking and
+    temporal state for each sample. Preparation latency is recorded separately
+    and remains included in aggregate elapsed/throughput evidence.
     """
     items = list(samples)
     if any(not isinstance(item, ValidationSampleSpec) for item in items):
@@ -219,28 +229,50 @@ def run_validation_suite(
         raise ValueError("runner and clock_ns must be callable")
     _preflight_samples(items, suite_cfg)
 
+    shared_backend: OpenVINOOMZPoseBackend | None = None
+    prepared_config = pipeline_config or OpenVINOOMZPipelineConfig()
+    preparation_elapsed_ns = 0
+    if runner is run_local_video_openvino_omz:
+        if prepared_config.openvino.device != suite_cfg.required_device:
+            raise RuntimeError("pipeline device does not match the required validation device")
+        before_prepare = _clock_tick(clock_ns)
+        shared_backend = OpenVINOOMZPoseBackend(
+            artifact_root,
+            config=prepared_config.openvino,
+            runtime_factory=runtime_factory,
+        )
+        after_prepare = _clock_tick(clock_ns, previous=before_prepare)
+        preparation_elapsed_ns = after_prepare - before_prepare
+
     sample_runs: list[ValidationSampleRun] = []
     evaluation_samples: list[EvaluationSample] = []
     expected_runtime: str | None = None
-    total_elapsed_ns = 0
+    total_elapsed_ns = preparation_elapsed_ns
     total_frames = 0
 
     for item in items:
-        before = clock_ns()
-        if type(before) is not int or before < 0:
-            raise RuntimeError("clock_ns must return a nonnegative integer")
-        result = runner(
-            item.video_path,
-            artifact_root=artifact_root,
-            start_timestamp_ms=item.start_timestamp_ms,
-            source_id=item.camera_id,
-            session_id=item.sample_id,
-            config=pipeline_config,
-            runtime_factory=runtime_factory,
-        )
-        after = clock_ns()
-        if type(after) is not int or after < before:
-            raise RuntimeError("clock_ns must be monotonic nondecreasing integer nanoseconds")
+        before = _clock_tick(clock_ns)
+        if shared_backend is not None:
+            result = runner(
+                item.video_path,
+                artifact_root=artifact_root,
+                start_timestamp_ms=item.start_timestamp_ms,
+                source_id=item.camera_id,
+                session_id=item.sample_id,
+                config=prepared_config,
+                backend=shared_backend,
+            )
+        else:
+            result = runner(
+                item.video_path,
+                artifact_root=artifact_root,
+                start_timestamp_ms=item.start_timestamp_ms,
+                source_id=item.camera_id,
+                session_id=item.sample_id,
+                config=pipeline_config,
+                runtime_factory=runtime_factory,
+            )
+        after = _clock_tick(clock_ns, previous=before)
         if not isinstance(result, OpenVINOOMZRunResult):
             raise RuntimeError("runner returned an unsupported result")
         if result.device != suite_cfg.required_device:
@@ -306,4 +338,5 @@ def run_validation_suite(
         total_elapsed_ms=total_elapsed_ms,
         total_frames_processed=total_frames,
         frames_per_second=total_fps,
+        preparation_elapsed_ms=preparation_elapsed_ns / 1_000_000.0,
     )
