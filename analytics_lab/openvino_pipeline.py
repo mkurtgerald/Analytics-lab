@@ -73,19 +73,31 @@ class OpenVINOOMZPerceptionAdapter:
 
     def __init__(
         self,
-        artifact_root: str | Path,
+        artifact_root: str | Path | None,
         *,
         config: OpenVINOOMZPipelineConfig | None = None,
         runtime_factory: RuntimeFactory | None = None,
+        backend: OpenVINOOMZPoseBackend | None = None,
     ) -> None:
         self.config = config or OpenVINOOMZPipelineConfig()
         if not isinstance(self.config, OpenVINOOMZPipelineConfig):
             raise ValueError("config must be an OpenVINOOMZPipelineConfig")
-        self.backend = OpenVINOOMZPoseBackend(
-            artifact_root,
-            config=self.config.openvino,
-            runtime_factory=runtime_factory,
-        )
+        if backend is not None:
+            if runtime_factory is not None:
+                raise ValueError("runtime_factory cannot be combined with a prepared backend")
+            if not isinstance(backend, OpenVINOOMZPoseBackend):
+                raise ValueError("backend must be an OpenVINOOMZPoseBackend")
+            if backend.config != self.config.openvino:
+                raise ValueError("prepared backend configuration does not match the pipeline")
+            self.backend = backend
+        else:
+            if artifact_root is None:
+                raise ValueError("artifact_root is required when no prepared backend is supplied")
+            self.backend = OpenVINOOMZPoseBackend(
+                artifact_root,
+                config=self.config.openvino,
+                runtime_factory=runtime_factory,
+            )
         self.runtime_version = self.backend.runtime_version
         self.device = self.config.openvino.device
         self._adapter = PosePerceptionAdapter(
@@ -131,15 +143,23 @@ def run_local_video_openvino_omz(
     session_id: str,
     config: OpenVINOOMZPipelineConfig | None = None,
     runtime_factory: RuntimeFactory | None = None,
+    backend: OpenVINOOMZPoseBackend | None = None,
 ) -> OpenVINOOMZRunResult:
-    """Run one bounded ordinary local video file through the reviewed OMZ path."""
+    """Run one bounded ordinary local video file through the reviewed OMZ path.
+
+    A caller may supply a previously verified/compiled backend to amortize model
+    initialization across independent clips. A fresh tracking/posture adapter is
+    still created for every call so session-local tracks cannot bleed between
+    validation samples.
+    """
     cfg = config or OpenVINOOMZPipelineConfig()
     if not isinstance(cfg, OpenVINOOMZPipelineConfig):
         raise ValueError("config must be an OpenVINOOMZPipelineConfig")
     perception = OpenVINOOMZPerceptionAdapter(
-        artifact_root,
+        artifact_root if backend is None else None,
         config=cfg,
         runtime_factory=runtime_factory,
+        backend=backend,
     )
     result = run_local_video(
         path,

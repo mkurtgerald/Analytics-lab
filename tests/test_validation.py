@@ -2,9 +2,10 @@ from pathlib import Path
 import hashlib
 import tempfile
 import unittest
+from unittest import mock
 
 from analytics_lab.evaluation import LabeledPersonDown
-from analytics_lab.openvino_pipeline import OpenVINOOMZRunResult
+from analytics_lab.openvino_pipeline import OpenVINOOMZPerceptionAdapter, OpenVINOOMZRunResult
 from analytics_lab.validation import ValidationSampleSpec, ValidationSuiteConfig, run_validation_suite
 from analytics_lab.video import VideoRunResult
 
@@ -55,6 +56,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(out.device, "CPU")
         self.assertEqual(out.total_frames_processed, 30)
         self.assertAlmostEqual(out.frames_per_second, 5.0)
+        self.assertEqual(out.preparation_elapsed_ms, 0.0)
         self.assertEqual(out.aggregate.sample_count, 2)
         self.assertEqual(len(out.model_artifacts), 4)
         self.assertEqual(out.sample_runs[0].authorization_ref, "rights:test")
@@ -62,6 +64,40 @@ class Tests(unittest.TestCase):
         self.assertAlmostEqual(out.sample_runs[0].frames_per_second, 5.0)
         self.assertEqual(calls[0][1]["source_id"], "c1")
         self.assertEqual(calls[0][1]["session_id"], "s1")
+
+    @mock.patch("analytics_lab.openvino_pipeline.run_local_video")
+    @mock.patch("analytics_lab.openvino_omz.verify_artifact_set")
+    def test_default_suite_prepares_runtime_once_and_resets_per_sample_adapter(self, verify, run_video):
+        verify.return_value = ()
+        run_video.side_effect = [VideoRunResult(1, 0, ()), VideoRunResult(1, 0, ())]
+        factory_calls = []
+
+        class Runtime:
+            runtime_version = "2026.3.1-test"
+
+        def runtime_factory(artifacts, device):
+            factory_calls.append((artifacts, device))
+            return Runtime()
+
+        ticks = iter([0, 2_000_000, 2_000_000, 3_000_000, 3_000_000, 5_000_000])
+        out = run_validation_suite(
+            [self.spec(), self.spec("s2", "c2", self.b, 6000, 10000)],
+            artifact_root="/models",
+            runtime_factory=runtime_factory,
+            clock_ns=lambda: next(ticks),
+        )
+        self.assertEqual(len(factory_calls), 1)
+        self.assertEqual(verify.call_count, 1)
+        self.assertEqual(run_video.call_count, 2)
+        first = run_video.call_args_list[0].kwargs["perception"]
+        second = run_video.call_args_list[1].kwargs["perception"]
+        self.assertIsInstance(first, OpenVINOOMZPerceptionAdapter)
+        self.assertIsInstance(second, OpenVINOOMZPerceptionAdapter)
+        self.assertIsNot(first, second)
+        self.assertIs(first.backend, second.backend)
+        self.assertEqual(out.preparation_elapsed_ms, 2.0)
+        self.assertEqual(out.total_elapsed_ms, 5.0)
+        self.assertAlmostEqual(out.frames_per_second, 400.0)
 
     def test_validation_allows_same_camera_id_at_different_sites(self):
         samples = [
