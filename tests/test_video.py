@@ -26,6 +26,8 @@ class VideoBridgeTests(unittest.TestCase):
         result = run_frame_source(self.frames(), self.down, engine)
         self.assertEqual(result.frames_processed, 16)
         self.assertEqual(result.observations_processed, 16)
+        self.assertEqual(result.first_frame_timestamp_ms, 1_000_000)
+        self.assertEqual(result.last_frame_timestamp_ms, 1_003_750)
         self.assertEqual(len(result.events), 1)
         event = result.events[0]
         self.assertEqual(event["event_type"], "person_down_candidate")
@@ -117,6 +119,8 @@ class VideoBridgeTests(unittest.TestCase):
             )
             self.assertEqual(result.frames_processed, 16)
             self.assertEqual(len(result.events), 1)
+            self.assertEqual(result.first_frame_timestamp_ms, 1_000_000)
+            self.assertEqual(result.last_frame_timestamp_ms, 1_003_750)
             self.assertEqual(seen[0], (0, 1_000_000, (48, 64, 3)))
             self.assertEqual(seen[12][1], 1_003_000)
             self.assertEqual(result.events[0]["evidence"][0]["end_timestamp_ms"], 1_003_000)
