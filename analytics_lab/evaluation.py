@@ -7,6 +7,7 @@ cannot inflate recall. Input events are treated as untrusted structured data.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import heapq
 import math
 from statistics import median
 from typing import Iterable
@@ -151,6 +152,57 @@ def _event_window(event: object) -> tuple[int, int]:
     return start, end
 
 
+def _maximum_cardinality_matches(
+    event_windows: list[tuple[int, int]],
+    labels: list[LabeledPersonDown],
+    tolerance_ms: int,
+) -> list[tuple[int, int]]:
+    """Return a deterministic maximum-cardinality interval matching.
+
+    Events are processed by increasing end time. Among labels whose
+    tolerance-expanded interval overlaps the current event, matching the label
+    with the earliest expanded end is cardinality-safe: any maximum matching
+    that used a later-ending compatible label can exchange the two labels
+    without making the later event incompatible. This avoids the quadratic
+    candidate scan and, unlike closest-delay greedy matching, cannot consume a
+    label needed by a later event and under-count recall.
+    """
+    ordered_labels = sorted(
+        enumerate(labels),
+        key=lambda item: (
+            item[1].start_timestamp_ms - tolerance_ms,
+            item[1].end_timestamp_ms + tolerance_ms,
+            item[1].label_id,
+        ),
+    )
+    active: list[tuple[int, int, str, int]] = []
+    next_label = 0
+    matches: list[tuple[int, int]] = []
+
+    for event_index, (event_start, event_end) in enumerate(event_windows):
+        while next_label < len(ordered_labels):
+            label_index, label = ordered_labels[next_label]
+            expanded_start = label.start_timestamp_ms - tolerance_ms
+            if expanded_start > event_end:
+                break
+            heapq.heappush(
+                active,
+                (
+                    label.end_timestamp_ms + tolerance_ms,
+                    label.start_timestamp_ms,
+                    label.label_id,
+                    label_index,
+                ),
+            )
+            next_label += 1
+        while active and active[0][0] < event_start:
+            heapq.heappop(active)
+        if active:
+            _, _, _, label_index = heapq.heappop(active)
+            matches.append((event_index, label_index))
+    return matches
+
+
 def evaluate_person_down_candidates(
     events: Iterable[dict],
     labels: Iterable[LabeledPersonDown],
@@ -191,31 +243,16 @@ def evaluate_person_down_candidates(
         event_windows.append((start, end))
     event_windows.sort(key=lambda item: (item[1], item[0]))
 
-    unmatched = set(range(len(label_list)))
+    matches = _maximum_cardinality_matches(event_windows, label_list, cfg.match_tolerance_ms)
     matched_labels: list[str] = []
     delays: list[int] = []
-    matched_events = 0
-    tolerance = cfg.match_tolerance_ms
-
-    for event_start, event_end in event_windows:
-        candidates: list[tuple[int, int, str, int]] = []
-        for index in unmatched:
-            label = label_list[index]
-            if event_end < label.start_timestamp_ms - tolerance:
-                continue
-            if event_start > label.end_timestamp_ms + tolerance:
-                continue
-            delay = event_end - label.start_timestamp_ms
-            candidates.append((abs(delay), label.start_timestamp_ms, label.label_id, index))
-        if not candidates:
-            continue
-        _, _, _, match_index = min(candidates)
-        label = label_list[match_index]
-        unmatched.remove(match_index)
-        matched_events += 1
+    for event_index, label_index in matches:
+        _, event_end = event_windows[event_index]
+        label = label_list[label_index]
         matched_labels.append(label.label_id)
         delays.append(event_end - label.start_timestamp_ms)
 
+    matched_events = len(matches)
     positive_count = len(label_list)
     event_count = len(event_windows)
     false_alerts = event_count - matched_events
