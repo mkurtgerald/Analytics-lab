@@ -160,7 +160,7 @@ def _preflight_samples(samples: list[ValidationSampleSpec], cfg: ValidationSuite
         raise ValueError("sample_id values must be unique")
 
     total_bytes = 0
-    by_camera: dict[str, list[ValidationSampleSpec]] = {}
+    by_camera: dict[tuple[str, str], list[ValidationSampleSpec]] = {}
     for item in samples:
         path = item.video_path
         if path.is_symlink() or not path.is_file():
@@ -177,13 +177,13 @@ def _preflight_samples(samples: list[ValidationSampleSpec], cfg: ValidationSuite
                 digest.update(block)
         if digest.hexdigest() != item.media_sha256:
             raise ValueError("validation media checksum mismatch")
-        by_camera.setdefault(item.camera_id, []).append(item)
-    for camera_id, group in by_camera.items():
+        by_camera.setdefault((item.site_id, item.camera_id), []).append(item)
+    for group in by_camera.values():
         ordered = sorted(group, key=lambda item: (item.start_timestamp_ms, item.end_timestamp_ms, item.sample_id))
         previous_end: int | None = None
         for item in ordered:
             if previous_end is not None and item.start_timestamp_ms < previous_end:
-                raise ValueError(f"overlapping validation intervals for camera {camera_id}")
+                raise ValueError("overlapping validation intervals for the same site/camera")
             previous_end = item.end_timestamp_ms
 
 
