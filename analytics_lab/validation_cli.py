@@ -40,13 +40,16 @@ def _strict_object(value: Any, *, required: set[str], optional: set[str] | None 
     return value
 
 
-def _local_path(value: Any, name: str) -> Path:
+def _local_path(value: Any, name: str, *, base_dir: Path | None = None) -> Path:
     if not isinstance(value, str) or not value or len(value) > 4096:
         raise ValueError(f"{name} must be a bounded nonempty local path")
     lowered = value.lower()
     if "://" in value or lowered.startswith(("http:", "https:", "rtsp:", "rtsps:")) or value.startswith(("/dev/", "\\\\.\\")):
         raise ValueError(f"{name} must be an ordinary local path")
-    return Path(value)
+    path = Path(value)
+    if base_dir is not None and not path.is_absolute():
+        path = base_dir / path
+    return path
 
 
 def load_manifest(path: str | Path) -> tuple[Path, tuple[ValidationSampleSpec, ...], ValidationSuiteConfig]:
@@ -68,7 +71,8 @@ def load_manifest(path: str | Path) -> tuple[Path, tuple[ValidationSampleSpec, .
     )
     if type(root["schema_version"]) is not int or root["schema_version"] != _SCHEMA_VERSION:
         raise ValueError("unsupported validation manifest schema_version")
-    artifact_root = _local_path(root["artifact_root"], "artifact_root")
+    manifest_dir = manifest_path.absolute().parent
+    artifact_root = _local_path(root["artifact_root"], "artifact_root", base_dir=manifest_dir)
 
     raw_config = root.get("config", {})
     raw_config = _strict_object(
@@ -111,7 +115,7 @@ def load_manifest(path: str | Path) -> tuple[Path, tuple[ValidationSampleSpec, .
             site_id=sample["site_id"],
             camera_id=sample["camera_id"],
             authorization_ref=sample["authorization_ref"],
-            video_path=_local_path(sample["video_path"], "video_path"),
+            video_path=_local_path(sample["video_path"], "video_path", base_dir=manifest_dir),
             media_sha256=sample["media_sha256"],
             start_timestamp_ms=sample["start_timestamp_ms"],
             end_timestamp_ms=sample["end_timestamp_ms"],

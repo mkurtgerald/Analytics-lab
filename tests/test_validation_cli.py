@@ -107,6 +107,21 @@ class ValidationCliTests(unittest.TestCase):
             self.assertEqual(samples[0].authorization_ref, "rights-ticket-17")
             self.assertEqual(samples[0].labels[0].label_id, "down-1")
 
+    def test_relative_paths_are_rooted_at_manifest_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "suite"
+            root.mkdir()
+            manifest, video = self._manifest(root)
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+            document["artifact_root"] = "models"
+            document["samples"][0]["video_path"] = "authorized.mp4"
+            manifest.write_text(json.dumps(document), encoding="utf-8")
+
+            artifact_root, samples, _ = load_manifest(manifest)
+
+            self.assertEqual(artifact_root, root / "models")
+            self.assertEqual(samples[0].video_path, video)
+
     def test_manifest_rejects_unknown_fields_and_network_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

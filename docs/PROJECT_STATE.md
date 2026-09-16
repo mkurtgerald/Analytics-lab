@@ -13,11 +13,11 @@ Candidate events do not infer injury, cause, fault, or intent.
 `analytics_lab.video` owns bounded ordinary-local-file decode and timestamps. `analytics_lab.perception` owns validated boxes/keypoints, temporary session-local tracks and explicit posture abstention. `analytics_lab.openvino_omz` owns exact artifact verification plus the reviewed OpenVINO/OMZ detector-pose adapter. `analytics_lab.openvino_pipeline` composes perception with fresh tracking/temporal state. `analytics_lab.evaluation` measures one-to-one matches, misses, false alerts, false alerts per camera-hour and alert delay across site-scoped cameras. `analytics_lab.validation` binds rights references, media SHA-256 identities, model/runtime/device identities and throughput evidence without retaining video. `analytics_lab.validation_cli` exposes that suite through a strict local JSON manifest.
 
 ## Current acceptance-moving change
-Evaluation matching now maximizes one-to-one event/label cardinality before computing recall, misses and false alerts. The previous closest-delay greedy matcher could consume a label needed by a later event and under-count matched positives even when a complete one-to-one matching existed.
+Validation manifests now resolve relative `artifact_root` and `video_path` values against the manifest's own directory instead of the process working directory. The previous behavior made an otherwise identical rights-bound manifest select different files depending on where the command was launched, which undermined reproducibility and could cause the wrong local artifact/media path to be evaluated. Absolute paths keep their existing behavior, and URL/device rejection remains unchanged.
 
-The demonstrated regression uses two candidate windows and two zero-width labels with zero tolerance. The first event overlaps both labels and is temporally closest to the later label; the second event overlaps only that later label. The old matcher selected the later label first and reported 1 match + 1 miss + 1 false alert. The corrected interval-sweep matcher deterministically assigns the earliest-ending compatible label first and reports the maximum 2 matches, 0 misses and 0 false alerts. The matcher is `O((events + labels) log labels)` rather than a quadratic candidate scan.
+A focused regression builds a manifest in a nested directory using `models` and `authorized.mp4` relative paths and verifies both resolve to that manifest directory. This change does not download, retain, or inspect new media and does not alter model/runtime licensing or analytic thresholds.
 
-Validation duration remains bound to actual decoded timestamp coverage rather than the manifest's declared end time, preventing false-alert denominator inflation. The previously merged initialization optimization also remains in place: multi-sample validation prepares the reviewed OpenVINO backend once per suite while each sample receives fresh perception/tracker/temporal state. Preparation latency remains separate and included in total suite elapsed time and throughput.
+The previously merged evaluation protections remain in place: matching maximizes one-to-one event/label cardinality; validation duration is bound to actual decoded timestamp coverage; multi-sample validation prepares the reviewed OpenVINO backend once per suite while each sample gets fresh perception/tracker/temporal state.
 
 ## Reviewed donor/provenance baseline
 - Open Model Zoo commit: `6697dead54ed1cdd664b0313189c2cb52ee6335e`.
@@ -26,12 +26,12 @@ Validation duration remains bound to actual decoded timestamp coverage rather th
 - RTMLib commit `03a1693e59e4f7cd84582c0fb30459b3bf18ad42` remains code-only; its default HumanArt-trained detector weights stay hold/do-not-ship because commercial/redistribution rights remain unresolved in reviewed evidence.
 
 ## Verified repository baseline
-Main before this work item: `5f542185a4e383c27e8d64e2d16d42088bae8ff1`. Its Linux regression, Windows regression and `Analytics quality gate` completed successfully. No implementation PR was open at intake and no workflow run for that head was queued or running.
+Main before this work item: `e93c348f119370abe3f42e6b712a0477f13a3193`. Its Linux regression, Windows regression and `Analytics quality gate` completed successfully. No implementation PR was open at intake and no workflow run for that head was queued or running.
 
-Before mutation, `tools/guardrails.py preflight` was run with fresh verified counts and allowed implementation. A deterministic local reproduction proved the matching defect and exhaustively compared the replacement interval-sweep cardinality against brute-force maximum matching across small interval sets. Exact-head GitHub Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
+Before mutation, `tools/guardrails.py preflight` was run with fresh verified counts and allowed implementation. A focused local regression passed for manifest-relative artifact/media path resolution. Exact-head GitHub Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
 
 ## Efficiency / execution ledger
-One worker, one active acceptance-moving work item, at most one implementation PR. Current work item: maximum-cardinality evaluation matching. Base: `5f542185a4e383c27e8d64e2d16d42088bae8ff1`. Open implementation PRs at intake: 0. Active runs for the base head before mutation: 0. Unchanged retries: 0. CI-triggering requests before opening the implementation PR: 0. Consecutive sessions without tested acceptance improvement: 0.
+One worker, one active acceptance-moving work item, at most one implementation PR. Current work item: reproducible manifest-relative validation paths. Base: `e93c348f119370abe3f42e6b712a0477f13a3193`. Open implementation PRs at intake: 0. Active runs for the base head before mutation: 0. Unchanged retries: 0. CI-triggering requests before opening the implementation PR: 0. Consecutive sessions without tested acceptance improvement: 0.
 
 ## Reproduce
 Dependency-free repository checks:
@@ -47,6 +47,8 @@ With externally provisioned reviewed artifacts/runtime and an authorized local m
 ```sh
 python -m analytics_lab.validation_cli --manifest /path/to/local-validation.json
 ```
+
+Relative `artifact_root` and `video_path` entries in that manifest are interpreted relative to the manifest file itself.
 
 ## Next executable step
 Run one bounded CPU validation suite with externally provisioned OpenVINO `2026.3.1`, the exact pinned OMZ artifacts, and authorized labeled positive/negative local clips. Record exact media/model/runtime/device identities, preparation time, decoded evaluation duration, processing throughput, misses, false alerts per camera-hour, alert delay and per-site/per-camera results. If prone-person recall is inadequate, compare the current detector-isolated four-keypoint method with the pinned full OpenPose decoder before adding another framework.
