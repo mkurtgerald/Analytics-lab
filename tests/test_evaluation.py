@@ -54,15 +54,31 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(result.matched_label_ids, ("a", "b"))
         self.assertEqual(result.median_alert_delay_ms, 250.0)
 
-    def test_deterministic_closest_label_match(self):
+    def test_matching_maximizes_cardinality_before_delay(self):
+        result = evaluate_person_down_candidates(
+            [event(0, 1_000), event(1_000, 1_000)],
+            [LabeledPersonDown(0, 0, "a"), LabeledPersonDown(1_000, 1_000, "b")],
+            video_start_timestamp_ms=0, video_end_timestamp_ms=2_000,
+            config=EvaluationConfig(match_tolerance_ms=0),
+        )
+        self.assertEqual(result.matched_events, 2)
+        self.assertEqual(result.missed_episodes, 0)
+        self.assertEqual(result.false_alerts, 0)
+        self.assertEqual(result.recall, 1.0)
+        self.assertEqual(result.precision, 1.0)
+        self.assertEqual(result.matched_label_ids, ("a", "b"))
+        self.assertEqual(result.alert_delays_ms, (1_000, 0))
+
+    def test_deterministic_earliest_ending_label_match(self):
         result = evaluate_person_down_candidates(
             [event(4_000, 6_000)],
             [LabeledPersonDown(5_000, 7_000, "a"), LabeledPersonDown(6_000, 8_000, "b")],
             video_start_timestamp_ms=0, video_end_timestamp_ms=10_000,
             config=EvaluationConfig(match_tolerance_ms=2_000),
         )
-        self.assertEqual(result.matched_label_ids, ("b",))
+        self.assertEqual(result.matched_label_ids, ("a",))
         self.assertEqual(result.missed_episodes, 1)
+        self.assertEqual(result.alert_delays_ms, (1_000,))
 
     def test_rejects_out_of_bounds_and_duplicate_labels(self):
         with self.assertRaises(ValueError):
