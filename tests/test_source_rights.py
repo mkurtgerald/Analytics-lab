@@ -3,6 +3,7 @@ import unittest
 from analytics_lab.source_rights import (
     DataSourceRights,
     FIGSHARE_FALL_2017,
+    GMDCSA24,
     UE4_FALL,
     require_source,
 )
@@ -22,6 +23,18 @@ class SourceRightsTests(unittest.TestCase):
         )
         self.assertEqual(source.media_origin, "real_world")
         self.assertEqual(source.license_id, "CC-BY-4.0")
+        self.assertTrue(source.exact_asset_identity_required)
+
+    def test_gmdcsa24_is_pinned_real_world_commercial_source(self):
+        source = require_source(
+            GMDCSA24.source_id,
+            purpose="evaluation",
+            require_real_world=True,
+        )
+        self.assertEqual(source.version, "git:5abac7693229900cf80f722e878fbb119211fc1c")
+        self.assertEqual(source.media_origin, "real_world")
+        self.assertEqual(source.license_id, "MIT")
+        self.assertTrue(source.commercial_training)
         self.assertTrue(source.exact_asset_identity_required)
 
     def test_unknown_source_and_purpose_fail_closed(self):
