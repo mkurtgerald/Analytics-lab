@@ -2,9 +2,9 @@
 
 This command reuses the rights-bound two-clip GMDCSA-24 seed, the measured
 person-detection-0200 low-threshold continuity selector, and the reviewed
-human-pose-estimation-0001 model. It emits aggregate geometry/confidence and
-classification-reason evidence only; it does not alter the production path or
-retain decoded media.
+human-pose-estimation-0001 model. It emits aggregate geometry/confidence,
+classification-reason, and bounded threshold-sensitivity evidence only; it
+does not alter the production path or retain decoded media.
 """
 from __future__ import annotations
 
@@ -28,13 +28,15 @@ from .detector_thresholds import (
     _target_candidate,
 )
 from .openvino_omz import PersonDetection, _OpenVINORuntime, pose_candidate_from_heatmaps
-from .perception import BBox, PoseCandidate, PostureResult, classify_posture
+from .perception import BBox, PoseCandidate, PostureConfig, PostureResult, classify_posture
 from .validation import ValidationSampleSpec
 from .validation_cli import load_manifest
 from .video import OpenCVVideoFileSource
 
 _REQUIRED = ("left_shoulder", "right_shoulder", "left_hip", "right_hip")
 _KEYPOINT_THRESHOLD = 0.35
+_KEYPOINT_THRESHOLDS = (0.35, 0.20, 0.10, 0.05, 0.02)
+_POSE_CONFIDENCE_THRESHOLDS = (0.35, 0.10)
 _RUNTIME_PREFIX = "2026.3.1"
 
 
@@ -76,6 +78,10 @@ def _pose_geometry(pose: PoseCandidate) -> dict[str, float] | None:
     }
 
 
+def _threshold_key(prefix: str, value: float) -> str:
+    return f"{prefix}_{value:.2f}"
+
+
 class _PoseAccumulator:
     def __init__(self) -> None:
         self.frames = 0
@@ -92,6 +98,11 @@ class _PoseAccumulator:
         self.torso_fractions: list[float] = []
         self.verticality: list[float] = []
         self.horizontality: list[float] = []
+        self.sensitivity: dict[tuple[float, float], Counter[str]] = {
+            (pose_floor, keypoint_floor): Counter()
+            for pose_floor in _POSE_CONFIDENCE_THRESHOLDS
+            for keypoint_floor in _KEYPOINT_THRESHOLDS
+        }
 
     def add(
         self,
@@ -129,6 +140,16 @@ class _PoseAccumulator:
             self.torso_fractions.append(geometry["torso_fraction"])
             self.verticality.append(geometry["verticality"])
             self.horizontality.append(geometry["horizontality"])
+        for pose_floor in _POSE_CONFIDENCE_THRESHOLDS:
+            for keypoint_floor in _KEYPOINT_THRESHOLDS:
+                result = classify_posture(
+                    pose,
+                    PostureConfig(
+                        min_pose_confidence=pose_floor,
+                        min_keypoint_confidence=keypoint_floor,
+                    ),
+                )
+                self.sensitivity[(pose_floor, keypoint_floor)][result.posture] += 1
 
     @staticmethod
     def _stats(values: list[float]) -> dict[str, float | int | None]:
@@ -140,6 +161,23 @@ class _PoseAccumulator:
             "min": min(values),
             "max": max(values),
         }
+
+    def _sensitivity_result(self) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for pose_floor in _POSE_CONFIDENCE_THRESHOLDS:
+            pose_key = _threshold_key("pose_confidence", pose_floor)
+            result[pose_key] = {}
+            for keypoint_floor in _KEYPOINT_THRESHOLDS:
+                keypoint_key = _threshold_key("keypoint_confidence", keypoint_floor)
+                counts = self.sensitivity[(pose_floor, keypoint_floor)]
+                result[pose_key][keypoint_key] = {
+                    "counts": dict(sorted(counts.items())),
+                    "fractions": {
+                        posture: counts[posture] / self.pose_frames if self.pose_frames else 0.0
+                        for posture in ("upright", "down", "other", "unknown")
+                    },
+                }
+        return result
 
     def freeze(self) -> dict[str, Any]:
         return {
@@ -165,6 +203,7 @@ class _PoseAccumulator:
             "torso_fraction_of_bbox_diagonal": self._stats(self.torso_fractions),
             "torso_verticality": self._stats(self.verticality),
             "torso_horizontality": self._stats(self.horizontality),
+            "posture_threshold_sensitivity": self._sensitivity_result(),
         }
 
 
@@ -232,18 +271,21 @@ def run_pose_diagnostics(manifest: str | Path, candidate_root: str | Path) -> di
         pose_inference_ms += elapsed
     pose_frames = sum(int(item["overall"]["pose_frames"]) for item in sample_results)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
         "continuity_min_link_iou": _CONTINUITY_MIN_LINK_IOU,
         "pose_model": "human-pose-estimation-0001",
         "posture_thresholds": {
-            "min_pose_confidence": 0.35,
-            "min_required_keypoint_confidence": _KEYPOINT_THRESHOLD,
+            "production_candidate_min_pose_confidence": 0.35,
+            "production_candidate_min_required_keypoint_confidence": _KEYPOINT_THRESHOLD,
+            "diagnostic_pose_confidence_thresholds": list(_POSE_CONFIDENCE_THRESHOLDS),
+            "diagnostic_keypoint_confidence_thresholds": list(_KEYPOINT_THRESHOLDS),
         },
         "samples": sample_results,
         "pose_inference_ms": pose_inference_ms,
         "pose_fps": pose_frames * 1000.0 / pose_inference_ms if pose_inference_ms > 0 else 0.0,
+        "threshold_sensitivity_is_diagnostic_only": True,
         "evidence_only": True,
     }
 

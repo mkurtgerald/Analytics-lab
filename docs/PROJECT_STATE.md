@@ -11,9 +11,9 @@ The implemented person-down **candidate** path is:
 Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed model-artifact identities, runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after execution so changed media cannot inherit stale evidence.
 
 ## Current acceptance-moving work
-PR #27 / `evidence/0200-continuity-filter` is the single implementation vehicle, based on green `main` revision `6b432adeecec3454ac10c443e575f5528582991c`. It is the required approach change after the three-detector shootout and fixed-threshold tuning both failed to produce a promotable detector configuration.
+PR #28 / `evidence/pose-posture-diagnostic` is the single implementation vehicle, based on green `main` revision `f4ee040fd7aa4360cfc0aa9ff704f6bd5b8f89cb`. It attacks the already-measured all-`unknown` pose/posture failure after the evidence-only detector continuity selector recovered the prone-person trajectory on the bounded staged-real seed.
 
-Exact-head run `35276058586` on revision `fdd2949c8d83479094076e62405d4ad07e238cd9` passed the repository guardrail preflight, **186 Linux repository tests** (one expected optional-OpenCV skip before runtime installation), synthetic replay, rights-bound real-video validation, detector diagnostics, the threshold/continuity evidence command, Windows regression and the final Analytics quality gate on attempt 1. Runtime evidence used OpenVINO `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, NumPy `2.2.6`, the exact two GMDCSA-24 clips, and the exact hash-pinned `person-detection-0200` artifacts. No media/model workflow artifacts were uploaded.
+The first exact-head run `35278431588` on revision `4421ae9650f4f3597d3eacbeb03e42251ffe6baa` passed the repository guardrail preflight, **189 Linux repository tests** (one expected optional-OpenCV skip before runtime installation), synthetic replay, the full rights-bound real-video evidence lane, Windows regression and the final Analytics quality gate on attempt 1. Runtime evidence used OpenVINO `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, NumPy `2.2.6`, the exact two GMDCSA-24 clips, the exact hash-pinned `person-detection-0200` artifacts, and the existing reviewed `human-pose-estimation-0001` artifacts. No media/model workflow artifacts were uploaded.
 
 ### Measured detector threshold result
 `person-detection-0200` was run once per frame and the same raw outputs were evaluated at confidence thresholds 0.50, 0.40, 0.30, 0.20 and 0.10. The threshold-only evidence bars were >=55% positive fall-interval coverage, >=90% hard-negative person coverage and <=5% frames with multiple person detections on each clip. The measured result remains `recommended_threshold: null`.
@@ -24,10 +24,10 @@ Exact-head run `35276058586` on revision `fdd2949c8d83479094076e62405d4ad07e238c
 - **0.20:** fall-interval coverage 82/96 = **85.4%**; positive duplicate-frame rate **44.3%**; hard-negative coverage **100%**; negative duplicate-frame rate **12.7%**.
 - **0.10:** fall-interval coverage 96/96 = **100%**; positive duplicate-frame rate **80.5%**; hard-negative coverage **100%**; negative duplicate-frame rate **19.3%**.
 
-Threshold lowering alone is still rejected. It recovers prone-person signal but admits too many boxes.
+Threshold lowering alone is rejected. It recovers prone-person signal but admits too many boxes.
 
 ### Measured low-threshold continuity result
-The next bounded hypothesis reused the exact same raw `person-detection-0200` output at confidence **0.10** but selected exactly one person box per frame by spatial continuity. With a previous selection present, candidates clearing IoU **0.05** were ranked by IoU and then confidence; otherwise the highest-confidence person candidate was reacquired. This is an evidence-only single-person diagnostic and is **not** integrated into the production candidate backend.
+The bounded continuity hypothesis reused the exact same raw `person-detection-0200` output at confidence **0.10** but selected exactly one person box per frame by spatial continuity. With a previous selection present, candidates clearing IoU **0.05** were ranked by IoU and then confidence; otherwise the highest-confidence person candidate was reacquired. This is an evidence-only single-person diagnostic and is **not** integrated into the production candidate backend.
 
 Predeclared bars were: >=85% positive fall-interval coverage, >=70% positive fall-interval link rate, >=95% hard-negative coverage, >=90% hard-negative link rate, <=30% positive overall reset rate and <=10% hard-negative reset rate. The result was **accepted: true** and cleared every bar:
 
@@ -38,11 +38,20 @@ Predeclared bars were: >=85% positive fall-interval coverage, >=70% positive fal
 - Hard negative: **212/212 frames = 100% coverage**; **211/211 transitions linked = 100% link rate**; **0 resets**.
 - Hard-negative selected confidence: mean **0.9701**, minimum **0.7999**.
 
-The evidence-only selector therefore recovered the low-confidence prone-person trajectory on this deliberately tiny single-person staged-real seed while rejecting duplicate boxes by construction and preserving stable normal-person continuity. This is a material detector-stage improvement on the same evidence, but it is **not yet a general detector promotion**: the seed has only one visible subject and does not prove multi-person identity separation, crowded-scene behavior or commercial accuracy.
+The selector recovered the low-confidence prone-person trajectory on this deliberately tiny single-person staged-real seed while rejecting duplicate boxes by construction. It is not yet a general detector promotion: the seed has one visible subject and does not prove multi-person identity separation, crowded-scene behavior or commercial accuracy.
 
-Detector-only throughput for this run was about **133.6 FPS** on the hosted runner. That value is retained only as a run-local resource observation because hosted hardware varies.
+### Measured pose/posture root cause
+PR #28 feeds that exact continuity-selected box into the reviewed `human-pose-estimation-0001` path and records aggregate-only confidence, crop/box geometry, torso geometry and exact posture-classification reasons. The result isolates the current all-`unknown` failure to confidence semantics rather than simple person-crop coverage.
 
-The full production-candidate pipeline still produces zero events, one missed positive episode and zero false alerts on this seed because it still uses the prior detector/pose path. The independently measured pose/posture defect also remains: every real pose candidate from the current pipeline classified `unknown`. Tracking and temporal persistence remain downstream of detector and pose/posture quality.
+- Positive fall clip: **173/174 selected frames** produced a pose candidate and **173/173 classified `unknown`**. Of those, **78** failed `pose_confidence_below_threshold` and **95** failed `required_keypoint_confidence_below_threshold`.
+- Before the labeled fall: all **53/53** selected frames were `unknown` solely because required keypoint confidence was below 0.35 even though selected detector confidence was strong (mean **0.9715**, minimum **0.8609**).
+- Hard ADL negative: all **212/212** frames were `unknown` solely because required keypoint confidence was below 0.35 even though selected detector confidence averaged **0.9701** with minimum **0.7999**.
+- Required-joint heatmap peak scores were almost universally below 0.35. On the positive clip, left hip cleared 0.35 on **0/173** frames, left shoulder **1/173**, right hip **1/173**, and right shoulder **3/173**. On the hard negative, left hip **0/212**, left shoulder **1/212**, right hip **0/212**, and right shoulder **0/212**.
+- The low-score peak geometry is not obviously random: mean torso verticality was **0.961** before the fall and **0.887** on the hard negative, while the fall interval shifted toward mixed vertical/horizontal geometry. This makes keypoint score calibration / simplified decoder semantics the leading measured defect; crop coverage is not the primary explanation.
+- During the labeled fall, **62/96** frames additionally fail the 0.35 pose-confidence gate because `PoseCandidate.confidence` currently inherits the continuity-selected detector score. That is a secondary semantic boundary after the required-joint score problem.
+- Pose inference was about **11.5 FPS** on this hosted runner. Treat that only as a run-local resource observation because hosted hardware varies.
+
+The production candidate remains unchanged and still produces zero events, one missed positive episode and zero false alerts on this seed. The diagnostic does not justify lowering production thresholds: this tiny seed has no per-frame posture ground truth, so threshold changes remain evidence-only until discrimination is measured against positives and negatives.
 
 ## Evidence/data baseline
 ### GMDCSA-24 — bounded staged-real validation source
@@ -54,7 +63,7 @@ The full production-candidate pipeline still produces zero events, one missed po
 - Exact media identity is verified before and after measured execution; media remains outside public GitHub.
 
 ### Other reviewed sources
-- UE4 Fall Detection Dataset pinned at `55041766dea68eaddc1df1c06aabd0a51931a22a`, CC BY 4.0, synthetic only; eligible for commercial training/evaluation with attribution but never real-video accuracy evidence.
+- UE4 Fall Detection Dataset pinned at `55041766dea68eaddc1df1c06aabd0a51931a22a`, CC BY 4.0, synthetic only; eligible for commercial training/evaluation with attribution but never real-world accuracy evidence.
 - Figshare article `28596332` version 2, posted 2025-03-14, CC BY 4.0, real-world secondary source; the ~2.36 GB corpus remains outside the current bounded-resource path.
 - UR Fall remains excluded because its official source states non-commercial terms. Roboflow mirrors with unclear upstream provenance remain hold-only.
 
@@ -63,12 +72,12 @@ The full production-candidate pipeline still produces zero events, one missed po
 - Current production-candidate baseline artifacts: `person-detection-retail-0013` FP16 + `human-pose-estimation-0001` FP16, exact size/SHA-384 verified.
 - Evidence candidate `person-detection-0200` FP16: XML 254,619 bytes / SHA-384 `654a515935f6dffc0440cffdeeb6a889bc25bf5d64e425ce2337070cdbcce1b1fbbcf42e4b2761265eb65ec07c1cd6f7`; BIN 3,634,654 / `10b6f79b495ad1ef13748938c452379c6b6cd825d11426ffa68be3eeed6c48a0af04e0b913c843e6e7431aa1c13f5471`.
 - OpenVINO Runtime baseline: `2026.3.1`; evidence decoder: `opencv-python-headless==4.12.0.88`.
-- No shootout detector or low-threshold continuity selector is integrated into the production-candidate backend.
+- No shootout detector, low-threshold continuity selector, or diagnostic posture threshold is integrated into the production-candidate backend.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, one implementation PR. Intake verification: `main` at `6b432adeecec3454ac10c443e575f5528582991c`; post-merge Analytics quality run `35271516888` passed on attempt 1; open implementation PRs were 0 and active runs for the live main head were 0. The repository offline preflight was executed against those live counts and allowed implementation.
+One worker, one acceptance-moving work item, one implementation PR. Intake verification: `main` at `f4ee040fd7aa4360cfc0aa9ff704f6bd5b8f89cb`; post-merge Analytics quality run `35276550775` passed on attempt 1; open implementation PRs were 0 and active runs for the live main head were 0. The repository offline preflight was evaluated against those live counts and allowed implementation.
 
-PR #27 exact-head run `35276058586` is CI-triggering request **1/2** and produced a tested acceptance improvement on attempt 1; unchanged retries remain **0**. This measured evidence-state update is the second and final CI-triggering mutation permitted for this session. No extra worker, donor model, dataset, framework, runner, paid resource, home/customer footage, training run or licensing shortcut was introduced.
+PR #28 first exact-head run `35278431588` is CI-triggering request **1/2** and produced a tested root-cause improvement on attempt 1; unchanged retries remain **0**. The bounded threshold-sensitivity addition on the same PR is the second and final CI-triggering mutation permitted for this session. It reuses the same pose inference and only reclassifies the measured pose candidates at keypoint confidence floors 0.35/0.20/0.10/0.05/0.02 and pose-confidence floors 0.35/0.10; it does not add another model, dataset, worker, framework, media download or inference loop.
 
 ## Reproduce
 Repository checks:
@@ -88,14 +97,15 @@ python -m analytics_lab.detector_diagnostics --manifest /path/to/private-validat
 python -m analytics_lab.detector_thresholds \
   --manifest /path/to/private-validation/validation-manifest.json \
   --candidate-dir /path/to/private-detector-cache
+python -m analytics_lab.pose_diagnostics \
+  --manifest /path/to/private-validation/validation-manifest.json \
+  --candidate-dir /path/to/private-detector-cache
 ```
 
 ## Next executable step
-Finish exact-head verification for PR #27 after this measured state update and merge only if Linux real-video evidence, Windows regression and the final Analytics quality gate remain green on the unchanged tested base.
+Run the threshold-sensitivity matrix on the unchanged rights-bound seed and exact reviewed pose outputs. The matrix is diagnostic only: compare the current 0.35 pose gate with the already-measured 0.10 continuity detector floor, and compare required-joint confidence floors 0.35/0.20/0.10/0.05/0.02. The purpose is to determine whether the low heatmap peak scores still preserve useful upright/down discrimination or whether the simplified detector-isolated peak decoder itself must change. Do not integrate a lower production threshold from this two-clip seed.
 
-The low-threshold continuity result materially improves detector-stage recall on the current single-person staged-real seed, so do **not** launch detector fine-tuning yet. Preserve training as a fallback if broader real evidence disproves the continuity approach.
-
-Next attack the already-proven pose/posture failure on the same rights-bound evidence. Build the smallest evidence-only diagnostic that feeds the continuity-selected `person-detection-0200` box into the existing reviewed `human-pose-estimation-0001` path and records aggregate keypoint availability/confidence and posture-classification reasons before/during/after the fall. Determine whether the all-`unknown` result is caused by crop geometry, keypoint confidence/coverage, decoder semantics or posture thresholds before changing the pose model. Do not alter tracking or temporal persistence until pose/posture produces discriminative real-video output.
+If lower keypoint floors recover stable upright geometry on the pre-fall and hard-negative windows without creating spurious down posture, attack the remaining detector-confidence coupling next with a bounded diagnostic before any production integration. If they do not, stop threshold tuning and move directly to decoder/input semantics; do not shop for another pose model until this reviewed model's decoding assumptions are disproven. Do not alter tracking or temporal persistence until pose/posture produces discriminative real-video output.
 
 Separately, before any detector promotion beyond this single-person seed, require a bounded multi-person/crowded-negative check so a one-box continuity heuristic cannot be mistaken for a general multi-person detector solution.
 

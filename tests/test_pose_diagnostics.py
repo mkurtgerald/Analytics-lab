@@ -15,14 +15,14 @@ class PoseDiagnosticTests(unittest.TestCase):
         pixel = _pixel_bbox(box, _Image())
         self.assertEqual(pixel, BBox(0.0, 20.0, 200.0, 90.0))
 
-    def test_accumulator_records_exact_unknown_reason_and_keypoint_confidence(self):
+    def test_accumulator_records_reason_confidence_and_threshold_sensitivity(self):
         pose = PoseCandidate(
-            BBox(10, 10, 90, 90),
+            BBox(10, 10, 50, 90),
             (
-                Keypoint("left_shoulder", 30, 30, 0.20),
-                Keypoint("right_shoulder", 50, 30, 0.60),
-                Keypoint("left_hip", 30, 60, 0.70),
-                Keypoint("right_hip", 50, 60, 0.80),
+                Keypoint("left_shoulder", 20, 30, 0.20),
+                Keypoint("right_shoulder", 40, 30, 0.60),
+                Keypoint("left_hip", 20, 65, 0.70),
+                Keypoint("right_hip", 40, 65, 0.80),
             ),
             0.90,
         )
@@ -31,7 +31,7 @@ class PoseDiagnosticTests(unittest.TestCase):
         acc = _PoseAccumulator()
         acc.add(
             image=_Image(),
-            selected=DetectionBox(0.9, 0.05, 0.10, 0.45, 0.90),
+            selected=DetectionBox(0.9, 0.05, 0.10, 0.25, 0.90),
             pose=pose,
             posture=result,
         )
@@ -44,6 +44,37 @@ class PoseDiagnosticTests(unittest.TestCase):
         self.assertEqual(out["keypoints"]["left_shoulder"]["min"], 0.20)
         self.assertEqual(out["keypoints"]["left_shoulder"]["frames_at_or_above_0_35"], 0)
         self.assertEqual(out["keypoints"]["right_shoulder"]["frames_at_or_above_0_35"], 1)
+        current = out["posture_threshold_sensitivity"]["pose_confidence_0.35"]
+        self.assertEqual(current["keypoint_confidence_0.35"]["counts"], {"unknown": 1})
+        self.assertEqual(current["keypoint_confidence_0.20"]["counts"], {"upright": 1})
+
+    def test_lower_diagnostic_pose_gate_is_reported_separately(self):
+        pose = PoseCandidate(
+            BBox(10, 10, 50, 90),
+            (
+                Keypoint("left_shoulder", 20, 30, 0.80),
+                Keypoint("right_shoulder", 40, 30, 0.80),
+                Keypoint("left_hip", 20, 65, 0.80),
+                Keypoint("right_hip", 40, 65, 0.80),
+            ),
+            0.20,
+        )
+        acc = _PoseAccumulator()
+        acc.add(
+            image=_Image(),
+            selected=DetectionBox(0.20, 0.05, 0.10, 0.25, 0.90),
+            pose=pose,
+            posture=classify_posture(pose),
+        )
+        out = acc.freeze()["posture_threshold_sensitivity"]
+        self.assertEqual(
+            out["pose_confidence_0.35"]["keypoint_confidence_0.35"]["counts"],
+            {"unknown": 1},
+        )
+        self.assertEqual(
+            out["pose_confidence_0.10"]["keypoint_confidence_0.35"]["counts"],
+            {"upright": 1},
+        )
 
     def test_accumulator_separates_unselected_frames(self):
         acc = _PoseAccumulator()
