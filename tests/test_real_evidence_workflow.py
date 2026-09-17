@@ -26,6 +26,7 @@ class RealEvidenceWorkflowTests(unittest.TestCase):
         self.assertIn("opencv-python-headless==4.12.0.88", command)
         self.assertIn("analytics_lab.validation_seed", command)
         self.assertIn("analytics_lab.validation_cli", command)
+        self.assertIn("analytics_lab.detector_diagnostics", command)
         self.assertIn("$RUNNER_TEMP/analytics-validation", command)
         self.assertNotIn("upload-artifact", command)
         self.assertNotIn("self-hosted", json.dumps(self.workflow))
