@@ -1,10 +1,10 @@
 """Prepare the bounded, rights-reviewed GMDCSA-24 real-video validation seed.
 
-This module is deliberately opt-in and is never invoked by repository CI. It
-fetches only two pinned GMDCSA-24 clips plus the four already-reviewed Open
-Model Zoo artifacts, verifies exact upstream identities, computes local media
-SHA-256 values, and emits a validation manifest. It does not install OpenVINO,
-retain decoded frames, or make any accuracy claim.
+This module is deliberately opt-in and is never invoked by ordinary repository
+CI. It fetches only two pinned GMDCSA-24 clips plus the four already-reviewed
+Open Model Zoo artifacts, verifies exact upstream identities, computes local
+media SHA-256 values, and emits a validation manifest. It does not install
+OpenVINO, retain decoded frames, or make any accuracy claim.
 """
 from __future__ import annotations
 
@@ -209,10 +209,14 @@ def _manifest(identities: dict[str, str]) -> dict[str, Any]:
                 "end_timestamp_ms": spec.label_end_timestamp_ms,
                 "label_id": spec.label_id,
             })
+        # These are separate source clips, not overlapping windows from one
+        # continuous camera timeline. Give each clip its own validation-stream
+        # identity so aggregate camera-time accounting does not double-count an
+        # invented shared clock while preserving the real source/site identity.
         samples.append({
             "sample_id": spec.sample_id,
             "site_id": "gmdcsa24-home-setup-1",
-            "camera_id": "gmdcsa24-integrated-webcam",
+            "camera_id": f"gmdcsa24-clip-{spec.sample_id}",
             "authorization_ref": _AUTHORIZATION_REF,
             "video_path": (Path("media") / "gmdcsa24" / Path(*PurePosixPath(spec.relative_path).parts)).as_posix(),
             "media_sha256": identities[spec.sample_id],

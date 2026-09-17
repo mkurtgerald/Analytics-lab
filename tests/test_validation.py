@@ -145,7 +145,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(out.aggregate.false_alerts, 1)
         self.assertAlmostEqual(out.aggregate.false_alerts_per_camera_hour, 3600.0)
 
-    def test_rejects_labels_or_declared_interval_that_exceed_decoded_coverage(self):
+    def test_rejects_labels_that_exceed_decoded_coverage(self):
         late = self.spec(labels=(LabeledPersonDown(3000, 4000, "late"),))
         short = OpenVINOOMZRunResult(
             "2026.3.1-test", "CPU", video_result(2, 0, (), 1000, 2000)
@@ -155,14 +155,18 @@ class Tests(unittest.TestCase):
                 [late], artifact_root="/models", runner=lambda *a, **k: short,
                 clock_ns=iter([0, 1]).__next__,
             )
-        overflow = OpenVINOOMZRunResult(
+
+    def test_exact_decoded_coverage_can_exceed_nominal_manifest_end(self):
+        nominal = self.spec(start=1000, end=5000)
+        decoded = OpenVINOOMZRunResult(
             "2026.3.1-test", "CPU", video_result(2, 0, (), 1000, 6000)
         )
-        with self.assertRaises(RuntimeError):
-            run_validation_suite(
-                [self.spec()], artifact_root="/models", runner=lambda *a, **k: overflow,
-                clock_ns=iter([0, 1]).__next__,
-            )
+        out = run_validation_suite(
+            [nominal], artifact_root="/models", runner=lambda *a, **k: decoded,
+            clock_ns=iter([0, 1]).__next__,
+        )
+        self.assertEqual(out.aggregate.duration_ms, 5000)
+        self.assertAlmostEqual(out.aggregate.camera_hours, 5000 / 3_600_000.0)
 
     def test_preflight_rejects_missing_rights_urls_duplicates_and_overlap_before_runner(self):
         digest = hashlib.sha256(self.a.read_bytes()).hexdigest()

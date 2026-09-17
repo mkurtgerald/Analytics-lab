@@ -61,6 +61,12 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertEqual(document["samples"][1]["labels"], [])
         self.assertEqual(document["samples"][0]["end_timestamp_ms"], 5000)
         self.assertEqual(document["samples"][1]["end_timestamp_ms"], 7000)
+        # Independent source files are independent validation streams. Reusing
+        # one camera timeline would make their clip-local 0-based intervals
+        # overlap and would corrupt aggregate camera-hour accounting.
+        self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
+        self.assertNotEqual(document["samples"][0]["camera_id"], document["samples"][1]["camera_id"])
+        self.assertTrue(all(sample["camera_id"].startswith("gmdcsa24-clip-") for sample in document["samples"]))
 
 
 if __name__ == "__main__":

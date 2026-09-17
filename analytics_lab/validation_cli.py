@@ -24,6 +24,46 @@ from .validation import (
 
 _MAX_MANIFEST_BYTES = 1024 * 1024
 _SCHEMA_VERSION = 1
+_SAFE_RUNTIME_DIAGNOSTICS = {
+    "clock_ns must be monotonic nondecreasing integer nanoseconds": "clock",
+    "validation sample limit exceeded": "sample_limit",
+    "validation media exceeds the configured total byte budget": "media_budget",
+    "pipeline device does not match the required validation device": "device_contract",
+    "runner returned an unsupported result": "runner_contract",
+    "validation result device does not match the required device": "device_contract",
+    "validation suite mixed OpenVINO runtime versions": "runtime_identity",
+    "validation sample decoded zero frames": "decoded_zero_frames",
+    "validation result is missing decoded timestamp coverage": "decoded_coverage",
+    "decoded video start does not match the declared sample start": "decoded_start",
+    "validation sample must span more than one decoded timestamp": "decoded_span",
+    "decoded video exceeds the declared sample interval": "decoded_interval_overrun",
+    "non-finite validation throughput": "throughput",
+    "non-finite aggregate validation throughput": "throughput",
+    "validation suite produced no runtime identity": "runtime_identity",
+    "OpenVINO, NumPy and OpenCV are required for OMZ inference": "runtime_dependency",
+    "pose model must expose exactly one 19x32x57 heatmap output": "pose_contract",
+    "detector model input metadata is unavailable": "detector_contract",
+    "detector model input shape does not match the reviewed artifact": "detector_contract",
+    "pose model input metadata is unavailable": "pose_contract",
+    "pose model input shape does not match the reviewed artifact": "pose_contract",
+    "detector output does not contain seven-value rows": "detector_output",
+    "detector crop is empty": "detector_crop",
+    "pose heatmap output shape changed": "pose_output",
+    "runtime must expose a bounded version string": "runtime_identity",
+    "OpenVINO runtime version does not match the reviewed release prefix": "runtime_identity",
+    "video frame limit exceeded": "video_frame_limit",
+    "per-frame observation limit exceeded": "observation_limit",
+    "video event limit exceeded": "event_limit",
+    "video source must be used as a context manager": "decoder_state",
+    "OpenCV is required for local video decoding": "decoder_dependency",
+}
+
+
+def _safe_error_code(error: BaseException) -> str:
+    """Return a bounded diagnostic without echoing untrusted exception text."""
+    if isinstance(error, RuntimeError):
+        return _SAFE_RUNTIME_DIAGNOSTICS.get(str(error), "runtime")
+    return type(error).__name__.lower()
 
 
 def _strict_object(value: Any, *, required: set[str], optional: set[str] | None = None, name: str) -> dict[str, Any]:
@@ -141,7 +181,10 @@ def main(argv: list[str] | None = None) -> int:
         result = run_validation_suite(samples, artifact_root=artifact_root, config=config)
         print(json.dumps(result_document(result), allow_nan=False, sort_keys=True, separators=(",", ":")))
     except (OSError, ValueError, TypeError, RuntimeError, OverflowError, RecursionError) as error:
-        print(f"Validation rejected ({type(error).__name__}).", file=sys.stderr)
+        print(
+            f"Validation rejected ({type(error).__name__}; code={_safe_error_code(error)}).",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

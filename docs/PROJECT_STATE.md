@@ -11,9 +11,15 @@ The implemented person-down **candidate** path is:
 Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed OMZ artifact identities, OpenVINO runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after sample execution so changed media cannot inherit stale evidence.
 
 ## Current acceptance-moving work
-The bounded real-world validation seed is now executable rather than a manual acquisition note. `analytics_lab.validation_seed` prepares exactly the two pinned GMDCSA-24 clips plus the four already-reviewed Open Model Zoo artifacts, enforces per-item byte ceilings, verifies the clips against their pinned Git blob identities, verifies model artifacts against the existing exact size/SHA-384 manifest, computes local media SHA-256 identities, writes attribution, and emits the strict manifest consumed by `analytics_lab.validation_cli`.
+PR #23 remains the single implementation vehicle for the bounded hosted real-video CPU evidence lane. Its first exact-head run proved the previously blocked execution prerequisites: the hosted Ubuntu runner installed pinned OpenVINO `2026.3.1` and headless OpenCV, the bounded GMDCSA-24 clips and four reviewed OMZ artifacts were acquired and verified, and the strict validation manifest was emitted. That run then failed deterministically before inference because both independent MP4 files were represented as overlapping 0-based intervals on one camera timeline.
 
-The preparation command is deliberately opt-in and is not called by repository CI. It does not install OpenVINO, decode/retain frames, commit media, or make an accuracy claim. A successful preparation only closes the exact-input boundary; actual reviewed OpenVINO `2026.3.1` CPU execution remains required before any real-video performance statement.
+The changed head `a34f7a7f90bb89c7c7df945a6387092f88adb76f` corrected the independent-clip timeline defect and added regression coverage. Run `35245633192` then passed all 167 repository tests, installed OpenVINO `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0` and NumPy `2.2.6`, re-acquired and verified the exact seed/model inputs, and advanced into the reviewed runtime path. It failed deterministically with a redacted `RuntimeError` after seed preparation. Windows was correctly withheld because Linux did not pass.
+
+Changed head `7c775e69d628cfc3d4e76b4c9921c66537afcead` added a bounded allowlist of repository-owned RuntimeError messages -> non-sensitive diagnostic codes while leaving unknown errors generic. All 169 repository tests passed on that head before the evidence step. Hosted run `35249730565` then reproduced the real-video failure as `code=decoded_interval_overrun`, proving the blocker is decoded media coverage exceeding the source table's nominal whole-second clip end rather than a model/runtime contract failure.
+
+The correction keeps the exact checksum-bound decoded timestamp span as the measurement authority. It removes the asymmetric rejection that treated the source annotation's integer clip length as a hard maximum while already allowing actual decoded coverage to be shorter. Labels still must fit actual decoded coverage; exact media identity, byte/frame ceilings, temporal ordering, aggregate real camera-time accounting and overlap checks remain fail-closed. This is a validation correctness fix, not an accuracy-threshold relaxation.
+
+The evidence lane remains inside the existing Linux five-minute budget, read-only GitHub permissions and hosted Ubuntu runner. Seed media/model bytes live only below the ephemeral runner temp directory and are never uploaded as workflow artifacts. Main pushes and ordinary PRs do not run the real-video step.
 
 ## Reviewed data-source baseline
 ### UE4 Fall Detection Dataset — synthetic positive/negative development source
@@ -27,36 +33,37 @@ The preparation command is deliberately opt-in and is not called by repository C
 ### GMDCSA-24 — preferred bounded real-world validation source
 - Primary data repository: `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`.
 - Pinned revision: `5abac7693229900cf80f722e878fbb119211fc1c`.
-- Repository `LICENSE` at that revision is MIT and requires preservation of its copyright/permission notice. The associated Data in Brief paper is open access under CC BY 4.0, identifies the dataset DOI `10.5281/zenodo.13354453`, states that the dataset can be used to train or test a fall-detection system, and reports 81 fall plus 79 ADL clips from four subjects in three home setups.
+- Repository `LICENSE` at that revision is MIT and requires preservation of its copyright/permission notice. The associated Data in Brief paper is open access under CC BY 4.0, identifies dataset DOI `10.5281/zenodo.13354453`, states that the dataset can be used to train or test a fall-detection system, and reports 81 fall plus 79 ADL clips from four subjects in three home setups.
 - Media origin: **real_world**, staged by consenting actors.
-- Bounded-acquisition advantage: the GitHub repository exposes individual MP4 clips rather than requiring a full archive pull.
-- Initial two-clip seed is deliberately small and adversarially useful:
-  - positive: `Subject 1/Fall/05.mp4`, repository blob `4e13ed24f6c2af7062b64b1920ef706c51efe94b`, reported size 5,872,655 bytes; annotation describes walking followed by a right-side fall, with falling labeled from 1.8 s through 5 s;
-  - normal hard negative: `Subject 1/ADL/15.mp4`, repository blob `903da9245132cf70c10124edd0625c958f702cb8`, reported size 7,233,079 bytes; annotation describes walking, picking an object from the ground and sitting, a useful fall-like negative.
-- The Git blob identities and byte counts identify the intended upstream files but do **not** replace the required SHA-256 of the exact locally acquired bytes.
-- Engineering rights review is not a legal opinion; commercial release still requires the repository's existing legal/IP review boundary.
+- Initial bounded seed:
+  - positive: `Subject 1/Fall/05.mp4`, repository blob `4e13ed24f6c2af7062b64b1920ef706c51efe94b`, 5,872,655 bytes, walking followed by a right-side fall, falling interval 1.8 s through 5 s;
+  - hard negative: `Subject 1/ADL/15.mp4`, repository blob `903da9245132cf70c10124edd0625c958f702cb8`, 7,233,079 bytes, walking/picking an object from the ground/sitting.
+- The source annotation tables report nominal clip lengths of 5 seconds and 7 seconds respectively. Those source-level integer lengths are useful provenance but are not exact decoded media coverage; the checksum-bound decoder clock is used for evaluation duration and camera-time accounting.
+- The seed preparer verifies Git-blob identity, computes local SHA-256, preserves attribution, and emits the strict validation manifest. Media is not committed to Analytics Lab.
+- Independent MP4s use independent validation-stream camera IDs because their timestamps are clip-local rather than synchronized windows from one continuous recorder. This prevents false overlap rejection and false camera-hour double counting without asserting that the physical source cameras differ.
 
 ### Figshare Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects — real-world secondary source
-- Figshare article: `28596332`, version 2, posted 2025-03-14.
+- Figshare article `28596332`, version 2, posted 2025-03-14.
 - Creator: Ivan Ursul.
-- Source page reports 2,017 recordings from subjects, including 999 falls and 1,017 activities of daily living.
+- Source page reports 2,017 recordings including 999 falls and 1,017 activities of daily living.
 - Source page license: CC BY 4.0.
 - Media origin: **real_world**.
-- Eligible source-level engineering use: commercial training/evaluation under the stated CC BY 4.0 terms, with attribution.
-- Acquisition boundary: the complete dataset is about 2.36 GB and must **not** be pulled wholesale under the current bounded-resource policy. Keep it as a broader secondary source after the small GMDCSA-24 seed proves the runtime path.
+- The complete dataset is about 2.36 GB and remains outside the current bounded-resource path until the small GMDCSA-24 seed proves the runtime path.
 
-Previously reviewed UR Fall remains excluded from the commercial path because its official source states non-commercial terms. Earlier Roboflow mirrors with unclear upstream image provenance remain hold-only rather than silently promoted.
+UR Fall remains excluded from the commercial path because its official source states non-commercial terms. Earlier Roboflow mirrors with unclear upstream image provenance remain hold-only.
 
 ## Reviewed perception/runtime baseline
 - Open Model Zoo commit: `6697dead54ed1cdd664b0313189c2cb52ee6335e`.
 - Pinned FP16 artifacts: `person-detection-retail-0013` and `human-pose-estimation-0001`, admitted only by exact size/SHA-384 through the local artifact manifest.
-- OpenVINO Runtime baseline: `2026.3.1`, Apache-2.0 source lineage. The code intentionally requires the `2026.3.1` runtime prefix.
+- OpenVINO Runtime baseline: `2026.3.1`, Apache-2.0 source lineage.
+- Hosted evidence lane decoder: `opencv-python-headless==4.12.0.88`, Apache-2.0 distribution, used only for ephemeral validation execution.
+- Hosted execution resolved the runtime to `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, and NumPy `2.2.6`.
 - RTMLib remains code-only; its default HumanArt-trained weights remain hold/do-not-ship.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. Current work item: make the pinned GMDCSA-24 seed directly preparable for reviewed CPU validation. Live base at intake: `4633fa876d2cd8fd8ef396def98ac94d00f44909`; main Analytics quality run `35237238449` completed successfully on its first attempt. Open implementation PRs at intake: 0. Active runs for the base/head at mutation time: 0. Unchanged retries: 0. CI-triggering requests before this implementation PR: 0. Consecutive sessions without tested acceptance improvement: 1. Fresh pre-mutation guardrail preflight allowed implementation.
+One worker, one acceptance-moving work item, at most one implementation PR. Live base remains `8f56b9f4c0840915b20904c2557856e129e430ea`; PR #23 / `evidence/real-video-cpu` is the only implementation vehicle. The previous bounded work session used its two CI-triggering requests and stopped after the second deterministic failure rather than issuing a blind third request.
 
-Focused local regression for the new seed preparer passed 4/4 tests: the seed remains exactly two clips under the bounded media budget; Git-blob/SHA-256 identity verification rejects changed bytes; over-sized downloads fail without leaving partial files; and the generated manifest contains one labeled positive plus the hard negative with exact intervals. Python compilation of the new module/test also passed. Exact-head Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
+This session began from the unchanged live base and failed head with one open implementation PR, zero queued/running runs, zero unchanged retries and zero CI requests. Changed head `7c775e69d628cfc3d4e76b4c9921c66537afcead` consumed request 1/2 and deterministically identified `decoded_interval_overrun`; it was not an unchanged retry. The current correction is the second and final CI-triggering request permitted in this bounded session. No extra worker, branch, workflow, job, runner, media source, model or paid resource is added.
 
 ## Reproduce
 Dependency-free repository checks:
@@ -67,22 +74,24 @@ python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
 
-Prepare the bounded real-world evidence seed on an authorized internet-connected no-spend machine. The command fetches only the two pinned GMDCSA-24 clips (13,105,734 bytes total) and four already-reviewed OMZ model files (10,432,536 bytes total), verifies them, and keeps them outside GitHub:
+Prepare the bounded real-world evidence seed on an authorized internet-connected no-spend machine:
 
 ```sh
 python -m analytics_lab.validation_seed --output-dir /path/to/private-validation
 ```
 
-With OpenVINO Runtime `2026.3.1` provisioned in that same environment, execute the existing rights-bound validation suite:
+With OpenVINO Runtime `2026.3.1` provisioned in that environment, execute:
 
 ```sh
 python -m analytics_lab.validation_cli --manifest /path/to/private-validation/validation-manifest.json
 ```
 
-## Next executable step
-Run the bounded seed preparer in an ordinary authorized internet-connected no-spend environment, provision the reviewed OpenVINO `2026.3.1` runtime, then execute the emitted validation manifest on CPU. Record decoded duration, positives, misses, false alerts/camera-hour, alert delay, throughput, tracking continuity and concrete failure cases. The preparation step is not evidence of detector accuracy.
+An `evidence/*` pull-request branch may perform those two commands on the hosted Linux runner after installing the pinned reviewed CPU runtime/decoder. The workflow emits aggregate JSON only and uploads no media/model artifact.
 
-If the initial positive is missed, identify whether failure occurs at person detection, pose, track continuity, posture classification or temporal persistence before changing the stack. If prone-person detector recall is inadequate, quantify that detector-stage failure before comparing at most three rights-cleared alternatives. Do not retrain a commodity detector from scratch without measured need.
+## Next executable step
+Execute the corrected exact PR head once. If it emits aggregate real-video evidence, preserve the exact decoded duration, positives, misses, false alerts/camera-hour, alert delay, frame/observation counts and throughput, then require Windows and the final Analytics quality gate green on the unchanged head. If another deterministic failure appears, stop CI mutation for this session and diagnose it locally/read-only rather than issuing a third request.
+
+If the initial positive is missed after execution succeeds, identify whether failure occurs at person detection, pose, track continuity, posture classification or temporal persistence before changing the stack. If prone-person detector recall is inadequate, quantify that detector-stage failure before comparing at most three rights-cleared alternatives. Do not retrain a commodity detector from scratch without measured need.
 
 ## Outstanding commercial-release gates
-Actual reviewed runtime execution; exact file-level positive/negative real-video evidence; false-alert and missed-event measurements; documented failure cases; comparable latency/resource evidence; platform wheel/native dependency provenance; security/privacy/provenance review; versioned installable integration adapter; packaging/notices; and owner release approval. Synthetic/stub tests do not establish video accuracy or commercial readiness.
+Actual reviewed runtime execution; expanded held-out positive/negative real-video evidence across cameras/sites; false-alert and missed-event measurements; documented failure cases; comparable latency/resource evidence; platform wheel/native dependency provenance; security/privacy/provenance review; versioned installable integration adapter; packaging/notices; and owner release approval. Synthetic/stub tests do not establish video accuracy or commercial readiness.
