@@ -11,17 +11,22 @@ The implemented person-down **candidate** path is:
 Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed model-artifact identities, runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after execution so changed media cannot inherit stale evidence.
 
 ## Current acceptance-moving work
-`evidence/0200-threshold-sensitivity` is the single implementation vehicle, based on green `main` revision `ee318e19963d95f5488c8b4d84b9b09ddfaa0770`. It follows merged PR #25, which exhausted the permitted three-detector comparison and found no promotable replacement at confidence 0.50.
+PR #26 / `evidence/0200-threshold-sensitivity` is the single implementation vehicle, based on green `main` revision `ee318e19963d95f5488c8b4d84b9b09ddfaa0770`. It follows merged PR #25, which exhausted the permitted three-detector comparison and found no promotable replacement at confidence 0.50.
 
-The measured detector baseline remains:
-- `person-detection-retail-0013`: fall-interval coverage 21/96 = **21.9%**, hard-negative coverage 100%, detector-only about 136 FPS.
-- `person-detection-0200`: 29/96 = **30.2%**, hard-negative coverage 100%, about 295 FPS. It is the only reviewed alternative that improved prone/fall coverage, but the +8.3 percentage-point gain missed the predeclared +25-point promotion bar.
-- `person-detection-0202`: 14/96 = **14.6%**, a regression.
-- `person-detection-0203`: zero detections on the two-clip seed under the bounded common adapter at 0.50.
+Exact-head run `35270446841` on revision `e51df5c95f8ce3e8605066e81cb78a5327ba3b0c` passed the repository guardrail preflight, 181 Linux repository tests (one expected optional-OpenCV skip before runtime installation), synthetic replay, rights-bound real-video validation and detector diagnostics, the new threshold-sensitivity evidence command, Windows regression and the final Analytics quality gate on attempt 1. Runtime evidence used OpenVINO `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, NumPy `2.2.6`, the exact two GMDCSA-24 clips, and the exact hash-pinned `person-detection-0200` artifacts. No media/model workflow artifacts were uploaded.
 
-No fourth detector is permitted. The current work therefore changes approach rather than expanding donor search: run `person-detection-0200` once per frame and derive fixed thresholds 0.50, 0.40, 0.30, 0.20 and 0.10 from the same raw outputs. For each threshold record positive fall-interval coverage, hard-negative coverage, total detections, duplicate frames/excess detections and CPU detector throughput. A threshold is evidence-eligible only if fall-interval coverage reaches at least 55%, hard-negative person coverage remains at least 90%, and duplicate-frame rate stays at or below 5% on both clips. The highest threshold clearing all bars is preferred; otherwise the result is `null` and threshold tuning is rejected as the detector solution.
+### Measured detector threshold result
+`person-detection-0200` was run once per frame and the same raw outputs were evaluated at confidence thresholds 0.50, 0.40, 0.30, 0.20 and 0.10. The predeclared evidence bars were >=55% positive fall-interval coverage, >=90% hard-negative person coverage and <=5% frames with multiple person detections on each clip. The measured result was `recommended_threshold: null`.
 
-The evidence workflow now replaces the exhausted four-model shootout with this single-model threshold diagnostic, reducing repeated model acquisition/inference while preserving the same hosted Linux five-minute ceiling, read-only GitHub permissions, exact media/model checks and non-retention boundary.
+- **0.50:** fall-interval coverage 29/96 = **30.2%**; positive duplicate-frame rate **19.0%**; hard-negative coverage **100%**; negative duplicate-frame rate **6.6%**.
+- **0.40:** fall-interval coverage 40/96 = **41.7%**; positive duplicate-frame rate **32.2%**; hard-negative coverage **100%**; negative duplicate-frame rate **9.9%**.
+- **0.30:** fall-interval coverage 61/96 = **63.5%**; positive duplicate-frame rate **38.5%**; hard-negative coverage **100%**; negative duplicate-frame rate **11.3%**.
+- **0.20:** fall-interval coverage 82/96 = **85.4%**; positive duplicate-frame rate **44.3%**; hard-negative coverage **100%**; negative duplicate-frame rate **12.7%**.
+- **0.10:** fall-interval coverage 96/96 = **100%**; positive duplicate-frame rate **80.5%**; hard-negative coverage **100%**; negative duplicate-frame rate **19.3%**.
+
+This is a useful negative result. The prone/fall signal is present below confidence 0.50: lowering the threshold materially recovers the missed fall frames. But every tested threshold violates the declared multiple-detection/noise bound, and the noise burden increases sharply as recall improves. Therefore threshold lowering alone is rejected as the detector fix. No fourth detector will be added and no unchanged threshold rerun is justified.
+
+The threshold diagnostic measured detector-only throughput at about **134.4 FPS** in this hosted run. That number is retained as a run-local resource observation only; hosted-runner hardware variance means it is not used as a cross-run promotion claim.
 
 The full person-down candidate still produces zero events, one missed positive episode and zero false alerts on this deliberately tiny staged-real seed. This is measured engineering evidence, not a commercial accuracy claim. The independently measured pose/posture defect also remains: every real pose candidate classified `unknown`. Tracking remains downstream of detector and pose/posture failures.
 
@@ -47,9 +52,9 @@ The full person-down candidate still produces zero events, one missed positive e
 - No shootout detector is integrated into the production-candidate backend.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. Intake verification: `main` at `ee318e19963d95f5488c8b4d84b9b09ddfaa0770`; its post-merge Analytics quality run `35262537924` passed on attempt 1; open implementation PRs 0; active runs for the live main head 0; unchanged retries 0; CI-triggering requests in this session 0; no-progress sessions 0 because PR #25 produced measured detector evidence. The proposed PR counts as 1/1 WIP. No extra worker, framework, detector, dataset, runner, paid resource, home/customer footage, training run or licensing shortcut is added.
+One worker, one acceptance-moving work item, one implementation PR. Intake verification: `main` at `ee318e19963d95f5488c8b4d84b9b09ddfaa0770`; its post-merge Analytics quality run `35262537924` passed on attempt 1; open implementation PRs were 0 and active runs for the live main head were 0 before this PR. PR #26 was CI-triggering request 1/2 and produced new measured evidence on attempt 1; unchanged retries remain 0. This evidence-state update is the second and final CI-triggering mutation permitted for this session. No extra worker, framework, detector, dataset, runner, paid resource, home/customer footage, training run or licensing shortcut was introduced.
 
-The local offline preflight command could not be executed in this automation environment because the container cannot resolve external hosts to materialize the public repository files. Live counts and policy were nevertheless read directly through the connected GitHub repository before mutation; this limitation does not waive any guardrail or permit an extra PR/CI request.
+The local offline preflight command could not be executed before the first mutation in the automation container because that container could not resolve external hosts to materialize the public repository files. The exact PR workflow subsequently ran the repository's own guardrail preflight successfully against base `ee318e19963d95f5488c8b4d84b9b09ddfaa0770` and head `e51df5c95f8ce3e8605066e81cb78a5327ba3b0c`; no guardrail was waived.
 
 ## Reproduce
 Repository checks:
@@ -72,7 +77,9 @@ python -m analytics_lab.detector_thresholds \
 ```
 
 ## Next executable step
-Open one evidence PR and execute this exact bounded threshold diagnostic once. If no threshold clears the declared recall/negative/noise bars, stop detector threshold tuning and use the accumulated measured donor evidence to define the smallest rights-cleared fine-tuning/training experiment within the no-spend envelope. If a threshold clears all bars, integrate it only as an evidence candidate and rerun the complete person-down path before any promotion.
+Finish exact-head verification for PR #26 after this measured evidence-state update and merge only if Linux real-video evidence, Windows regression and the final Analytics quality gate remain green on the unchanged tested base.
+
+Then close threshold tuning. The evidence now shows that `person-detection-0200` contains sub-threshold prone-person signal, but confidence lowering cannot recover it within the declared multiple-detection/noise bound. Define the smallest rights-cleared **detector adaptation/fine-tuning experiment** that specifically raises confidence/quality on prone and transitioning people while preserving normal-person precision. Use only the already reviewed commercially eligible sources and no-spend resources; keep a held-out portion of real GMDCSA-24 video out of training and continue to treat synthetic UE4 data as synthetic augmentation only. Do not launch a large training job until the exact training code, base-weight rights, train/holdout split, resource ceiling and acceptance delta are pinned.
 
 Once detector recall is materially improved, attack the already-proven pose/posture failure (`unknown` on every real candidate) before changing tracking or temporal persistence.
 
