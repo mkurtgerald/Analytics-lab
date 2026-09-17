@@ -1,6 +1,6 @@
 import unittest
 
-from analytics_lab.detector_thresholds import _Accumulator, choose_threshold
+from analytics_lab.detector_thresholds import _Accumulator, choose_threshold, continuity_passes
 
 
 class DetectorThresholdTests(unittest.TestCase):
@@ -71,6 +71,28 @@ class DetectorThresholdTests(unittest.TestCase):
             "negative_duplicate_frame_rate": 0.0,
         }]
         self.assertIsNone(choose_threshold(rows))
+
+    def test_continuity_evidence_requires_recall_identity_and_stability(self):
+        good = {
+            "positive_during_coverage": 0.90,
+            "positive_during_link_rate": 0.80,
+            "positive_reset_rate": 0.10,
+            "negative_coverage": 1.0,
+            "negative_link_rate": 0.95,
+            "negative_reset_rate": 0.02,
+        }
+        self.assertTrue(continuity_passes(good))
+        for key, bad_value in (
+            ("positive_during_coverage", 0.84),
+            ("positive_during_link_rate", 0.69),
+            ("positive_reset_rate", 0.31),
+            ("negative_coverage", 0.94),
+            ("negative_link_rate", 0.89),
+            ("negative_reset_rate", 0.11),
+        ):
+            candidate = dict(good)
+            candidate[key] = bad_value
+            self.assertFalse(continuity_passes(candidate), key)
 
 
 if __name__ == "__main__":
