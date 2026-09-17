@@ -44,7 +44,8 @@ def _local_path(value: Any, name: str, *, base_dir: Path | None = None) -> Path:
     if not isinstance(value, str) or not value or len(value) > 4096:
         raise ValueError(f"{name} must be a bounded nonempty local path")
     lowered = value.lower()
-    if "://" in value or lowered.startswith(("http:", "https:", "rtsp:", "rtsps:")) or value.startswith(("/dev/", "\\\\.\\")):
+    if ("://" in value or lowered.startswith(("http:", "https:", "rtsp:", "rtsps:"))
+            or value.startswith(("/dev/", "\\\\.\\", "\\\\", "//"))):
         raise ValueError(f"{name} must be an ordinary local path")
     path = Path(value)
     if base_dir is not None and not path.is_absolute():
@@ -140,7 +141,6 @@ def main(argv: list[str] | None = None) -> int:
         result = run_validation_suite(samples, artifact_root=artifact_root, config=config)
         print(json.dumps(result_document(result), allow_nan=False, sort_keys=True, separators=(",", ":")))
     except (OSError, ValueError, TypeError, RuntimeError, OverflowError, RecursionError) as error:
-        # Never echo untrusted paths, URLs, sample values, or runtime details.
         print(f"Validation rejected ({type(error).__name__}).", file=sys.stderr)
         return 2
     return 0
