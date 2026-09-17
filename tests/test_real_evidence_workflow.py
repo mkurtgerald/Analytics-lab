@@ -27,7 +27,10 @@ class RealEvidenceWorkflowTests(unittest.TestCase):
         self.assertIn("analytics_lab.validation_seed", command)
         self.assertIn("analytics_lab.validation_cli", command)
         self.assertIn("analytics_lab.detector_diagnostics", command)
+        self.assertIn("analytics_lab.detector_thresholds", command)
+        self.assertNotIn("analytics_lab.detector_shootout", command)
         self.assertIn("$RUNNER_TEMP/analytics-validation", command)
+        self.assertIn("$RUNNER_TEMP/analytics-detectors", command)
         self.assertNotIn("upload-artifact", command)
         self.assertNotIn("self-hosted", json.dumps(self.workflow))
 
