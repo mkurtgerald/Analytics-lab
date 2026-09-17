@@ -11,9 +11,9 @@ The implemented person-down **candidate** path is:
 Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed OMZ artifact identities, OpenVINO runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after sample execution so changed media cannot inherit stale evidence.
 
 ## Current acceptance-moving work
-The source-rights registry now includes a second real-world source that can be acquired as individual small video files instead of requiring a multi-gigabyte archive. `analytics_lab.source_rights` records exact source/version, media origin, license, provenance reference, commercial training/evaluation eligibility, attribution requirement and the requirement for exact local asset identity. Unknown sources and unsupported purposes fail closed. Synthetic sources cannot satisfy a request that explicitly requires real-world evidence.
+The bounded real-world validation seed is now executable rather than a manual acquisition note. `analytics_lab.validation_seed` prepares exactly the two pinned GMDCSA-24 clips plus the four already-reviewed Open Model Zoo artifacts, enforces per-item byte ceilings, verifies the clips against their pinned Git blob identities, verifies model artifacts against the existing exact size/SHA-384 manifest, computes local media SHA-256 identities, writes attribution, and emits the strict manifest consumed by `analytics_lab.validation_cli`.
 
-This registry does **not** download media, waive per-file rights review, or turn a source-page license into an accuracy claim. Every selected local clip still must be SHA-256 checksummed after acquisition and passed through the existing rights-bound validation suite.
+The preparation command is deliberately opt-in and is not called by repository CI. It does not install OpenVINO, decode/retain frames, commit media, or make an accuracy claim. A successful preparation only closes the exact-input boundary; actual reviewed OpenVINO `2026.3.1` CPU execution remains required before any real-video performance statement.
 
 ## Reviewed data-source baseline
 ### UE4 Fall Detection Dataset — synthetic positive/negative development source
@@ -54,9 +54,9 @@ Previously reviewed UR Fall remains excluded from the commercial path because it
 - RTMLib remains code-only; its default HumanArt-trained weights remain hold/do-not-ship.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. Current work item: make bounded real-world acquisition immediately executable without pulling a multi-gigabyte corpus. Live base at intake: `b37fe4250b49fcbb202ca6b29f3341674334107f`; its main Analytics quality run completed successfully on the first attempt. Open implementation PRs at intake: 0. Active runs for the base/head at mutation time: 0. Unchanged retries: 0. CI-triggering requests before the implementation PR: 0. Consecutive sessions without tested acceptance improvement: 0. Fresh pre-mutation guardrail preflight allowed implementation.
+One worker, one acceptance-moving work item, at most one implementation PR. Current work item: make the pinned GMDCSA-24 seed directly preparable for reviewed CPU validation. Live base at intake: `4633fa876d2cd8fd8ef396def98ac94d00f44909`; main Analytics quality run `35237238449` completed successfully on its first attempt. Open implementation PRs at intake: 0. Active runs for the base/head at mutation time: 0. Unchanged retries: 0. CI-triggering requests before this implementation PR: 0. Consecutive sessions without tested acceptance improvement: 1. Fresh pre-mutation guardrail preflight allowed implementation.
 
-The proposed source record remains fail-closed through the existing registry tests: it must be a pinned real-world source and still requires exact acquired-media identity before inference. Exact-head Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
+Focused local regression for the new seed preparer passed 4/4 tests: the seed remains exactly two clips under the bounded media budget; Git-blob/SHA-256 identity verification rejects changed bytes; over-sized downloads fail without leaving partial files; and the generated manifest contains one labeled positive plus the hard negative with exact intervals. Python compilation of the new module/test also passed. Exact-head Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
 
 ## Reproduce
 Dependency-free repository checks:
@@ -67,14 +67,20 @@ python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
 
-With externally provisioned reviewed artifacts/runtime and an authorized local manifest:
+Prepare the bounded real-world evidence seed on an authorized internet-connected no-spend machine. The command fetches only the two pinned GMDCSA-24 clips (13,105,734 bytes total) and four already-reviewed OMZ model files (10,432,536 bytes total), verifies them, and keeps them outside GitHub:
 
 ```sh
-python -m analytics_lab.validation_cli --manifest /path/to/local-validation.json
+python -m analytics_lab.validation_seed --output-dir /path/to/private-validation
+```
+
+With OpenVINO Runtime `2026.3.1` provisioned in that same environment, execute the existing rights-bound validation suite:
+
+```sh
+python -m analytics_lab.validation_cli --manifest /path/to/private-validation/validation-manifest.json
 ```
 
 ## Next executable step
-Acquire only the two pinned GMDCSA-24 seed clips above, compute SHA-256 for the exact acquired bytes, record attribution, and keep them outside public GitHub. Provision OpenVINO `2026.3.1` plus the exact pinned OMZ FP16 artifacts in the same no-spend environment. Run actual CPU inference through the existing validation CLI and record decoded duration, positives, misses, false alerts/camera-hour, alert delay, throughput, tracking continuity and concrete failure cases.
+Run the bounded seed preparer in an ordinary authorized internet-connected no-spend environment, provision the reviewed OpenVINO `2026.3.1` runtime, then execute the emitted validation manifest on CPU. Record decoded duration, positives, misses, false alerts/camera-hour, alert delay, throughput, tracking continuity and concrete failure cases. The preparation step is not evidence of detector accuracy.
 
 If the initial positive is missed, identify whether failure occurs at person detection, pose, track continuity, posture classification or temporal persistence before changing the stack. If prone-person detector recall is inadequate, quantify that detector-stage failure before comparing at most three rights-cleared alternatives. Do not retrain a commodity detector from scratch without measured need.
 
