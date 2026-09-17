@@ -13,11 +13,11 @@ Candidate events do not infer injury, cause, fault, or intent.
 `analytics_lab.video` owns bounded ordinary-local-file decode and timestamps. `analytics_lab.perception` owns validated boxes/keypoints, temporary session-local tracks and explicit posture abstention. `analytics_lab.openvino_omz` owns exact artifact verification plus the reviewed OpenVINO/OMZ detector-pose adapter. `analytics_lab.openvino_pipeline` composes perception with fresh tracking/temporal state. `analytics_lab.evaluation` measures one-to-one matches, misses, false alerts, false alerts per camera-hour and alert delay across site-scoped cameras. `analytics_lab.validation` binds rights references, media SHA-256 identities, model/runtime/device identities and throughput evidence without retaining video. `analytics_lab.validation_cli` exposes that suite through a strict local JSON manifest.
 
 ## Current acceptance-moving change
-Validation manifests now resolve relative `artifact_root` and `video_path` values against the manifest's own directory instead of the process working directory. The previous behavior made an otherwise identical rights-bound manifest select different files depending on where the command was launched, which undermined reproducibility and could cause the wrong local artifact/media path to be evaluated. Absolute paths keep their existing behavior, and URL/device rejection remains unchanged.
+The executable validation-manifest boundary now rejects Windows UNC/network shares (`\\server\share`), forward-slash UNC forms (`//server/share`) and Windows extended/device namespace paths (`\\?\...`) before they can be resolved or touched as local files. The previous `_local_path` gate rejected URL schemes and `\\.\` device paths but admitted these network-capable path forms, allowing a supposedly local-only validation manifest to point at SMB/network-backed media or model roots on Windows.
 
-A focused regression builds a manifest in a nested directory using `models` and `authorized.mp4` relative paths and verifies both resolve to that manifest directory. This change does not download, retain, or inspect new media and does not alter model/runtime licensing or analytic thresholds.
+A focused local regression passed for ordinary relative paths and the newly denied path forms. Repository regression coverage extends the existing network-path test so both `video_path` and `artifact_root` fail closed for UNC/network namespaces. No model/runtime/media download, threshold change, license change or network access is introduced.
 
-The previously merged evaluation protections remain in place: matching maximizes one-to-one event/label cardinality; validation duration is bound to actual decoded timestamp coverage; multi-sample validation prepares the reviewed OpenVINO backend once per suite while each sample gets fresh perception/tracker/temporal state.
+The previously merged evaluation protections remain in place: manifest-relative paths resolve against the manifest directory; matching maximizes one-to-one event/label cardinality; validation duration is bound to actual decoded timestamp coverage; multi-sample validation prepares the reviewed OpenVINO backend once per suite while each sample gets fresh perception/tracker/temporal state.
 
 ## Reviewed donor/provenance baseline
 - Open Model Zoo commit: `6697dead54ed1cdd664b0313189c2cb52ee6335e`.
@@ -26,12 +26,12 @@ The previously merged evaluation protections remain in place: matching maximizes
 - RTMLib commit `03a1693e59e4f7cd84582c0fb30459b3bf18ad42` remains code-only; its default HumanArt-trained detector weights stay hold/do-not-ship because commercial/redistribution rights remain unresolved in reviewed evidence.
 
 ## Verified repository baseline
-Main before this work item: `e93c348f119370abe3f42e6b712a0477f13a3193`. Its Linux regression, Windows regression and `Analytics quality gate` completed successfully. No implementation PR was open at intake and no workflow run for that head was queued or running.
+Main before this work item: `9882d7fbd41845777aefd765d1ac8eab43f833c6`. Its Linux regression, Windows regression and `Analytics quality gate` completed successfully. No implementation PR was open at intake and no workflow run for that head was queued or running.
 
-Before mutation, `tools/guardrails.py preflight` was run with fresh verified counts and allowed implementation. A focused local regression passed for manifest-relative artifact/media path resolution. Exact-head GitHub Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
+Before mutation, `tools/guardrails.py preflight` was run with fresh verified counts and allowed implementation. A focused local regression reproduced that the old path predicate admitted UNC/network-capable forms and verified the tightened predicate rejects them while retaining ordinary manifest-relative local paths. Exact-head GitHub Linux, Windows and Analytics quality-gate checks remain authoritative before merge.
 
 ## Efficiency / execution ledger
-One worker, one active acceptance-moving work item, at most one implementation PR. Current work item: reproducible manifest-relative validation paths. Base: `e93c348f119370abe3f42e6b712a0477f13a3193`. Open implementation PRs at intake: 0. Active runs for the base head before mutation: 0. Unchanged retries: 0. CI-triggering requests before opening the implementation PR: 0. Consecutive sessions without tested acceptance improvement: 0.
+One worker, one active acceptance-moving work item, at most one implementation PR. Current work item: fail-closed local-only validation path admission. Base: `9882d7fbd41845777aefd765d1ac8eab43f833c6`. Open implementation PRs at intake: 0. Active runs for the base head before mutation: 0. Unchanged retries: 0. CI-triggering requests before opening the implementation PR: 0. Consecutive sessions without tested acceptance improvement: 0.
 
 ## Reproduce
 Dependency-free repository checks:
@@ -48,7 +48,7 @@ With externally provisioned reviewed artifacts/runtime and an authorized local m
 python -m analytics_lab.validation_cli --manifest /path/to/local-validation.json
 ```
 
-Relative `artifact_root` and `video_path` entries in that manifest are interpreted relative to the manifest file itself.
+Relative `artifact_root` and `video_path` entries in that manifest are interpreted relative to the manifest file itself. Network/UNC/device namespace paths are rejected before validation media or model paths are touched.
 
 ## Next executable step
 Run one bounded CPU validation suite with externally provisioned OpenVINO `2026.3.1`, the exact pinned OMZ artifacts, and authorized labeled positive/negative local clips. Record exact media/model/runtime/device identities, preparation time, decoded evaluation duration, processing throughput, misses, false alerts per camera-hour, alert delay and per-site/per-camera results. If prone-person recall is inadequate, compare the current detector-isolated four-keypoint method with the pinned full OpenPose decoder before adding another framework.

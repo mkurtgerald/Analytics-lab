@@ -128,7 +128,22 @@ class ValidationCliTests(unittest.TestCase):
             manifest, _ = self._manifest(root, extra_sample={"unexpected": True})
             with self.assertRaises(ValueError):
                 load_manifest(manifest)
-            manifest, _ = self._manifest(root, extra_sample={"video_path": "https://example.invalid/video.mp4"})
+
+            for network_path in (
+                "https://example.invalid/video.mp4",
+                r"\\server\share\video.mp4",
+                "//server/share/video.mp4",
+                r"\\?\C:\video.mp4",
+            ):
+                with self.subTest(video_path=network_path):
+                    manifest, _ = self._manifest(root, extra_sample={"video_path": network_path})
+                    with self.assertRaises(ValueError):
+                        load_manifest(manifest)
+
+            manifest, _ = self._manifest(root)
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+            document["artifact_root"] = r"\\server\share\models"
+            manifest.write_text(json.dumps(document), encoding="utf-8")
             with self.assertRaises(ValueError):
                 load_manifest(manifest)
 
