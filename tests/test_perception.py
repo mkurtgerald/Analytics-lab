@@ -127,6 +127,19 @@ class TrackerTests(unittest.TestCase):
         swapped = tracker.update(1, (BBox(101, 0, 111, 20), BBox(1, 0, 11, 20)))
         self.assertEqual(swapped, (first[1], first[0]))
 
+    def test_max_cardinality_matching_avoids_avoidable_track_fragmentation(self):
+        tracker = IoUTracker(TrackerConfig(min_iou=.2))
+        first = tracker.update(0, (BBox(0, 0, 10, 10), BBox(6, 0, 16, 10)))
+
+        # The first new box overlaps both existing tracks, while the second box
+        # overlaps only the first track above threshold. Greedy highest-IoU
+        # assignment takes the shared box for the first track and creates an
+        # unnecessary third track. Maximum-cardinality association preserves both.
+        second = tracker.update(1, (BBox(2, 0, 12, 10), BBox(-3, 0, 7, 10)))
+
+        self.assertEqual(second, (first[1], first[0]))
+        self.assertEqual(tracker.active_tracks, 2)
+
     def test_capacity_and_order_fail_closed(self):
         tracker = IoUTracker(TrackerConfig(max_tracks=1))
         tracker.update(0, (BBox(0, 0, 10, 20),))
