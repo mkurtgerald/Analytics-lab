@@ -59,6 +59,28 @@ def _clock_tick(clock_ns: Callable[[], int], *, previous: int | None = None) -> 
     return value
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            block = handle.read(1024 * 1024)
+            if not block:
+                break
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _verify_media_unchanged(path: Path, expected_sha256: str) -> None:
+    if path.is_symlink() or not path.is_file():
+        raise RuntimeError("validation media changed during sample execution")
+    try:
+        current = _sha256_file(path)
+    except OSError as exc:
+        raise RuntimeError("validation media changed during sample execution") from exc
+    if current != expected_sha256:
+        raise RuntimeError("validation media changed during sample execution")
+
+
 @dataclass(frozen=True)
 class ModelArtifactIdentity:
     component: str
@@ -177,14 +199,11 @@ def _preflight_samples(samples: list[ValidationSampleSpec], cfg: ValidationSuite
         total_bytes += path.stat().st_size
         if total_bytes > cfg.max_total_video_bytes:
             raise RuntimeError("validation media exceeds the configured total byte budget")
-        digest = hashlib.sha256()
-        with path.open("rb") as handle:
-            while True:
-                block = handle.read(1024 * 1024)
-                if not block:
-                    break
-                digest.update(block)
-        if digest.hexdigest() != item.media_sha256:
+        try:
+            digest = _sha256_file(path)
+        except OSError as exc:
+            raise ValueError("validation media could not be read for checksum verification") from exc
+        if digest != item.media_sha256:
             raise ValueError("validation media checksum mismatch")
         by_camera.setdefault((item.site_id, item.camera_id), []).append(item)
     for group in by_camera.values():
@@ -213,7 +232,9 @@ def run_validation_suite(
     before the first inference call. The default reviewed path verifies and
     compiles one OpenVINO backend for the suite, then creates fresh tracking and
     temporal state for each sample. Preparation latency is recorded separately
-    and remains included in aggregate elapsed/throughput evidence.
+    and remains included in aggregate elapsed/throughput evidence. Every sample
+    is re-hashed after execution so evidence cannot be accepted if the media
+    changed after the initial rights/checksum preflight.
     """
     items = list(samples)
     if any(not isinstance(item, ValidationSampleSpec) for item in items):
@@ -273,6 +294,7 @@ def run_validation_suite(
                 runtime_factory=runtime_factory,
             )
         after = _clock_tick(clock_ns, previous=before)
+        _verify_media_unchanged(item.video_path, item.media_sha256)
         if not isinstance(result, OpenVINOOMZRunResult):
             raise RuntimeError("runner returned an unsupported result")
         if result.device != suite_cfg.required_device:
