@@ -173,6 +173,36 @@ class ValidationCliTests(unittest.TestCase):
             self.assertEqual(payload["validation"]["aggregate"]["missed_episodes"], 0)
             runner.assert_called_once()
 
+    def test_main_emits_safe_known_runtime_diagnostic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest, _ = self._manifest(root)
+            stderr = io.StringIO()
+            with patch(
+                "analytics_lab.validation_cli.run_validation_suite",
+                side_effect=RuntimeError("decoded video exceeds the declared sample interval"),
+            ):
+                with contextlib.redirect_stderr(stderr):
+                    code = main(["--manifest", str(manifest)])
+            self.assertEqual(code, 2)
+            self.assertIn("code=decoded_interval_overrun", stderr.getvalue())
+
+    def test_main_unknown_runtime_error_does_not_echo_details(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest, _ = self._manifest(root)
+            secret_path = "/tmp/secret-customer-video.mp4"
+            stderr = io.StringIO()
+            with patch(
+                "analytics_lab.validation_cli.run_validation_suite",
+                side_effect=RuntimeError("failure while reading " + secret_path),
+            ):
+                with contextlib.redirect_stderr(stderr):
+                    code = main(["--manifest", str(manifest)])
+            self.assertEqual(code, 2)
+            self.assertIn("code=runtime", stderr.getvalue())
+            self.assertNotIn(secret_path, stderr.getvalue())
+
     def test_main_error_does_not_echo_untrusted_paths(self):
         secret_path = "/tmp/secret-customer-video.mp4"
         stderr = io.StringIO()
