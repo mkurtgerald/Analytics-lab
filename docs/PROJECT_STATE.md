@@ -6,71 +6,51 @@ Analytics Lab develops platform-independent video analytics for paid integration
 ## Current product path
 The implemented person-down **candidate** path is:
 
-`authorized local video -> reviewed Open Model Zoo person detector + pose model -> temporary IoU tracking -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> held-out evaluation/aggregation -> rights-bound validation evidence`
+`authorized local video -> reviewed detector + pose model -> temporary IoU tracking -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> held-out evaluation/aggregation -> rights-bound validation evidence`
 
-Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed OMZ artifact identities, OpenVINO runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after sample execution so changed media cannot inherit stale evidence.
+Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed model-artifact identities, runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video. Media is re-hashed after execution so changed media cannot inherit stale evidence.
 
 ## Current acceptance-moving work
-PR #24 / `evidence/detector-stage-attribution` is the single implementation vehicle. It follows the first successful real-video evidence run from merged PR #23 and measures the exact stage causing the missed positive before any donor/model change.
+The single implementation vehicle is `evidence/detector-shootout`, based on live `main` revision `e5678429ebc313d3a6255fcd175f5c2167616646`. It follows merged PR #24, which quantitatively established the first real-video blocker before any model change.
 
-Exact head `087e114d8f6ed060190b9a2de78341c4abeeea1f` completed hosted run `35256762133` successfully on the first attempt. Guardrails passed, all 172 repository tests passed except the expected optional-OpenCV skip before runtime installation, the rights-bound real-video evidence step passed, Windows passed, and the final Analytics quality gate passed. The evidence step used OpenVINO `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, NumPy `2.2.6`, the exact two GMDCSA-24 seed clips, and the four reviewed OMZ artifacts.
+The exact two-clip GMDCSA-24 seed remains the only real-video evidence input in this step. The current `person-detection-retail-0013` baseline detects the positive person in 53/53 frames before the annotated fall interval, only 21/96 frames during the 1.8-5.0 s fall interval (21.9%), and 0/25 frames afterward; the hard ADL negative remains detected in 212/212 frames. The full candidate still produces zero person-down events, one missed positive episode and zero false alerts on this deliberately tiny staged-real seed. This is measured engineering evidence, not a commercial accuracy claim.
 
-The real validation result remains a miss rather than a commercial accuracy claim. Across 386 decoded frames / 12.96 seconds, the positive produced zero candidate events and one missed episode (recall 0.0); the hard ADL negative produced zero false alerts. Aggregate throughput on this run was 10.90 FPS including model work and 508.99 ms of one-time model preparation. No alert-delay value exists because no event fired.
+The same diagnostic also established that the simplified pose/posture baseline is independently non-functional on this seed: positive 75/75 pose candidates and negative 223/223 candidates classified `unknown`. Tracking is downstream and is not the present attack surface.
 
-The new detector-stage attribution identifies two earlier perception failures:
+The current branch adds one bounded detector comparison command and focused regressions. It compares the unchanged baseline against exactly three previously reviewed Open Model Zoo alternatives on the same clips, threshold and CPU runtime envelope:
 
-- **Detector recall collapses as the positive becomes prone/low.** `gmdcsa24-s1-fall-05` decoded 174 frames. Before the annotated 1.8-5.0 s fall interval, the detector produced 54 detections and detected a person in 53/53 frames. During the annotated interval it produced only 21 detections and detected a person in 21/96 frames (21.9%). After 5.0 s it detected a person in 0/25 frames. Overall positive detection coverage was 74/174 frames (42.5%). The hard ADL negative remained detected in 212/212 frames with 223 detections. This quantitatively establishes inadequate prone/fall person recall for the current detector on this seed.
-- **The simplified pose/posture baseline is also currently non-functional on this seed.** Every pose candidate classified `unknown`: positive 75/75 and hard negative 223/223, with zero `upright`, `down`, or `other`. Therefore even positive frames that survive detection cannot satisfy temporal `down` persistence. This must be fixed after the detector boundary is improved.
-- Temporary tracking is not the first blocker. The positive produced three distinct temporary tracks over 75 assignments and the negative four over 223 assignments; detector and pose/posture failures occur earlier in the mandated attack order.
+- `person-detection-0200` FP16 — MobileNetV2 SSD, 256x256 input, Apache-2.0 OMZ lineage; pinned XML 254,619 bytes / SHA-384 `654a515935f6dffc0440cffdeeb6a889bc25bf5d64e425ce2337070cdbcce1b1fbbcf42e4b2761265eb65ec07c1cd6f7`; BIN 3,634,654 bytes / SHA-384 `10b6f79b495ad1ef13748938c452379c6b6cd825d11426ffa68be3eeed6c48a0af04e0b913c843e6e7431aa1c13f5471`.
+- `person-detection-0202` FP16 — MobileNetV2 SSD, 512x512 input, Apache-2.0 OMZ lineage; pinned XML 254,889 bytes / SHA-384 `7746ed6534bb59c9d16e7af4dbcbc768772288d48aca7e081c059eb1924ea956c67f23381a860a0bf0e187d66b7f1955`; BIN 3,634,654 bytes / SHA-384 `2a149bc8c2f02965c59a998d7ca7868e4ba537c223ae492a8a177386f98997d8c15204f1c7fe847a51c660d9d4116d10`.
+- `person-detection-0203` FP16 — MobileNetV2 ATSS, 480x864 input, Apache-2.0 OMZ lineage; pinned XML 1,216,181 bytes / SHA-384 `086b17b4fc8b5454e4c892bbc26cdd120b517f89a86eab7ba6bb2a0e4ed5437cd011e65c299b89346f62538cbcc7b735`; BIN 3,902,528 bytes / SHA-384 `906e38b168001ab43117c6cc5a737e5d596d4aae441ca93dc5ea22411d6808fb63c61666bc626411c6cc60fd603ebab8`.
 
-The diagnostic reuses the strict rights-bound validation manifest, exact media SHA-256 checks before and after execution, the verified OMZ backend, bounded local-file decoder, existing detector parser, pose extraction, IoU tracker and posture classifier. It emits aggregate counts only; no frames, images, paths or media/model artifacts are uploaded.
+No candidate is promoted by documentation or donor benchmark numbers. The hosted evidence lane must measure each model's positive before/during/after detection coverage, hard-negative detection coverage, detector-only CPU FPS, preparation time and artifact bytes on the exact same seed. The evidence-only recommendation requires at least a 25 percentage-point gain in fall-interval coverage over the measured baseline while preserving at least 90% person coverage on the hard negative; among models that clear that bar, it prefers the smallest verified artifact set and then measured speed. Production integration remains a separate later change.
 
-The evidence lane remains inside the existing Linux five-minute budget, read-only GitHub permissions and hosted Ubuntu runner. Seed media/model bytes live only below the ephemeral runner temp directory and are never uploaded as workflow artifacts. Main pushes and ordinary PRs do not run the real-video step.
-
-## Reviewed data-source baseline
-### UE4 Fall Detection Dataset — synthetic positive/negative development source
-- Primary repository: `carolinehuang033/UE4_Fall_Detection_Dataset`.
-- Pinned revision: `55041766dea68eaddc1df1c06aabd0a51931a22a`.
-- Primary `LICENSE.txt` at that revision states CC BY 4.0 and expressly permits adaptation for any purpose, including commercially, with attribution.
-- Media origin: **synthetic** (Unreal Engine 4 generated).
-- Eligible engineering use: commercial training/evaluation subject to attribution and exact-asset identity.
-- Limitation: synthetic observations and videos do not establish real-video accuracy.
-
-### GMDCSA-24 — preferred bounded real-world validation source
-- Primary data repository: `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`.
+## Evidence/data baseline
+### GMDCSA-24 — bounded staged-real validation source
+- Primary repository: `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`.
 - Pinned revision: `5abac7693229900cf80f722e878fbb119211fc1c`.
-- Repository `LICENSE` at that revision is MIT and requires preservation of its copyright/permission notice. The associated Data in Brief paper is open access under CC BY 4.0, identifies dataset DOI `10.5281/zenodo.13354453`, states that the dataset can be used to train or test a fall-detection system, and reports 81 fall plus 79 ADL clips from four subjects in three home setups.
-- Media origin: **real_world**, staged by consenting actors.
-- Initial bounded seed:
-  - positive: `Subject 1/Fall/05.mp4`, repository blob `4e13ed24f6c2af7062b64b1920ef706c51efe94b`, 5,872,655 bytes, walking followed by a right-side fall, falling interval 1.8 s through 5 s;
-  - hard negative: `Subject 1/ADL/15.mp4`, repository blob `903da9245132cf70c10124edd0625c958f702cb8`, 7,233,079 bytes, walking/picking an object from the ground/sitting.
-- Exact admitted local SHA-256 identities are `1aad4e2ee93b5498283fdc4a0478a5913dffc2ac8e2538574cd821ffb1b485f1` for the positive and `2cf0d421cfd8e34280bf02afc67a4f1d1abee3cd87a23f11e69ef393fedc6fdb` for the hard negative.
-- The source annotation tables report nominal clip lengths of 5 seconds and 7 seconds respectively. Those source-level integer lengths are useful provenance but are not exact decoded media coverage; the checksum-bound decoder clock is used for evaluation duration and camera-time accounting.
-- The seed preparer verifies Git-blob identity, computes local SHA-256, preserves attribution, and emits the strict validation manifest. Media is not committed to Analytics Lab.
-- Independent MP4s use independent validation-stream camera IDs because their timestamps are clip-local rather than synchronized windows from one continuous recorder. This prevents false overlap rejection and false camera-hour double counting without asserting that the physical source cameras differ.
+- Repository license at that revision: MIT. Associated Data in Brief paper: CC BY 4.0, DOI `10.5281/zenodo.13354453`, describing 81 fall and 79 ADL clips from four subjects in three home setups and use for fall-detection training/testing.
+- Positive seed: `Subject 1/Fall/05.mp4`, Git blob `4e13ed24f6c2af7062b64b1920ef706c51efe94b`, 5,872,655 bytes, local SHA-256 `1aad4e2ee93b5498283fdc4a0478a5913dffc2ac8e2538574cd821ffb1b485f1`, annotated fall 1.8-5.0 s.
+- Hard negative seed: `Subject 1/ADL/15.mp4`, Git blob `903da9245132cf70c10124edd0625c958f702cb8`, 7,233,079 bytes, local SHA-256 `2cf0d421cfd8e34280bf02afc67a4f1d1abee3cd87a23f11e69ef393fedc6fdb`.
+- Media stays outside the repository and exists only in ephemeral evidence execution. Exact identity is verified before and after measured work.
 
-### Figshare Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects — real-world secondary source
-- Figshare article `28596332`, version 2, posted 2025-03-14.
-- Creator: Ivan Ursul.
-- Source page reports 2,017 recordings including 999 falls and 1,017 activities of daily living.
-- Source page license: CC BY 4.0.
-- Media origin: **real_world**.
-- The complete dataset is about 2.36 GB and remains outside the current bounded-resource path until the small GMDCSA-24 seed proves a replacement perception path worth broader evaluation.
+### Other reviewed sources
+- UE4 Fall Detection Dataset pinned at `55041766dea68eaddc1df1c06aabd0a51931a22a`, CC BY 4.0, synthetic only; useful for commercial training/evaluation with attribution but never real-video accuracy evidence.
+- Figshare article `28596332` version 2, posted 2025-03-14, CC BY 4.0, real-world secondary source. The ~2.36 GB corpus remains outside the current bounded-resource path.
+- UR Fall remains excluded from the commercial path because its official source states non-commercial terms. Roboflow mirrors with unclear upstream provenance remain hold-only.
 
-UR Fall remains excluded from the commercial path because its official source states non-commercial terms. Earlier Roboflow mirrors with unclear upstream image provenance remain hold-only.
-
-## Reviewed perception/runtime baseline
+## Runtime/perception baseline
 - Open Model Zoo commit: `6697dead54ed1cdd664b0313189c2cb52ee6335e`.
-- Pinned FP16 artifacts: `person-detection-retail-0013` and `human-pose-estimation-0001`, admitted only by exact size/SHA-384 through the local artifact manifest.
-- OpenVINO Runtime baseline: `2026.3.1`, Apache-2.0 source lineage.
-- Hosted evidence lane decoder: `opencv-python-headless==4.12.0.88`, Apache-2.0 distribution, used only for ephemeral validation execution.
-- Hosted execution resolved the runtime to `2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0`, and NumPy `2.2.6`.
+- Current pinned production-candidate evidence artifacts: `person-detection-retail-0013` FP16 + `human-pose-estimation-0001` FP16, exact size/SHA-384 verified before runtime use.
+- OpenVINO Runtime: `2026.3.1`, Apache-2.0 source lineage.
+- Evidence decoder: `opencv-python-headless==4.12.0.88`, used only for ephemeral hosted validation execution.
+- The three shootout detectors remain evidence candidates only until measured on the held seed and separately integrated. No new framework is introduced.
 - RTMLib remains code-only; its default HumanArt-trained weights remain hold/do-not-ship.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. Current live base is `a41145c1fa24c3c230d3036b021a6fa83958e5dc`; PR #24 / `evidence/detector-stage-attribution` is the only implementation vehicle.
+One worker, one acceptance-moving item, at most one implementation PR. At the start of this item live `main` was `e5678429ebc313d3a6255fcd175f5c2167616646`, its post-merge Analytics workflow was green, open implementation PRs were 0, queued/running runs for the new head were 0, unchanged retries were 0, CI-triggering requests were 0, and consecutive no-progress sessions were 0 because PR #24 produced new measured failure attribution.
 
-This session began with zero open implementation PRs, zero queued/running runs, zero unchanged retries, zero CI-triggering requests and zero consecutive no-progress sessions because PR #23 had just produced legitimate real-video metrics. PR #24 exact head `087e114d8f6ed060190b9a2de78341c4abeeea1f` consumed request 1/2 and produced new measured failure attribution on the first attempt; it was not a retry. This PROJECT_STATE update is batched as the second and final CI-triggering mutation permitted in the session. No extra worker, branch, workflow job, runner, media source, model, framework or paid resource is added.
+All implementation, tests, workflow wiring and this state update are batched on `evidence/detector-shootout` before opening the one implementation PR. No paid resource, self-hosted runner, new dataset, new framework, home/customer footage, model training, threshold relaxation or commercial claim is introduced. The comparison adds only the three reviewed detector artifact pairs and keeps each downloaded item below 8 MiB.
 
 ## Reproduce
 Dependency-free repository checks:
@@ -81,27 +61,30 @@ python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
 
-Prepare the bounded real-world evidence seed on an authorized internet-connected no-spend machine:
+Prepare the exact bounded evidence seed in an authorized internet-connected no-spend environment:
 
 ```sh
 python -m analytics_lab.validation_seed --output-dir /path/to/private-validation
 ```
 
-With OpenVINO Runtime `2026.3.1` provisioned in that environment, execute:
+With OpenVINO Runtime `2026.3.1` and the pinned decoder provisioned:
 
 ```sh
 python -m analytics_lab.validation_cli --manifest /path/to/private-validation/validation-manifest.json
 python -m analytics_lab.detector_diagnostics --manifest /path/to/private-validation/validation-manifest.json
+python -m analytics_lab.detector_shootout \
+  --manifest /path/to/private-validation/validation-manifest.json \
+  --candidate-dir /path/to/private-detector-cache
 ```
 
-An `evidence/*` pull-request branch may perform these commands on the hosted Linux runner after installing the pinned reviewed CPU runtime/decoder. The workflow emits aggregate JSON only and uploads no media/model artifact.
+The `evidence/*` pull-request lane performs the bounded acquisition and commands on a GitHub-hosted Linux runner with read-only repository permission, emits aggregate JSON only, and uploads no media or model artifact.
 
 ## Next executable step
-Finish exact-head verification for PR #24 and merge only if Linux real-video evidence, Windows regression and the final Analytics quality gate remain green on the unchanged tested base.
+Open the single detector-shootout PR and execute exact-head hosted evidence. If one or more candidates materially restore fall-interval recall while preserving the hard-negative boundary, select the smallest measured winner and integrate only that detector in the next bounded work item. Do not promote a candidate based on upstream AP alone.
 
-After merge, follow the mandated failure order. The current detector has now quantitatively failed prone/fall recall, so compare **at most three** commercially rights-cleared detector alternatives against this exact held-out two-clip seed on a comparable CPU/runtime envelope. Select the smallest candidate that materially restores detection during the annotated fall interval without unacceptable degradation on the hard negative. Do not retrain a commodity detector yet.
+If all three fail the measured gate, the donor limit is exhausted for this component: record the exact failure and replan rather than scanning more models or blind-retrying. Training/fine-tuning becomes eligible for consideration only because measured reviewed donors were inadequate, and still requires rights-cleared training data plus a bounded resource plan.
 
-Once detector recall materially improves, attack the already measured pose/posture defect: the present simplified heatmap-to-posture path classified every real candidate `unknown`. Quantify whether the issue is keypoint confidence, detector-isolated crop geometry, simplified heatmap extraction or posture geometry before changing tracking or temporal persistence.
+After the detector boundary is materially improved, immediately attack the already-measured pose/posture defect (`unknown` on every real candidate) before changing tracking or temporal persistence.
 
 ## Outstanding commercial-release gates
-Expanded held-out positive/negative real-video evidence across cameras/sites; materially improved detector recall; functional pose/posture discrimination on real video; false-alert and missed-event measurements at meaningful scale; alert-latency distribution once events fire; comparable latency/resource evidence; platform wheel/native dependency provenance; security/privacy/provenance review; versioned installable integration adapter; packaging/notices; and explicit owner release approval. Synthetic/stub tests and this two-clip staged real seed do not establish commercial accuracy or commercial readiness.
+Expanded held-out positive/negative real-video evidence across cameras/sites; materially improved detector recall; functional pose/posture discrimination on real video; false-alert and missed-event measurements at meaningful scale; alert-latency distribution once events fire; comparable latency/resource evidence; platform wheel/native dependency provenance; security/privacy/provenance review; versioned installable integration adapter; packaging/notices; and explicit owner release approval. Synthetic/stub tests and this two-clip staged-real seed do not establish commercial accuracy or commercial readiness.
