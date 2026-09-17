@@ -187,24 +187,52 @@ class OpenCVVideoFileSource:
         return self
 
     def __iter__(self) -> Iterator[Frame]:
-        if self._capture is None or self._fps is None:
+        if self._capture is None or self._fps is None or self._cv2 is None:
             raise RuntimeError("video source must be used as a context manager")
         index = 0
+        last_elapsed_ms = -1
+        media_origin_ms: float | None = None
+        use_media_timestamps: bool | None = None
         while True:
             ok, image = self._capture.read()
             if not ok:
                 break
-            elapsed_ms = round(index * 1000.0 / self._fps)
+
+            position_ms = float(self._capture.get(self._cv2.CAP_PROP_POS_MSEC))
+            if use_media_timestamps is None:
+                use_media_timestamps = math.isfinite(position_ms) and position_ms >= 0
+                if use_media_timestamps:
+                    media_origin_ms = position_ms
+
+            elapsed_ms: int | None = None
+            if use_media_timestamps and media_origin_ms is not None:
+                media_elapsed = position_ms - media_origin_ms
+                if math.isfinite(media_elapsed) and media_elapsed >= 0:
+                    candidate = round(media_elapsed)
+                    if candidate > last_elapsed_ms:
+                        elapsed_ms = candidate
+
+            # Some OpenCV/container combinations expose an unavailable or stalled
+            # POS_MSEC clock. Fall back to the declared FPS only when it still
+            # preserves monotonic time; never manufacture a backwards timestamp.
+            if elapsed_ms is None:
+                nominal_elapsed = round(index * 1000.0 / self._fps)
+                if nominal_elapsed <= last_elapsed_ms:
+                    raise ValueError("video timestamps are not strictly increasing")
+                elapsed_ms = nominal_elapsed
+
             timestamp_ms = self.start_timestamp_ms + elapsed_ms
             if timestamp_ms > _MAX_TIMESTAMP_MS:
                 raise ValueError("video timestamp exceeds supported UTC range")
             yield Frame(index, timestamp_ms, image)
+            last_elapsed_ms = elapsed_ms
             index += 1
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if self._capture is not None:
             self._capture.release()
         self._capture = None
+        self._cv2 = None
 
 
 def run_local_video(
