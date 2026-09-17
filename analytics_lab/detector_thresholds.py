@@ -1,8 +1,9 @@
-"""Bounded threshold-sensitivity evidence for the best measured detector candidate.
+"""Bounded threshold and continuity evidence for the best measured detector candidate.
 
 Runs person-detection-0200 once per frame on the existing rights-bound two-clip
-GMDCSA-24 seed, then derives several fixed confidence thresholds from the same
-raw outputs. Output is aggregate-only; no frames or media are retained.
+GMDCSA-24 seed. The same raw SSD outputs are used for fixed confidence-threshold
+statistics and for one evidence-only continuity selector at confidence 0.10.
+Output is aggregate-only; no frames or media are retained.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ import time
 from typing import Any
 
 from .artifacts import verify_artifact_set
+from .detector_continuity import ContinuityAccumulator, DetectionBox
 from .detector_shootout import (
     DETECTOR_CANDIDATES,
     DetectorCandidate,
@@ -32,6 +34,15 @@ _TARGET_NAME = "person-detection-0200"
 _MIN_DURING_COVERAGE = 0.55
 _MIN_NEGATIVE_COVERAGE = 0.90
 _MAX_DUPLICATE_FRAME_RATE = 0.05
+
+_CONTINUITY_THRESHOLD = 0.10
+_CONTINUITY_MIN_LINK_IOU = 0.05
+_CONTINUITY_MIN_POSITIVE_DURING_COVERAGE = 0.85
+_CONTINUITY_MIN_POSITIVE_DURING_LINK_RATE = 0.70
+_CONTINUITY_MIN_NEGATIVE_COVERAGE = 0.95
+_CONTINUITY_MIN_NEGATIVE_LINK_RATE = 0.90
+_CONTINUITY_MAX_POSITIVE_RESET_RATE = 0.30
+_CONTINUITY_MAX_NEGATIVE_RESET_RATE = 0.10
 
 
 @dataclass(frozen=True)
@@ -81,7 +92,7 @@ class _Accumulator:
 
 
 def choose_threshold(rows: list[dict[str, float]]) -> float | None:
-    """Choose the highest threshold clearing the predeclared evidence bars."""
+    """Choose the highest threshold clearing the predeclared threshold-only bars."""
     eligible = [
         row for row in rows
         if float(row["positive_during_coverage"]) >= _MIN_DURING_COVERAGE
@@ -92,6 +103,18 @@ def choose_threshold(rows: list[dict[str, float]]) -> float | None:
     if not eligible:
         return None
     return max(float(row["threshold"]) for row in eligible)
+
+
+def continuity_passes(summary: dict[str, float]) -> bool:
+    """Apply predeclared bars to the one-box continuity diagnostic."""
+    return (
+        float(summary["positive_during_coverage"]) >= _CONTINUITY_MIN_POSITIVE_DURING_COVERAGE
+        and float(summary["positive_during_link_rate"]) >= _CONTINUITY_MIN_POSITIVE_DURING_LINK_RATE
+        and float(summary["negative_coverage"]) >= _CONTINUITY_MIN_NEGATIVE_COVERAGE
+        and float(summary["negative_link_rate"]) >= _CONTINUITY_MIN_NEGATIVE_LINK_RATE
+        and float(summary["positive_reset_rate"]) <= _CONTINUITY_MAX_POSITIVE_RESET_RATE
+        and float(summary["negative_reset_rate"]) <= _CONTINUITY_MAX_NEGATIVE_RESET_RATE
+    )
 
 
 def _target_candidate() -> DetectorCandidate:
@@ -111,7 +134,7 @@ def _provision(root: Path, candidate: DetectorCandidate) -> None:
     verify_artifact_set(root, candidate.specs)
 
 
-def _person_confidences(detector: _CompiledDetector, image: Any) -> tuple[float, ...]:
+def _person_detections(detector: _CompiledDetector, image: Any) -> tuple[DetectionBox, ...]:
     candidate = detector.candidate
     if candidate.output_kind != "ssd":
         raise RuntimeError("threshold sensitivity requires SSD output")
@@ -119,15 +142,22 @@ def _person_confidences(detector: _CompiledDetector, image: Any) -> tuple[float,
     output = detector.np.asarray(result[detector.compiled.output(0)])
     if output.size % 7:
         raise RuntimeError("SSD detector output shape changed")
-    values: list[float] = []
+    values: list[DetectionBox] = []
     for raw in output.reshape((-1, 7)):
         image_id = float(raw[0])
         if image_id < 0:
             break
         label = int(round(float(raw[1])))
         confidence = float(raw[2])
-        if label == candidate.person_label and 0.0 <= confidence <= 1.0:
-            values.append(confidence)
+        if label != candidate.person_label or not 0.0 <= confidence <= 1.0:
+            continue
+        values.append(DetectionBox(
+            confidence=confidence,
+            x_min=float(raw[3]),
+            y_min=float(raw[4]),
+            x_max=float(raw[5]),
+            y_max=float(raw[6]),
+        ))
     return tuple(values)
 
 
@@ -136,6 +166,15 @@ def _summary(acc: _Accumulator) -> dict[str, float | int]:
     return asdict(frozen) | {
         "coverage": frozen.coverage,
         "duplicate_frame_rate": frozen.duplicate_frame_rate,
+    }
+
+
+def _continuity_summary(acc: ContinuityAccumulator) -> dict[str, float | int | None]:
+    frozen = acc.freeze()
+    return asdict(frozen) | {
+        "coverage": frozen.coverage,
+        "link_rate": frozen.link_rate,
+        "reset_rate": frozen.reset_rate,
     }
 
 
@@ -148,18 +187,28 @@ def _sample_scan(sample: ValidationSampleSpec, detector: _CompiledDetector) -> t
         threshold: {name: _Accumulator() for name in ("before", "during", "after")}
         for threshold in _THRESHOLDS
     }
+    continuity = ContinuityAccumulator(min_link_iou=_CONTINUITY_MIN_LINK_IOU)
+    continuity_windows = {
+        name: ContinuityAccumulator(min_link_iou=_CONTINUITY_MIN_LINK_IOU)
+        for name in ("before", "during", "after")
+    }
     inference_ms = 0.0
     with OpenCVVideoFileSource(path, start_timestamp_ms=sample.start_timestamp_ms) as frames:
         for frame in frames:
             started = time.perf_counter()
-            confidences = _person_confidences(detector, frame.image)
+            detections = _person_detections(detector, frame.image)
             inference_ms += (time.perf_counter() - started) * 1000.0
             window_name = _window(sample, frame.timestamp_ms)
+            confidences = tuple(float(item.confidence) for item in detections)
             for threshold in _THRESHOLDS:
                 count = sum(1 for value in confidences if value >= threshold)
                 totals[threshold].add(count)
                 if window_name is not None:
                     windows[threshold][window_name].add(count)
+            low_confidence = tuple(item for item in detections if float(item.confidence) >= _CONTINUITY_THRESHOLD)
+            continuity.add(low_confidence)
+            if window_name is not None:
+                continuity_windows[window_name].add(low_confidence)
     if path.is_symlink() or not path.is_file() or _sha256(path) != sample.media_sha256:
         raise RuntimeError("threshold media changed during execution")
     rows: dict[str, Any] = {}
@@ -168,7 +217,16 @@ def _sample_scan(sample: ValidationSampleSpec, detector: _CompiledDetector) -> t
         if len(sample.labels) == 1:
             item["windows"] = {name: _summary(acc) for name, acc in windows[threshold].items()}
         rows[f"{threshold:.2f}"] = item
-    return {"sample_id": sample.sample_id, "thresholds": rows}, inference_ms
+    continuity_result: dict[str, Any] = {"overall": _continuity_summary(continuity)}
+    if len(sample.labels) == 1:
+        continuity_result["windows"] = {
+            name: _continuity_summary(acc) for name, acc in continuity_windows.items()
+        }
+    return {
+        "sample_id": sample.sample_id,
+        "thresholds": rows,
+        "continuity": continuity_result,
+    }, inference_ms
 
 
 def run_threshold_sensitivity(manifest: str | Path, candidate_root: str | Path) -> dict[str, Any]:
@@ -201,9 +259,17 @@ def run_threshold_sensitivity(manifest: str | Path, candidate_root: str | Path) 
             "negative_coverage": float(neg["overall"]["coverage"]),
             "negative_duplicate_frame_rate": float(neg["overall"]["duplicate_frame_rate"]),
         })
+    continuity_summary = {
+        "positive_during_coverage": float(positive["continuity"]["windows"]["during"]["coverage"]),
+        "positive_during_link_rate": float(positive["continuity"]["windows"]["during"]["link_rate"]),
+        "positive_reset_rate": float(positive["continuity"]["overall"]["reset_rate"]),
+        "negative_coverage": float(negative["continuity"]["overall"]["coverage"]),
+        "negative_link_rate": float(negative["continuity"]["overall"]["link_rate"]),
+        "negative_reset_rate": float(negative["continuity"]["overall"]["reset_rate"]),
+    }
     frames = sum(int(next(iter(item["thresholds"].values()))["overall"]["frames"]) for item in sample_results)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "model": candidate.name,
         "thresholds": list(_THRESHOLDS),
         "selection_bars": {
@@ -214,6 +280,20 @@ def run_threshold_sensitivity(manifest: str | Path, candidate_root: str | Path) 
         "samples": sample_results,
         "selection_rows": selection_rows,
         "recommended_threshold": choose_threshold(selection_rows),
+        "continuity_evidence": {
+            "threshold": _CONTINUITY_THRESHOLD,
+            "min_link_iou": _CONTINUITY_MIN_LINK_IOU,
+            "bars": {
+                "min_positive_during_coverage": _CONTINUITY_MIN_POSITIVE_DURING_COVERAGE,
+                "min_positive_during_link_rate": _CONTINUITY_MIN_POSITIVE_DURING_LINK_RATE,
+                "min_negative_coverage": _CONTINUITY_MIN_NEGATIVE_COVERAGE,
+                "min_negative_link_rate": _CONTINUITY_MIN_NEGATIVE_LINK_RATE,
+                "max_positive_reset_rate": _CONTINUITY_MAX_POSITIVE_RESET_RATE,
+                "max_negative_reset_rate": _CONTINUITY_MAX_NEGATIVE_RESET_RATE,
+            },
+            "summary": continuity_summary,
+            "accepted": continuity_passes(continuity_summary),
+        },
         "recommendation_is_evidence_only": True,
         "preparation_ms": preparation_ms,
         "detector_inference_ms": inference_ms,
