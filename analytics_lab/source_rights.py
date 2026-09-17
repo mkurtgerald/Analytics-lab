@@ -85,7 +85,21 @@ FIGSHARE_FALL_2017 = DataSourceRights(
     attribution_required=True,
 )
 
-SOURCES = {item.source_id: item for item in (UE4_FALL, FIGSHARE_FALL_2017)}
+GMDCSA24 = DataSourceRights(
+    source_id="gmdcsa24-fall-video",
+    title="GMDCSA-24: A Dataset for Human Fall Detection in Videos",
+    version="git:5abac7693229900cf80f722e878fbb119211fc1c",
+    media_origin="real_world",
+    license_id="MIT",
+    source_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/tree/5abac7693229900cf80f722e878fbb119211fc1c",
+    license_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/blob/5abac7693229900cf80f722e878fbb119211fc1c/LICENSE",
+    provenance_ref="doi:10.5281/zenodo.13354453;paper:10.1016/j.dib.2024.110892",
+    commercial_training=True,
+    commercial_evaluation=True,
+    attribution_required=True,
+)
+
+SOURCES = {item.source_id: item for item in (UE4_FALL, FIGSHARE_FALL_2017, GMDCSA24)}
 
 
 def require_source(source_id: str, *, purpose: str, require_real_world: bool = False) -> DataSourceRights:
