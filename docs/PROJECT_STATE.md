@@ -43,7 +43,7 @@ Do not retry `0005`/`0006`, tune them around Subject 4, lower required-keypoint 
 ## Stalled same-source rotation closed
 PR #45 attempted another file-disjoint GMDCSA-24 robustness pair on Subject 3. Two exact-head runs passed repository guardrails/synthetic regressions but failed deterministically at the `validation_cli` boundary before any real-video evidence was emitted. The single evidence-bound correction did not remove the failure. PR #45 was closed unmerged rather than spending a third session on the same path.
 
-## Current acceptance-moving work — bounded Figshare member admission
+## Current acceptance-moving work — broader-source Figshare generalization
 The broader-source path uses the already-reviewed real-world registry entry:
 - source: `figshare-fall-2017-activities`;
 - title: `Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects`;
@@ -59,13 +59,13 @@ The smallest clear file-disjoint pair from that public map was pinned before pay
 - negative: `VideoDataset/ADL/SBJ_01_LOC3/ACT25_R_1/20240923130459.mp4`, compressed **277,756**, uncompressed **278,497**, CRC32 `44ac1304`, local-header offset **1,084,380,237**;
 - positive: `VideoDataset/Fall/SBJ_10_LOC3/ACT10_R_2/20240915184434.mp4`, compressed **359,774**, uncompressed **360,498**, CRC32 `41961303`, local-header offset **1,738,471,658**.
 
-PR #48 is the sole implementation/evidence PR. Its first exact-head run #116 at `b0c4cb07f2b4340a57e786b65e9d0b3ed053061c` passed Linux on attempt 1, including all **43 guardrail regressions**, all **244 synthetic tests** with one optional OpenCV skip, synthetic replay, the bounded archive-index probe and the new exact member-admission lane. Windows and the Analytics quality gate also passed on attempt 1.
-
-The live member-admission step fetched only exact local-header/name/payload ranges for the two pinned deflate members, verified central/local ZIP identity relationships, declared size, CRC32 and the existing 16 MiB item ceiling, computed SHA-256 over the uncompressed video bytes, and wrote only to ephemeral runner storage. Exact admitted identities are:
+PR #48 merged the exact bounded member-admission boundary to `main` at `6e6c6121e2f45b3daf61f0dac849a77e7002f98f`. Post-merge Analytics quality run #118 passed on attempt 1. The live member-admission step fetched only exact local-header/name/payload ranges for the two pinned deflate members, verified central/local ZIP identity relationships, declared size, CRC32 and the existing 16 MiB item ceiling, computed SHA-256 over the uncompressed video bytes, and wrote only to ephemeral runner storage. Exact admitted identities are:
 - negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`;
 - positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`.
 
-No media is committed or uploaded, and this admission is **not** accuracy evidence. The person detector, orientation recovery, OpenPose 0001, association, posture logic, **3000 ms** persistence and **750 ms** unknown-gap budget remain unchanged. A directory name such as `Fall` is sufficient to select a source-positive clip but is not by itself permission to invent frame-level event timing. Before the temporal evaluator can score this pair, the next boundary must establish decoded duration/timestamps and a defensible label interval or source annotation mapping without tuning the analytic around these clips.
+The current work item is the first unchanged retained-pipeline measurement on that broader source. The source publication maps **ACT10** to `Sit on chair, fall` (Fall) and **ACT25** to `Descend` (ADL), but no independent frame-level positive interval has been established for these exact clips. The diagnostic therefore scores the ADL clip normally for candidate/false-alert behavior while treating the Fall clip as **diagnostic-only** for detector coverage, pose association, posture/temporal fragmentation, candidate behavior, decoded duration and CPU cost. It deliberately does **not** score positive match/miss or alert delay from a directory/activity label. Exact admitted SHA-256 identities are checked before model provisioning so changed media fails closed before consuming inference resources.
+
+The branch `evidence/figshare-person-down-generalization` adds only this bounded evidence adapter, regression tests and a hosted-Linux evidence step using the already-pinned OpenVINO `2026.3.1`, headless OpenCV decoder, `person-detection-0200`, OpenPose `human-pose-estimation-0001`, unchanged association/posture logic, **3000 ms** persistence and **750 ms** unknown-gap budget. Media remains ephemeral and no accuracy or injury/cause/fault/intent inference is permitted.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -79,8 +79,9 @@ No media is committed or uploaded, and this admission is **not** accuracy eviden
 - reviewed source id `figshare-fall-2017-activities`;
 - reviewed license `CC-BY-4.0`;
 - reviewed provenance `figshare:28596332:version-2`;
+- activity mapping reference: `Vision Transformer Based Fall Detection: A Spatial Temporal Attention Mechanism for Robust Video Analysis`, DOI `10.30970/eli.33.12`, CC-BY-4.0;
 - exact ephemeral media identities admitted by PR #48: negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`, positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`;
-- media remains outside public GitHub and has not yet been used as labeled accuracy evidence.
+- media remains outside public GitHub; the Fall clip has only a source clip/activity class for current purposes, not a frame-level positive interval.
 
 ### Runtime/model provenance
 - Open Model Zoo commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0;
@@ -93,7 +94,7 @@ No media is committed or uploaded, and this admission is **not** accuracy eviden
 ## Efficiency ledger
 One worker, one acceptance-moving work item, at most one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
 
-Live base at this work item's intake is `main` at `8016f6678301542628d18b2439f2fa56411c98ab`. PR #48 is the only open implementation PR. Its pre-state-update exact head `b0c4cb07f2b4340a57e786b65e9d0b3ed053061c` completed Analytics quality run #116 successfully on attempt 1, with **0 active runs after completion**, **0 unchanged retries**, and **1 CI-triggering PR dispatch in this session**. This state-binding change accompanies the substantive member-admission implementation and live evidence; it is the **second and final CI-triggering mutation permitted in this session**. No further push or retry is allowed this session if the resulting exact-head run fails.
+Live base at this work item's intake is `main` at `6e6c6121e2f45b3daf61f0dac849a77e7002f98f`; its post-merge Analytics quality run #118 passed on attempt 1. There were **0 open implementation PRs**, **0 active runs on that main head**, **0 unchanged retries**, **0 CI-triggering PR dispatches for this new work item**, and **0 consecutive no-progress sessions** before implementation. The proposed `evidence/figshare-person-down-generalization` PR counts as the single implementation WIP item. Branch commits made before opening the PR do not trigger the repository workflow; once opened, the exact head receives the first bounded CI/evidence dispatch.
 
 ## Reproduce
 Repository checks:
@@ -112,15 +113,16 @@ python -m analytics_lab.validation_cli --manifest /path/to/private-validation/va
 python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/private-validation/validation-manifest.json --candidate-dir /path/to/private-detector-cache
 ```
 
-Figshare bounded index probe and exact member admission (evidence branch only):
+Figshare bounded index probe, exact member admission and broader-source diagnostic (evidence branch only):
 
 ```sh
 python -m analytics_lab.figshare_probe
 python -m analytics_lab.figshare_member_admission --output-dir /path/to/ephemeral-output
+python -m analytics_lab.figshare_person_down_diagnostic --output-dir /path/to/ephemeral-diagnostic --candidate-dir /path/to/private-detector-cache
 ```
 
 ## Next executable decision
-Run the resulting exact PR #48 head through Linux, Windows and the Analytics quality gate once. If all required checks are green on the unchanged base, merge the bounded member-admission boundary. The next work item is not threshold tuning: establish exact decoded timing plus defensible positive-label timing/source annotation for the admitted pair, then run the unchanged retained detector -> orientation recovery -> OpenPose 0001 -> bounded association -> posture -> temporal evaluator path on CPU. If label timing cannot be established from source documentation or a reproducible annotation protocol, treat this pair as qualitative/diagnostic media only rather than inventing accuracy ground truth.
+Open the single implementation PR from `evidence/figshare-person-down-generalization` against unchanged `main` and run the exact head once through Linux, Windows and the Analytics quality gate. The Linux evidence lane must run the exact admitted pair through the unchanged retained CPU stack. If that exact head is green, record the aggregate diagnostic result before any algorithm change: negative candidate/false-alert behavior and decoded camera-time; positive candidate behavior, detector continuity, pose association, posture/temporal fragmentation, longest qualified run, decoded timing and throughput. Keep positive match/miss and alert-delay unscored unless a defensible independent frame-level annotation is later established. If the same downstream pose/posture weakness repeats on this independent source, use that cross-source evidence to justify a bounded pose adaptation/replacement plan rather than weakening temporal safety.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across genuinely different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and miss measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
