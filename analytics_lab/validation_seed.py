@@ -2,11 +2,11 @@
 
 Accepted Subject-1 and held-out Subject-2/Subject-3/Subject-4 seeds remain
 pinned for reproducibility. The active evidence subset is now a second
-untouched cross-view robustness pair from Subject 2: a forward fall after a
-ground-reach action and a floor-to-standing normal activity. This is deliberately
-NOT new-subject evidence; all four GMDCSA-24 subjects have already been
-exercised. The module is opt-in and never invoked by ordinary repository CI. It
-fetches only the active two clips plus the four already-reviewed Open Model Zoo
+untouched cross-view robustness pair from Subject 2: a night side-view backward
+fall and a floor-to-standing normal activity. This is deliberately NOT
+new-subject evidence; all four GMDCSA-24 subjects have already been exercised.
+The module is opt-in and never invoked by ordinary repository CI. It fetches
+only the active two clips plus the four already-reviewed Open Model Zoo
 artifacts, verifies exact upstream identities, computes local media SHA-256
 values, and emits a validation manifest. It does not install OpenVINO, retain
 decoded frames, or make any accuracy claim.
@@ -191,21 +191,21 @@ GMDCSA24_ROBUSTNESS_S1_BW = (
 
 
 # Second untouched-file robustness rotation. Subject 2 previously missed a
-# different side-fall holdout; this measurement does not tune that subject. It
-# changes the positive to a forward fall after a ground-reach action and uses a
-# floor-to-standing/walking normal as a hard negative. The pair is file-disjoint
-# from every historical evidence pair and remains inside the existing 16 MiB
-# aggregate two-clip envelope.
-GMDCSA24_ROBUSTNESS_S2_FW = (
+# different side-fall holdout; this measurement does not tune that subject. The
+# positive is a night side-view backward fall with 5.5 seconds of labeled fall
+# time, leaving a fair window for the unchanged 3000 ms persistence rule. The
+# negative starts on the ground and transitions to standing/walking. Both files
+# are disjoint from every historical pair and stay inside the 16 MiB envelope.
+GMDCSA24_ROBUSTNESS_S2_NIGHT = (
     SeedMediaSpec(
-        sample_id="gmdcsa24-s2-fall-07",
-        relative_path="Subject 2/Fall/07.mp4",
-        size_bytes=4_719_515,
-        git_blob_sha1="7b1cfd4cd0b314b35d82af83fbcdf68c623df032",
-        end_timestamp_ms=4_000,
-        label_start_timestamp_ms=2_000,
-        label_end_timestamp_ms=4_000,
-        label_id="gmdcsa24-s2-fall-07-labelled-falling",
+        sample_id="gmdcsa24-s2-fall-13",
+        relative_path="Subject 2/Fall/13.mp4",
+        size_bytes=1_617_503,
+        git_blob_sha1="dfc8b89268975d8200782a2d396309dfe76c13b0",
+        end_timestamp_ms=8_000,
+        label_start_timestamp_ms=2_500,
+        label_end_timestamp_ms=8_000,
+        label_id="gmdcsa24-s2-fall-13-labelled-falling",
     ),
     SeedMediaSpec(
         sample_id="gmdcsa24-s2-adl-10",
@@ -219,7 +219,7 @@ GMDCSA24_ROBUSTNESS_S2_FW = (
 
 # Keep the active PR-only evidence lane bounded to two clips. Historical seeds
 # above remain separately addressable for exact reproduction and regression.
-GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S2_FW
+GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S2_NIGHT
 
 
 def _ensure_root(root: Path) -> Path:
