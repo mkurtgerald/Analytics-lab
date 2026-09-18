@@ -7,14 +7,15 @@ from analytics_lab.perception import BBox, Keypoint, PoseCandidate
 from analytics_lab import openpose_association_diagnostics as association
 from analytics_lab.posture_quality_diagnostics import (
     _PostureQualityAccumulator,
+    _three_point_fallback,
     run_posture_quality_diagnostic,
 )
 
 
 class PostureQualityDiagnosticTests(unittest.TestCase):
     @staticmethod
-    def _associated(points):
-        candidate = PoseCandidate(BBox(0, 0, 20, 10), tuple(points), 1.0)
+    def _associated(points, bbox=None):
+        candidate = PoseCandidate(bbox or BBox(0, 0, 20, 10), tuple(points), 1.0)
         return AssociatedReferencePose(
             candidate=candidate,
             decoder_score=1.0,
@@ -53,6 +54,40 @@ class PostureQualityDiagnosticTests(unittest.TestCase):
         metrics = frozen["metrics_by_posture"]["unknown"]
         self.assertEqual(metrics["min_required_confidence"]["count"], 2)
         self.assertEqual(metrics["torso_fraction"]["count"], 1)
+        self.assertEqual(frozen["three_point_fallback"]["attempted_frames"], 0)
+
+    def test_three_point_fallback_recovers_only_decisive_same_side_geometry(self):
+        down = self._associated((
+            Keypoint("left_shoulder", 2, 4, 0.8),
+            Keypoint("right_shoulder", 2, 6, 0.8),
+            Keypoint("left_hip", 18, 4, 0.8),
+        ))
+        upright = self._associated((
+            Keypoint("left_shoulder", 4, 2, 0.8),
+            Keypoint("right_shoulder", 6, 2, 0.8),
+            Keypoint("left_hip", 4, 18, 0.8),
+        ), bbox=BBox(0, 0, 10, 20))
+        insufficient = self._associated((
+            Keypoint("left_shoulder", 2, 4, 0.8),
+            Keypoint("right_hip", 18, 6, 0.8),
+        ))
+        self.assertEqual(_three_point_fallback(down)[0], "down")
+        self.assertEqual(_three_point_fallback(upright)[0], "upright")
+        self.assertEqual(_three_point_fallback(insufficient)[0], "unknown")
+
+    def test_accumulator_keeps_non_decisive_fallback_unknown(self):
+        selected = DetectionBox(0.9, 0.0, 0.0, 1.0, 1.0)
+        accumulator = _PostureQualityAccumulator()
+        ambiguous = self._associated((
+            Keypoint("left_shoulder", 3, 3, 0.8),
+            Keypoint("right_shoulder", 7, 3, 0.8),
+            Keypoint("left_hip", 8, 8, 0.8),
+        ), bbox=BBox(0, 0, 10, 10))
+        accumulator.add(selected=selected, decoded_count=1, associated=ambiguous)
+        frozen = accumulator.freeze()["posture_quality"]
+        self.assertEqual(frozen["three_point_fallback"]["attempted_frames"], 1)
+        self.assertEqual(frozen["three_point_fallback"]["accepted_decisive_frames"], 0)
+        self.assertEqual(frozen["corrected_posture_counts"], {"unknown": 1})
 
     def test_runner_restores_association_accumulator_after_failure(self):
         original = association._Accumulator

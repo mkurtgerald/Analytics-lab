@@ -1,9 +1,9 @@
 """Evidence-only posture-quality diagnostics on the bounded staged-real seed.
 
 This reuses the measured detector continuity, bounded pose association and pinned
-OpenPose path. It adds aggregate posture-failure geometry only; no media, frame,
-model artifact or identity data is emitted, and production perception is not
-changed.
+OpenPose path. It adds aggregate posture-failure geometry and one fail-closed
+three-keypoint diagnostic fallback; no media, frame, model artifact or identity
+data is emitted, and production perception is not changed.
 """
 from __future__ import annotations
 
@@ -63,6 +63,57 @@ def _pose_metrics(item: AssociatedReferencePose) -> dict[str, float]:
     return result
 
 
+def _three_point_fallback(item: AssociatedReferencePose) -> tuple[str, str]:
+    """Classify only decisive geometry when exactly one required joint is absent.
+
+    With three of the four shoulder/hip joints, one body side is necessarily
+    complete. Reuse the existing posture thresholds on that same-side torso and
+    the decoded-pose bbox. Anything incomplete, low-confidence or ambiguous
+    remains unknown; this is diagnostic evidence, not a production promotion.
+    """
+    pose = item.candidate
+    points = {name: pose.keypoint(name) for name in _REQUIRED}
+    present = [point for point in points.values() if point is not None]
+    if len(present) != 3:
+        return "unknown", "three_point_fallback_not_applicable"
+    if min(point.confidence for point in present) < _POSTURE_CONFIG.min_keypoint_confidence:
+        return "unknown", "three_point_required_keypoint_confidence_below_threshold"
+
+    pair = None
+    for side in ("left", "right"):
+        shoulder = points[f"{side}_shoulder"]
+        hip = points[f"{side}_hip"]
+        if shoulder is not None and hip is not None:
+            pair = (shoulder, hip)
+            break
+    if pair is None:
+        return "unknown", "three_point_complete_side_missing"
+
+    shoulder, hip = pair
+    dx = hip.x - shoulder.x
+    dy = hip.y - shoulder.y
+    torso = math.hypot(dx, dy)
+    diagonal = math.hypot(pose.bbox.width, pose.bbox.height)
+    if diagonal <= 0.0 or torso < diagonal * _POSTURE_CONFIG.min_torso_fraction:
+        return "unknown", "three_point_torso_geometry_too_small"
+
+    vertical = abs(dy) / torso
+    horizontal = abs(dx) / torso
+    height_over_width = pose.bbox.height / pose.bbox.width
+    width_over_height = pose.bbox.width / pose.bbox.height
+    if (
+        vertical >= _POSTURE_CONFIG.orientation_threshold
+        and height_over_width >= _POSTURE_CONFIG.upright_aspect_min
+    ):
+        return "upright", "three_point_vertical_torso_and_tall_bbox"
+    if (
+        horizontal >= _POSTURE_CONFIG.orientation_threshold
+        and width_over_height >= _POSTURE_CONFIG.down_aspect_min
+    ):
+        return "down", "three_point_horizontal_torso_and_wide_bbox"
+    return "unknown", "three_point_geometry_not_decisive"
+
+
 class _PostureQualityAccumulator(_BaseAccumulator):
     """Extend the existing aggregate evidence with posture-failure diagnostics."""
 
@@ -73,6 +124,11 @@ class _PostureQualityAccumulator(_BaseAccumulator):
         self.metrics_by_posture: dict[str, dict[str, list[float]]] = defaultdict(
             lambda: {name: [] for name in _METRICS}
         )
+        self.corrected_postures: Counter[str] = Counter()
+        self.three_point_attempts = 0
+        self.three_point_accepted = 0
+        self.three_point_results: Counter[str] = Counter()
+        self.three_point_bases: Counter[str] = Counter()
 
     def add(
         self,
@@ -85,9 +141,19 @@ class _PostureQualityAccumulator(_BaseAccumulator):
         if associated is None:
             return
         result = classify_posture(associated.candidate, _POSTURE_CONFIG)
+        corrected = result.posture
         if result.posture == "unknown":
             self.unknown_bases[result.basis] += 1
             self.unknown_required_points[associated.required_points] += 1
+            if associated.required_points == 3:
+                self.three_point_attempts += 1
+                fallback_posture, fallback_basis = _three_point_fallback(associated)
+                self.three_point_results[fallback_posture] += 1
+                self.three_point_bases[fallback_basis] += 1
+                if fallback_posture in {"upright", "down"}:
+                    corrected = fallback_posture
+                    self.three_point_accepted += 1
+        self.corrected_postures[corrected] += 1
         metrics = _pose_metrics(associated)
         for name, value in metrics.items():
             self.metrics_by_posture[result.posture][name].append(float(value))
@@ -107,6 +173,14 @@ class _PostureQualityAccumulator(_BaseAccumulator):
                 }
                 for posture, metrics in sorted(self.metrics_by_posture.items())
             },
+            "three_point_fallback": {
+                "attempted_frames": self.three_point_attempts,
+                "accepted_decisive_frames": self.three_point_accepted,
+                "result_counts": dict(sorted(self.three_point_results.items())),
+                "basis_counts": dict(sorted(self.three_point_bases.items())),
+                "fail_closed_on_non_decisive": True,
+            },
+            "corrected_posture_counts": dict(sorted(self.corrected_postures.items())),
         }
         return result
 
@@ -119,12 +193,22 @@ def run_posture_quality_diagnostic(manifest: str | Path, candidate_root: str | P
         result = association.run_association_diagnostic(manifest, candidate_root)
     finally:
         association._Accumulator = original
-    result["schema_version"] = 3
+    result["schema_version"] = 4
     result["diagnostic"] = "openpose_posture_quality"
     result["posture_diagnostic"] = {
         "required_keypoints": list(_REQUIRED),
         "required_keypoint_floor": _KEYPOINT_FLOOR,
         "metrics": list(_METRICS),
+        "three_point_fallback": {
+            "scope": "baseline_unknown_with_exactly_three_required_keypoints",
+            "torso": "one_complete_same_side_shoulder_to_hip",
+            "orientation_threshold": _POSTURE_CONFIG.orientation_threshold,
+            "upright_aspect_min": _POSTURE_CONFIG.upright_aspect_min,
+            "down_aspect_min": _POSTURE_CONFIG.down_aspect_min,
+            "min_torso_fraction": _POSTURE_CONFIG.min_torso_fraction,
+            "accepted_outputs": ["upright", "down"],
+            "other_or_incomplete": "remain_unknown",
+        },
         "production_promoted": False,
     }
     return result
