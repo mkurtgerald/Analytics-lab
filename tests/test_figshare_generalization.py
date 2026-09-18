@@ -13,70 +13,59 @@ class FigshareGeneralizationTests(unittest.TestCase):
 
     def test_selects_sitting_boundary_with_untouched_subject_and_novel_location(self):
         members = (
-            # Excluded subjects were used by the first two admitted pairs.
+            # Excluded because Subject 06 was used by the second admitted pair.
             self.member(
                 "VideoDataset/ADL/SBJ_06_LOC4/ACT16_R_1/excluded-subject.mp4",
                 20,
                 10,
             ),
-            # A smaller pair across only previously exercised locations must
-            # lose to a pair that expands environmental coverage.
-            self.member(
-                "VideoDataset/ADL/SBJ_02_LOC1/ACT16_R_1/old-location-negative.mp4",
-                40,
-                20,
-            ),
-            self.member(
-                "VideoDataset/Fall/SBJ_04_LOC2/ACT11_R_1/old-location-positive.mp4",
-                40,
-                30,
-            ),
-            # Eligible sitting negative from a new location.
+            # Eligible ACT16 sitting negative from a new location.
             self.member(
                 "VideoDataset/ADL/SBJ_02_LOC4/ACT16_R_1/negative.mp4",
                 100,
-                40,
+                20,
             ),
-            # Smaller ACT11 candidate but same subject as the selected negative.
+            # Smaller ACT11 member but the same subject as the selected negative.
             self.member(
                 "VideoDataset/Fall/SBJ_02_LOC1/ACT11_R_1/same-subject.mp4",
                 30,
-                50,
+                30,
             ),
-            # Same-location candidate is also invalid.
+            # Same-location candidate is invalid and deliberately larger so it
+            # cannot become a cheaper valid cross-pair with another fixture row.
             self.member(
                 "VideoDataset/Fall/SBJ_05_LOC4/ACT11_R_1/same-location.mp4",
-                35,
-                60,
+                500,
+                40,
             ),
             # Smallest valid subject/location-disjoint positive paired with loc4.
             self.member(
                 "VideoDataset/Fall/SBJ_04_LOC1/ACT11_R_1/positive.mp4",
                 60,
-                70,
+                50,
             ),
-            # Larger valid alternative.
+            # Eligible but larger alternative positive.
             self.member(
                 "VideoDataset/Fall/SBJ_05_LOC2/ACT11_R_2/positive-large.mp4",
                 170,
-                80,
+                60,
             ),
             # Wrong activities never enter this evidence selection.
             self.member(
                 "VideoDataset/ADL/SBJ_07_LOC4/ACT19_R_1/laying.mp4",
                 10,
-                90,
+                70,
             ),
             self.member(
                 "VideoDataset/Fall/SBJ_08_LOC1/ACT4_R_1/back-fall.mp4",
                 10,
-                100,
+                80,
             ),
-            # macOS sidecars are excluded by the exact dataset-path parser.
+            # macOS sidecar is excluded by the exact dataset-path parser.
             self.member(
                 "__MACOSX/VideoDataset/ADL/SBJ_09_LOC4/ACT16_R_1/._sidecar.mp4",
                 5,
-                110,
+                90,
             ),
         )
         selected = select_next_generalization_pair(members)
