@@ -6,41 +6,39 @@ Analytics Lab develops platform-independent video analytics for paid integration
 ## Current person-down path
 The person-down **candidate** path under measured validation is:
 
-`authorized local video -> reviewed detector -> spatial continuity/orientation recovery -> reviewed OpenPose model -> bounded pose association -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> labeled evaluation/aggregation`
+`authorized local video -> reviewed detector -> spatial continuity/orientation recovery -> reviewed OpenPose model -> bounded full-frame pose association -> optional bounded selected-person crop using the same pose model after full-frame association failure -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> labeled evaluation/aggregation`
 
 Candidate events do not infer injury, cause, fault, intent, negligence or medical condition. Real-video evidence binds exact media hashes, reviewed model/runtime identities, decoded coverage, continuity, timing and evaluation metrics without retaining video in public GitHub.
 
-## Accepted Subject-1 milestone
-PR #33 was accepted and merged at `5a63abd6201a7739d7c4cd8eb95a46fdbc77e67d`. Its exact head passed Linux, Windows, the Analytics quality gate and the bounded rights-cleared real-video lane on attempt 1.
+## Accepted staged-real milestones
+### Subject 1
+PR #33 produced the first matched staged-real person-down candidate on the pinned Subject-1 pair: **1 positive episode, 1 candidate, 1 match, 0 misses, 0 hard-negative false alerts** across about **0.0036 decoded camera-hours**. Alert delay was **4024 ms**. The retained path used the unchanged 3000 ms persistence requirement plus bounded unknown-gap tolerance; `upright`, `other`, low-confidence `down`, expiry and over-bound gaps remained fail-closed. This is a tiny engineering seed, not a commercial accuracy claim.
 
-On the pinned Subject-1 pair, the retained evidence-only configuration produced the first matched staged-real person-down candidate: **1 positive episode, 1 candidate, 1 match, 0 misses, 0 hard-negative false alerts**, across about **0.0036 decoded camera-hours**. Alert delay was **4024 ms** from one matched event. The positive had 85 qualifying `down` frames. Bounded unknown-gap tolerance bridged 21 `unknown` frames, longest bridged gap 96 ms, and recovered a 3008 ms / 70-sample qualifying run while `upright`, `other`, low-confidence `down`, expiry and over-bound gaps stayed fail-closed.
+### Subject 2
+PR #34 exposed a disjoint generalization miss: **0 candidates / 0 matches / 1 miss**, with **0 hard-negative false alerts** and only **94/138 = 68.12%** labeled-fall detector selection.
 
-This remains a tiny engineering seed, not a commercial accuracy claim.
+PR #35 retained same-detector +/-90-degree orientation recovery only after a primary miss with prior continuity. On Subject 2, labeled-fall detector coverage rose to **126/138 = 91.30%**, associated poses **98 -> 135**, qualified `down` frames **31 -> 57**, and longest qualified run **768 ms -> 1472 ms**, while the prone-normal negative stayed at **0 candidate events / 0 false alerts**. Evidence-only throughput was about **10.20 FPS**.
 
-## Held-out Subject-2 evidence
-PR #34 first measured the disjoint Subject-2 pair and exposed a legitimate generalization failure: the positive emitted **0 candidates / 0 matches / 1 miss**, the prone sleeping normal emitted **0 candidates / 0 false alerts**, and labeled-fall detector selection was only **94/138 = 68.12%**.
+PR #36 then removed only one measured false reset: near-diagonal non-decisive torso geometry (`|horizontal_fraction - vertical_fraction| <= 0.02`) is treated as `unknown`, never promoted to `down`. The longest qualified Subject-2 positive run improved **1472 ms -> 2544 ms** while the negative remained **0 candidates / 0 false alerts**. The remaining decisive break is genuinely upright and stays fail-closed. Subject 2 remains held out and must not be tuned further merely to manufacture a match.
 
-PR #35 retained a bounded same-detector orientation recovery using the exact pinned `person-detection-0200`: only after a primary-orientation miss and only with a prior continuity box, the same detector may run on +/-90-degree views. A mapped candidate must still clear the existing 0.10 confidence and 0.05 IoU continuity floors. On Subject 2 this raised labeled-fall detector coverage to **126/138 = 91.30%**, associated poses **98 -> 135**, qualified `down` frames **31 -> 57**, and longest qualified run **768 ms -> 1472 ms** while the prone-normal negative stayed at **0 candidate events / 0 false alerts**. Evidence-only throughput was about **10.20 FPS**.
+### Subject 3 — no-change generalization measurement
+PR #37 merged to live `main` at `fe0a5054fd01f147631b89452300d971a73a9115`. Its exact PR head passed Linux, **226 tests**, Windows, the Analytics quality gate and the bounded rights-cleared real-video CPU lane on attempt 1; post-merge main verification also passed.
 
-PR #36 then measured the remaining fragmentation. The exact tested head passed Linux, 226 tests, Windows, the Analytics quality gate and the bounded real-video lane on attempt 1, and merged to live `main` at `5201af0b28af5440636c22bd79fbd0a17a5160c0`; post-merge main verification also passed. Measurement isolated one safely correctable near-diagonal `geometry_not_decisive` reset plus one genuinely upright reset. The retained correction converts only near-diagonal non-decisive geometry (`|horizontal_fraction - vertical_fraction| <= 0.02`) from `other` to `unknown`; it never promotes to `down`, never bridges `upright`, and changes no persistence, detector, model, association or confidence threshold.
+Rights-cleared Subject-3 evidence:
+- positive `Subject 3/Fall/03.mp4` SHA-256 `267abab9b0ca7f4ef8425e2bfb2272ffeae1165fc2e3523ca1a6e0a62046b912`;
+- hard negative `Subject 3/ADL/08.mp4` SHA-256 `b383bb83a22b286cfc65fdd934137ee8b29e84aef7be0b540271d7c69d10fa8b`;
+- decoded evidence **10,432 ms / 0.00289778 camera-hours** across the two independent clip streams.
 
-On the same Subject-2 pair the correction improved the longest qualified positive run **1472 ms -> 2544 ms** while fall-window detector coverage remained **126/138 = 91.30%**, qualified `down` remained **57**, and the prone-normal negative stayed **0 candidates / 0 false alerts** with a 960 ms longest qualified run. The positive remains **0 candidates / 0 matches / 1 miss** because the remaining decisive interruption is genuinely upright. Broad association relaxation is not supported by the measured unmatched-pose geometry, and the 3000 ms persistence requirement remains unchanged.
+The unchanged best-known path produced **1 positive episode, 0 candidates, 0 matches, 1 miss** and **0 hard-negative candidate events / 0 false alerts**. Detector orientation recovery selected **89/105 = 84.76%** labeled-fall frames with about **94.44% linked-transition continuity**. The larger loss was pose association: only **50/105** labeled-fall frames had safe full-frame pose overlap. Another 39 selected frames had a decoded pose, but nearest pose geometry was far outside the safe association bound (edge-gap approximately **0.567 minimum, 1.206 median, 1.524 p90**), so widening that association threshold is not justified.
 
-Subject 2 stays held out from future training/adaptation. Do not tune further around that clip merely to force a match.
+The positive produced **22 qualified `down` frames** and a longest qualified run of **1184 ms** versus the unchanged **3000 ms** requirement. The sleeping-on-floor negative produced **27 down-like frames** but only a **912 ms** longest run and still emitted no alert. Do not lower persistence to make the positive pass.
 
-## Current acceptance-moving work — disjoint Subject-3 generalization
-Live `main` at intake is `5201af0b28af5440636c22bd79fbd0a17a5160c0`; its post-merge Analytics quality run completed successfully on attempt 1. There are **0 open implementation PRs** and no active run for the main head at intake. The one prepared branch is `evidence/person-down-heldout-s3`.
+## Current acceptance-moving work — bounded selected-person pose crop
+Live `main` at intake is `fe0a5054fd01f147631b89452300d971a73a9115`. There are **0 open implementation PRs** and no active run for that exact main head; Linux, Windows and Analytics quality are completed/success on main. The one prepared branch is `evidence/person-down-pose-crop-fallback`.
 
-The active PR-only evidence subset rotates to another subject from the already-reviewed GMDCSA-24 source while preserving the two-clip / <16 MiB media envelope and all existing runtime/model pins. No detector, pose model, tracking rule, association bound, posture rule, temporal threshold, training job or donor component changes in this first measurement.
+The measured Subject-3 defect supports one change of approach at the pose layer. After a continuity-selected person exists and **only after the existing full-frame OpenPose association plus its existing bounded fallback fail**, run the exact same pinned `human-pose-estimation-0001` model and decoder on a bounded crop around that already-selected detector box. The crop adds a fixed 20% context margin. If a wide crop would exceed the reviewed 456x256 OpenPose aspect ratio, consume available source-frame vertical context first, then add only the minimum black vertical padding; do not distort geometry. Apply the same safe pose association logic inside the crop. No detector, weights, detector threshold, pose weights, posture threshold, 3000 ms persistence, 750 ms unknown-gap budget or training data changes are allowed in this item.
 
-Selected Subject-3 evidence:
-
-- positive `Subject 3/Fall/03.mp4`: backward floor fall after standing; source annotation `Falling (BW)[1.5 to 5]`; exact pinned Git blob `41daaee74ceb00e8db32f34525a57c704994f0b5`, **5,753,609 bytes**, clip end 5000 ms;
-- hard negative `Subject 3/ADL/08.mp4`: sitting to sleeping on the floor; source annotation `Sitting[0 to 0.8]; Sleeping[0.8 to 4]`; exact pinned Git blob `a38dca4aed2a27d930354beeb7d36911a7b8dd55`, **5,172,948 bytes**, clip end 4000 ms.
-
-The pair totals **10,926,557 bytes**, remains below the existing 16 MiB aggregate envelope, and is disjoint from the retained Subject-1 and Subject-2 clips. Exact SHA-256 identities must be computed after acquisition and before inference; media remains ephemeral/outside public GitHub.
-
-First decision rule: run the unchanged best-known path and record the real result before tuning. If it emits a matched positive with zero hard-negative candidate/false alert, preserve the algorithm and expand to another bounded disjoint pair later. If it misses or false-alerts, the next work item attacks only the measured dominant layer: detector recall -> pose association/quality -> posture classification -> temporal fragmentation. Do not weaken the 3000 ms persistence requirement, bridge upright/other evidence, broaden unsafe association, add a fourth detector, or train without multiple disjoint measurements justifying it.
+Predeclared decision rule: retain the crop fallback only if the exact same Subject-3 positive materially improves pose association / qualified temporal continuity and the sleeping-on-floor negative remains at **0 candidate events / 0 false alerts**. A matched positive is welcome but not required to demonstrate improvement; no change is retained for mere test-count growth. Record crop attempts/associations, additional pose inference/decode cost, total FPS, full end-to-end candidate/match/miss/false-alert results and prior fragmentation metrics. If the crop increases hard-negative alerting or produces no measured acceptance movement, remove/abandon it rather than loosening temporal policy.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -52,7 +50,7 @@ First decision rule: run the unchanged best-known path and record the real resul
 - Subject-1 hard negative SHA-256: `2cf0d421cfd8e34280bf02afc67a4f1d1abee3cd87a23f11e69ef393fedc6fdb`.
 - Held-out Subject-2 positive SHA-256: `0448c122dbfdffc423cc6e282cb54f60d801fc1c741de9aafca3f051db7c1abb`.
 - Held-out Subject-2 prone-normal SHA-256: `24559694cceadbcf1bb34f217967c233e412b97e25f9dd9be3f733f4e16067df`.
-- Subject-3 active pair: exact pinned Git blobs/byte counts above; SHA-256 is intentionally populated only from the acquired bytes during the evidence run.
+- Subject-3 hashes are recorded above.
 - Media remains ephemeral/outside public GitHub and is re-hashed before and after measured execution.
 
 ### Runtime/model provenance
@@ -65,7 +63,7 @@ First decision rule: run the unchanged best-known path and record the real resul
 ## Efficiency ledger
 One worker, one acceptance-moving work item, at most one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
 
-At this work-item intake: open implementation PRs **0**, active runs for live main **0**, unchanged retries **0**, CI-triggering requests **0/2**, consecutive sessions without tested acceptance progress **0**. Live main/open-PR/run counts were tool-verified. Branch preparation is batched before opening the one PR so exact-head CI/evidence runs once.
+At this work-item intake: open implementation PRs **0**, active runs for live main **0**, unchanged retries **0**, CI-triggering requests **0/2**, consecutive sessions without tested acceptance improvement **1** (PR #37 was a valid no-change generalization measurement). This item therefore changes approach at the measured pose layer instead of repeating the same path. Live main/open-PR/check facts were tool-verified. The connector-only environment cannot execute a local repository clone/runtime, so no local `guardrails.py preflight` or local machine test pass is claimed; exact-head hosted CI/evidence remains the execution authority.
 
 ## Reproduce
 Repository checks:
@@ -90,9 +88,7 @@ python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/
 ```
 
 ## Next executable decision
-Open one evidence PR from `evidence/person-down-heldout-s3` and run exact-head Linux/Windows/quality plus the bounded Subject-3 real-video lane once. Do not tune before reading the first disjoint result. Record exact SHA-256 identities, positives/candidates/matches/misses/false alerts, decoded camera-hours, alert delay when present, detector coverage, association/posture counts, longest qualified run, reset causes and CPU throughput.
-
-Only if that measurement isolates a clear dominant defect may one coherent bounded correction be made on the same PR and compared against the same Subject-3 pair plus retained hard-negative expectations. Merge only when the final unchanged head is green on Linux, Windows and Analytics quality and the real-video evidence shows a tested acceptance improvement or a valid no-change generalization result without hard-negative alert regression. Main post-merge verification intentionally does not reacquire real-video/model evidence.
+Open one evidence PR from `evidence/person-down-pose-crop-fallback` and run exact-head Linux/Windows/quality plus the bounded Subject-3 real-video lane once. Compare the crop-enabled final diagnostic to the already-recorded Subject-3 baseline on the exact same hashes. Retain only measured acceptance movement without hard-negative candidate/false-alert regression. One unchanged retry is permitted only for a diagnosed transient infrastructure fault; deterministic failures require correction before rerun. Merge only when the final unchanged head is green on Linux, Windows and Analytics quality and the real-video result satisfies the predeclared decision rule.
 
 ## Outstanding commercial-release gates
 Expanded held-out positive/negative real-video evidence across genuinely different cameras/sites and multi-person scenes; generalizable detector recall/identity behavior; false-alert and missed-event measurements at meaningful scale; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; platform/native dependency provenance; versioned installable integration adapter; packaging/notices; and explicit owner release approval. Small GMDCSA-24 subject rotations do not establish commercial accuracy or commercial readiness.
