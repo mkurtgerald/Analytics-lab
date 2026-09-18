@@ -11,21 +11,26 @@ The person-down **candidate** path under measured validation is:
 Candidate events do not infer injury, cause, fault, intent, negligence or medical condition. Real-video evidence binds exact media hashes, reviewed model/runtime identities, decoded coverage, continuity, timing and evaluation metrics without retaining video in public GitHub.
 
 ## Current acceptance-moving work
-Live `main` entering this work item is `08720e96d0e49efcfcd0f94e9b27fe35af25dc87`. Its post-merge Analytics quality run `35290818608` completed successfully on attempt 1. Intake had **0 open implementation PRs**, **0 active runs on the live main head**, **0 unchanged retries**, **0 CI-triggering requests in this session**, and **0 consecutive sessions without tested acceptance progress**.
+Live `main` entering PR #32 is `08720e96d0e49efcfcd0f94e9b27fe35af25dc87`; its post-merge Analytics quality run passed on attempt 1. PR #32 is the single implementation/evidence vehicle for first end-to-end staged-real temporal evidence.
 
-PR #31 already retained the evidence-only three-keypoint posture fallback after exact staged-real measurement. On the identical two-clip seed:
+### First exact-head end-to-end measurement
+Exact head `5202180b35e28fbb33008906535f62d90be0a5ae` passed Linux, Windows, the Analytics quality gate and the bounded rights-cleared real-video lane on attempt 1. It used the existing temporal defaults unchanged: 3000 ms down duration, 750 ms maximum gap, 4 minimum samples and 0.70 minimum confidence.
 
-- Positive before-fall: **53 upright, 0 unknown**.
-- Positive fall window: **70 down, 6 unknown** after the bounded posture correction.
-- Positive post-fall: **14 down, 10 unknown** after the bounded posture correction.
-- Hard negative: **0 down classifications**.
-- Detector continuity remained the measured low-confidence `person-detection-0200` path; bounded pose association remained unchanged.
+The result is legitimate staged-real performance evidence, and it is a **miss**:
 
-The single work item is now **first end-to-end staged-real temporal person-down evidence**. Branch `evidence/person-down-temporal-e2e` reconnects the existing measured detector + OpenPose + association + posture path to the existing `PersonDownEngine` and deterministic evaluator. The first measurement deliberately uses the existing default temporal configuration without tuning: **3000 ms down duration, 750 ms maximum gap, 4 minimum samples, 0.70 minimum confidence**.
+- Aggregate decoded evidence: **1 positive episode, 0 matched events, 1 miss, 0 false alerts, 0 candidate events, recall 0.0, 0 false alerts per decoded camera-hour** across **0.0036 decoded camera-hours**.
+- Positive clip: **174 frames / 5824 ms**, 166 associated poses, 85 `down`, 66 `upright`, 22 `unknown`, 1 `other`; **all 85 down frames were below the 0.70 temporal confidence floor**.
+- Positive down-confidence distribution: **min ~0.102, p50 ~0.161, p90 ~0.452, max ~0.561**. Therefore **0 qualified down frames** and no temporal run could begin.
+- Hard negative: **212 frames / 7136 ms**, 212 associated poses, **0 down**, 181 upright, 30 other, 1 unknown, **0 candidate events / 0 false alerts**.
+- End-to-end measured throughput on the two clips: **~10.10 FPS**, **38.23 s** measured sample execution, plus **~0.61 s** preparation.
+- Tracking continuity remained strong on this seed: positive 173/174 selected with 170 linked transitions and 1 reset; hard negative 212/212 selected with 211 linked transitions and 0 resets.
 
-The end-to-end diagnostic records, per exact clip and in aggregate: decoded duration/camera-hours, frames, association coverage, continuity/link/reset counts, posture/basis counts, down-confidence distribution, qualified versus low-confidence down frames, longest qualifying down run, temporal reset causes, candidate events, positives, matched events, misses, false alerts, exact alert-delay samples/median, detector/pose inference time, preparation/elapsed time and throughput/FPS. Missing/unknown posture frames are fed fail-closed into temporal logic rather than silently skipped.
+This isolates the next temporal error source cleanly: the historical 0.70 temporal confidence gate is incompatible with the confidence semantics of the already-accepted posture path. It is not a calibrated probability; accepted real-video `down` posture confidence is bounded by the required OpenPose keypoint scores.
 
-This diagnostic is evidence-only. It does not promote the detector, pose model, association rule, posture fallback or temporal thresholds to commercial accuracy status. If the first exact-head run misses the positive event, the next correction must target the measured dominant temporal failure (for example confidence floor or interrupted persistence) rather than broadening perception or changing several thresholds at once.
+### One bounded temporal correction under test
+The next exact head changes **only** temporal `min_confidence`, from 0.70 to the already-reviewed posture required-keypoint floor of **0.10**. Down-duration, max-gap, minimum-sample, TTL and capacity limits remain unchanged. The diagnostic also records the longest raw and qualifying down run so that, if persistence still blocks the event, the next decision is measured rather than guessed.
+
+This correction is evidence-only and not production-promoted. Retain it only if it converts the previously rejected positive down frames into qualifying temporal evidence without creating a hard-negative candidate/false alert. If the positive event still misses, do not lower persistence blindly; use the exact longest qualifying run and reset causes to identify the next bounded temporal defect.
 
 ## Measured perception baseline
 The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-only spatial continuity recovered the low-confidence prone-person trajectory on this deliberately tiny staged-real seed:
@@ -34,7 +39,7 @@ The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-o
 - Positive overall: **173/174 frames = 99.43% coverage**; **1 reset / 171 transitions = 0.58%**.
 - Hard negative: **212/212 frames = 100% coverage**; **211/211 transitions = 100% linked**; **0 resets**.
 
-Threshold lowering alone was rejected because duplicate/noisy boxes rose sharply. Bounded pose association previously improved fall-window association from **36/96 to 90/96** and post-fall from **0/24 to 23/24**, with zero ambiguous fallback frames. The three-keypoint posture fallback then reduced positive `unknown` classifications while preserving zero hard-negative `down` classifications. These are seed-specific engineering measurements, not general detector/tracker accuracy claims.
+Bounded pose association previously improved fall-window association from **36/96 to 90/96** and post-fall from **0/24 to 23/24**, with zero ambiguous fallback frames. The retained three-keypoint posture fallback produced the measured end-to-end positive total of 85 `down` frames while preserving **0 down** on the hard negative. These are seed-specific engineering measurements, not general detector/tracker accuracy claims.
 
 ## Evidence/data baseline
 ### GMDCSA-24 staged-real seed
@@ -53,9 +58,9 @@ Threshold lowering alone was rejected because duplicate/noisy boxes rose sharply
 - Reference decoder source: `demos/common/python/model_zoo/model_api/models/open_pose.py` at the same pinned OMZ commit; adapted diagnostic code preserves Intel copyright and Apache-2.0 attribution.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
+One worker, one acceptance-moving work item, one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
 
-For this temporal work item, the pre-mutation live-state snapshot was verified from `main=08720e96d0e49efcfcd0f94e9b27fe35af25dc87`: open implementation PRs `0`, active runs for live head `0`, unchanged retries `0`, CI-triggering requests `0`, sessions without progress `0`. The guardrail preflight allowed implementation. Opening the single evidence PR will be **CI request 1/2**. One further CI-triggering correction remains available only if the first measured run exposes a deterministic, acceptance-moving defect. An unchanged retry remains permitted only for a diagnosed transient infrastructure failure.
+PR #32 first exact-head measurement was **CI request 1/2** and passed on attempt 1; unchanged retries remain **0**. The measured confidence-floor correction is the single coherent **CI request 2/2** for this session. No further feature-branch CI-triggering mutation is permitted in this session. If the second exact-head run exposes another deterministic temporal blocker, preserve that evidence for the next session rather than pushing again.
 
 ## Reproduce
 Repository checks:
@@ -87,7 +92,7 @@ python -m analytics_lab.person_down_e2e_diagnostics \
 ```
 
 ## Next executable decision
-Run the exact-head end-to-end diagnostic on the same positive and hard-negative clips with the existing default temporal thresholds. Preserve the raw first-attempt evidence even if it misses. If the positive event is matched and the hard negative remains clean, retain the measurement path and move next to broader held-out real-video evidence rather than tuning this seed. If the positive event is missed, attack only the largest measured temporal error source and compare the correction against the exact same evidence before retaining it. Do not start another detector/pose search, tracker rewrite or training path while this measured path remains viable.
+Measure the 0.10 temporal confidence correction on the identical positive and hard-negative clips. Keep every other temporal threshold fixed. Preserve exact candidate/match/miss/false-alert/delay, longest-down-run, reset, continuity and CPU timing evidence. If the event still misses, the next run must attack the measured persistence/reset blocker rather than model-shopping, training or broad threshold tuning.
 
 Merge only when exact-head Linux, Windows and Analytics quality are green on the unchanged tested base and the bounded real-video evidence lane completes. Main post-merge verification intentionally does not reacquire real-video/model evidence.
 

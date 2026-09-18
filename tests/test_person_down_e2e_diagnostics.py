@@ -2,7 +2,12 @@ import unittest
 
 from analytics_lab.openpose_pose_geometry import AssociatedReferencePose
 from analytics_lab.perception import BBox, Keypoint, PoseCandidate
-from analytics_lab.person_down_e2e_diagnostics import _TemporalTrace, _corrected_posture
+from analytics_lab.person_down_e2e_diagnostics import (
+    _TemporalTrace,
+    _corrected_posture,
+    _measured_temporal_config,
+)
+from analytics_lab.posture_quality_diagnostics import _POSTURE_CONFIG
 from analytics_lab.temporal import Config
 
 
@@ -46,7 +51,18 @@ class PersonDownE2EDiagnosticTests(unittest.TestCase):
     def test_missing_pose_fails_closed(self):
         self.assertEqual(_corrected_posture(None), ("unknown", 0.0, "no_associated_pose"))
 
-    def test_temporal_trace_exposes_confidence_and_posture_resets(self):
+    def test_measured_temporal_correction_changes_only_confidence_floor(self):
+        baseline = Config()
+        corrected = _measured_temporal_config()
+        self.assertEqual(corrected.min_confidence, _POSTURE_CONFIG.min_keypoint_confidence)
+        self.assertLess(corrected.min_confidence, baseline.min_confidence)
+        self.assertEqual(corrected.down_duration_ms, baseline.down_duration_ms)
+        self.assertEqual(corrected.max_gap_ms, baseline.max_gap_ms)
+        self.assertEqual(corrected.min_samples, baseline.min_samples)
+        self.assertEqual(corrected.track_ttl_ms, baseline.track_ttl_ms)
+        self.assertEqual(corrected.max_tracks, baseline.max_tracks)
+
+    def test_temporal_trace_exposes_confidence_posture_and_raw_persistence(self):
         trace = _TemporalTrace(Config(down_duration_ms=1000, max_gap_ms=750, min_samples=2, min_confidence=0.7))
         trace.observe(0, "down", 0.8, "down")
         trace.observe(500, "down", 0.6, "down")
@@ -59,6 +75,8 @@ class PersonDownE2EDiagnosticTests(unittest.TestCase):
             "down_confidence_below_threshold": 1,
             "posture_unknown": 1,
         })
+        self.assertEqual(frozen["longest_raw_down_run_ms"], 1000)
+        self.assertEqual(frozen["longest_raw_down_run_samples"], 3)
         self.assertEqual(frozen["longest_qualified_down_run_ms"], 0)
         self.assertEqual(frozen["longest_qualified_down_run_samples"], 1)
 

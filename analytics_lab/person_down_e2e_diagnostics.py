@@ -46,6 +46,20 @@ from .video import OpenCVVideoFileSource
 
 _RUNTIME_PREFIX = "2026.3.1"
 _TRACK_ID = "continuity-track"
+_BASELINE_TEMPORAL_MIN_CONFIDENCE = TemporalConfig().min_confidence
+
+
+def _measured_temporal_config() -> TemporalConfig:
+    """Apply the one measured temporal correction without changing other defaults.
+
+    The first exact-head staged-real run produced 85 positive `down` frames, but
+    every one was rejected by the historical 0.70 temporal confidence floor;
+    the highest accepted posture confidence was only ~0.56. Posture acceptance
+    is already fail-closed at the reviewed 0.10 required-keypoint floor. Align
+    only this temporal gate to that existing evidence boundary and leave
+    persistence/sample/gap limits unchanged for the next measurement.
+    """
+    return TemporalConfig(min_confidence=_POSTURE_CONFIG.min_keypoint_confidence)
 
 
 def _corrected_posture(
@@ -84,13 +98,33 @@ class _TemporalTrace:
         self._run_count = 0
         self.longest_down_run_ms = 0
         self.longest_down_run_samples = 0
+        self._raw_run_start: int | None = None
+        self._raw_run_count = 0
+        self.longest_raw_down_run_ms = 0
+        self.longest_raw_down_run_samples = 0
 
     def observe(self, timestamp_ms: int, posture: str, confidence: float, basis: str) -> None:
         self.postures[posture] += 1
         self.bases[basis] += 1
-        qualified = posture == "down" and confidence >= self.config.min_confidence
         if posture == "down":
             self.down_confidences.append(confidence)
+            if self._raw_run_start is None:
+                self._raw_run_start = timestamp_ms
+                self._raw_run_count = 0
+            self._raw_run_count += 1
+            raw_duration = timestamp_ms - self._raw_run_start
+            if (raw_duration, self._raw_run_count) > (
+                self.longest_raw_down_run_ms,
+                self.longest_raw_down_run_samples,
+            ):
+                self.longest_raw_down_run_ms = raw_duration
+                self.longest_raw_down_run_samples = self._raw_run_count
+        else:
+            self._raw_run_start = None
+            self._raw_run_count = 0
+
+        qualified = posture == "down" and confidence >= self.config.min_confidence
+        if posture == "down":
             if qualified:
                 self.qualified_down_frames += 1
             else:
@@ -122,6 +156,8 @@ class _TemporalTrace:
             "qualified_down_frames": self.qualified_down_frames,
             "low_confidence_down_frames": self.low_confidence_down_frames,
             "down_confidence": _summary(self.down_confidences),
+            "longest_raw_down_run_ms": self.longest_raw_down_run_ms,
+            "longest_raw_down_run_samples": self.longest_raw_down_run_samples,
             "longest_qualified_down_run_ms": self.longest_down_run_ms,
             "longest_qualified_down_run_samples": self.longest_down_run_samples,
             "reset_reason_counts": dict(sorted(self.reset_reasons.items())),
@@ -251,7 +287,7 @@ def run_person_down_e2e_diagnostic(
     artifact_root, samples, config = load_manifest(manifest)
     if config.required_device != "CPU" or len(samples) != 2:
         raise RuntimeError("end-to-end diagnostics require the bounded two-clip CPU seed")
-    cfg = temporal_config or TemporalConfig()
+    cfg = temporal_config or _measured_temporal_config()
     if not isinstance(cfg, TemporalConfig):
         raise ValueError("temporal_config must be a TemporalConfig")
 
@@ -278,7 +314,7 @@ def run_person_down_e2e_diagnostic(
     total_frames = sum(int(item["frames_processed"]) for item in results)
     total_elapsed_ms = sum(float(item["elapsed_ms"]) for item in results)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "diagnostic": "person_down_staged_real_e2e",
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
@@ -287,6 +323,13 @@ def run_person_down_e2e_diagnostic(
         "runtime_version": base_runtime.runtime_version,
         "device": "CPU",
         "temporal_config": asdict(cfg),
+        "temporal_correction": {
+            "baseline_min_confidence": _BASELINE_TEMPORAL_MIN_CONFIDENCE,
+            "measured_min_confidence": cfg.min_confidence,
+            "derived_from": "first_exact_head_all_positive_down_postures_below_baseline_confidence_floor",
+            "other_temporal_thresholds_changed": False,
+            "production_promoted": False,
+        },
         "preparation_elapsed_ms": preparation_elapsed_ms,
         "samples": results,
         "aggregate": asdict(aggregate),
