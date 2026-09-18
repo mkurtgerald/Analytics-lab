@@ -55,6 +55,13 @@ from .video import OpenCVVideoFileSource
 _RUNTIME_PREFIX = "2026.3.1"
 _TRACK_ID = "continuity-track"
 _ROTATIONS = (-1, 1)
+# The first exact-head fragmentation measurement isolated one positive reset as
+# truly diagonal/non-decisive: |horizontal - vertical| ~= 0.00017. In the same
+# evidence run the prone-normal `other` population stayed at least ~0.056 away
+# from the diagonal using its measured horizontal-min / vertical-max envelope.
+# Keep a wide safety margin and convert only this narrow ambiguous geometry to
+# `unknown`, where the existing 750 ms unknown-gap budget still fails closed.
+_DIAGONAL_AMBIGUITY_DELTA = 0.02
 _ASSOCIATION_METRICS = (
     "selection_iou",
     "center_distance_norm",
@@ -96,6 +103,27 @@ def _freeze_windows(windows: dict[str, dict[str, int]]) -> dict[str, dict[str, i
             "coverage": selected / frames if frames else 0.0,
         }
     return frozen
+
+
+def _bounded_posture(item: AssociatedReferencePose | None) -> tuple[str, float, str]:
+    """Turn only measured near-diagonal non-decisive geometry into unknown.
+
+    This does not promote a pose to `down`, does not bridge `upright`, and does
+    not alter the temporal duration/gap rules. It prevents a pose whose torso is
+    essentially 45 degrees from being treated as contradictory evidence when
+    the geometric classifier itself says the orientation is non-decisive.
+    """
+    posture, confidence, basis = _corrected_posture(item)
+    if item is None or posture != "other" or basis != "geometry_not_decisive":
+        return posture, confidence, basis
+    metrics = _pose_metrics(item)
+    horizontal = metrics.get("horizontal_fraction")
+    vertical = metrics.get("vertical_fraction")
+    if horizontal is None or vertical is None:
+        return posture, confidence, basis
+    if abs(float(horizontal) - float(vertical)) <= _DIAGONAL_AMBIGUITY_DELTA:
+        return "unknown", confidence, "diagonal_torso_ambiguous"
+    return posture, confidence, basis
 
 
 class _FragmentationAccumulator:
@@ -296,7 +324,7 @@ def _scan_sample(
 
             if corrected_associated is not None:
                 associated_frames += 1
-            posture, confidence, basis = _corrected_posture(corrected_associated)
+            posture, confidence, basis = _bounded_posture(corrected_associated)
             before_resets = trace.reset_reasons.copy()
             trace.observe(frame.timestamp_ms, posture, confidence, basis)
             reset_delta = trace.reset_reasons - before_resets
@@ -411,7 +439,7 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
     total_frames = sum(int(item["frames_processed"]) for item in results)
     total_elapsed_ms = sum(float(item["elapsed_ms"]) for item in results)
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "diagnostic": "person_down_orientation_fallback",
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
@@ -434,6 +462,15 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
                 "reset_pose_geometry",
             ],
             "changes_inference_or_temporal_behavior": False,
+        },
+        "bounded_posture_correction": {
+            "scope": "geometry_not_decisive_only",
+            "diagonal_orientation_delta": _DIAGONAL_AMBIGUITY_DELTA,
+            "output": "unknown",
+            "down_promotion": False,
+            "upright_bridge": False,
+            "temporal_rules_changed": False,
+            "production_promoted": False,
         },
         "pose_model": "human-pose-estimation-0001",
         "runtime_version": base_runtime.runtime_version,
