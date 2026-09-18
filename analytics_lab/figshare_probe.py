@@ -1,11 +1,10 @@
-"""Live, bounded Figshare archive-structure probe for the reviewed fall-video source.
+"""Live, bounded Figshare archive-index probe for the reviewed fall-video source.
 
-The first live index attempt proved that reviewed metadata and the bounded ZIP
-tail are reachable, but the strict central-directory object rejected the remote
-EOCD values before exposing which ceiling was exceeded.  This probe therefore
-measures only the EOCD descriptor from the same bounded tail.  It deliberately
-does not fetch central-directory bytes or member payloads when deciding whether
-the existing admission ceiling is suitable.
+The source's EOCD was measured first without fetching the central directory.
+This step preserves the existing 2 MiB per-request ceiling and admits only a
+measured aggregate directory envelope (4 MiB / 25,000 entries).  It fetches the
+central directory in at most two exact byte ranges, parses public member
+metadata, and never fetches a member payload.
 """
 from __future__ import annotations
 
@@ -23,6 +22,7 @@ from .figshare_acquisition import (
     bounded_video_members,
     fetch_article_metadata,
     fetch_exact_range,
+    parse_zip_directory,
 )
 
 _MAX_SAMPLE_MEMBERS = 32
@@ -30,6 +30,8 @@ _MAX_GROUPS = 24
 _TAIL_BYTES = 128 * 1024
 _CURRENT_MAX_INDEX_BYTES = 2 * 1024 * 1024
 _CURRENT_MAX_ENTRIES = 10_000
+_PROBE_MAX_INDEX_BYTES = 4 * 1024 * 1024
+_PROBE_MAX_ENTRIES = 25_000
 _EOCD = b"PK\x05\x06"
 
 
@@ -52,6 +54,13 @@ class DirectoryDescriptor:
         return (
             1 <= self.entry_count <= _CURRENT_MAX_ENTRIES
             and 1 <= self.size <= _CURRENT_MAX_INDEX_BYTES
+        )
+
+    @property
+    def within_probe_ceiling(self) -> bool:
+        return (
+            1 <= self.entry_count <= _PROBE_MAX_ENTRIES
+            and 1 <= self.size <= _PROBE_MAX_INDEX_BYTES
         )
 
 
@@ -102,6 +111,47 @@ def fetch_directory_descriptor() -> tuple[FigshareArtifact, DirectoryDescriptor]
     )
 
 
+def directory_ranges(descriptor: DirectoryDescriptor) -> tuple[tuple[int, int], ...]:
+    """Split an admitted central directory into <=2 MiB exact range requests."""
+    if not isinstance(descriptor, DirectoryDescriptor) or not descriptor.within_probe_ceiling:
+        raise ValueError("ZIP directory exceeds measured probe ceiling")
+    ranges: list[tuple[int, int]] = []
+    cursor = descriptor.offset
+    remaining = descriptor.size
+    while remaining:
+        chunk = min(_CURRENT_MAX_INDEX_BYTES, remaining)
+        ranges.append((cursor, cursor + chunk - 1))
+        cursor += chunk
+        remaining -= chunk
+    if not 1 <= len(ranges) <= 2:
+        raise ValueError("bounded central directory requires too many ranges")
+    return tuple(ranges)
+
+
+def fetch_bounded_probe_index() -> tuple[
+    FigshareArtifact,
+    DirectoryDescriptor,
+    tuple[ZipMember, ...],
+    tuple[tuple[int, int], ...],
+]:
+    """Fetch only the measured public ZIP index; never member payloads."""
+    artifact, descriptor = fetch_directory_descriptor()
+    ranges = directory_ranges(descriptor)
+    central = b"".join(
+        fetch_exact_range(
+            artifact.download_url,
+            start,
+            end,
+            total_size=artifact.size_bytes,
+        )
+        for start, end in ranges
+    )
+    if len(central) != descriptor.size:
+        raise RuntimeError("bounded central-directory byte count mismatch")
+    members = parse_zip_directory(central, descriptor)  # descriptor is deliberately duck-typed.
+    return artifact, descriptor, members, ranges
+
+
 def summarize_descriptor(
     artifact: FigshareArtifact,
     descriptor: DirectoryDescriptor,
@@ -122,6 +172,9 @@ def summarize_descriptor(
             "current_entry_ceiling": _CURRENT_MAX_ENTRIES,
             "current_size_ceiling": _CURRENT_MAX_INDEX_BYTES,
             "within_current_admission_ceiling": descriptor.within_current_admission_ceiling,
+            "probe_entry_ceiling": _PROBE_MAX_ENTRIES,
+            "probe_size_ceiling": _PROBE_MAX_INDEX_BYTES,
+            "within_probe_ceiling": descriptor.within_probe_ceiling,
         },
         "central_directory_fetched": False,
         "member_payload_fetched": False,
@@ -134,7 +187,7 @@ def summarize_index(
     *,
     sample_limit: int = _MAX_SAMPLE_MEMBERS,
 ) -> dict[str, Any]:
-    """Return a compact deterministic member summary after a future admitted index fetch."""
+    """Return compact public member metadata without touching member bodies."""
     if type(sample_limit) is not int or not 1 <= sample_limit <= _MAX_SAMPLE_MEMBERS:
         raise ValueError("sample_limit outside bounded summary ceiling")
     if not isinstance(artifact, FigshareArtifact):
@@ -182,11 +235,23 @@ def _github_escape(value: str) -> str:
 
 
 def main() -> int:
-    artifact, descriptor = fetch_directory_descriptor()
-    payload = json.dumps(summarize_descriptor(artifact, descriptor), sort_keys=True, separators=(",", ":"))
-    print("figshare_bounded_descriptor=" + payload)
+    artifact, descriptor, members, ranges = fetch_bounded_probe_index()
+    summary = summarize_index(artifact, members)
+    summary["directory"] = {
+        "entry_count": descriptor.entry_count,
+        "offset": descriptor.offset,
+        "size": descriptor.size,
+        "probe_entry_ceiling": _PROBE_MAX_ENTRIES,
+        "probe_size_ceiling": _PROBE_MAX_INDEX_BYTES,
+        "range_count": len(ranges),
+        "range_sizes": [end - start + 1 for start, end in ranges],
+    }
+    summary["central_directory_fetched"] = True
+    summary["member_payload_fetched"] = False
+    payload = json.dumps(summary, sort_keys=True, separators=(",", ":"))
+    print("figshare_bounded_index=" + payload)
     if os.getenv("GITHUB_ACTIONS") == "true":
-        print("::notice title=Figshare bounded descriptor::" + _github_escape(payload))
+        print("::notice title=Figshare bounded index::" + _github_escape(payload))
     return 0
 
 

@@ -7,6 +7,7 @@ from analytics_lab.figshare_acquisition import FigshareArtifact, ZipMember
 from analytics_lab.figshare_probe import (
     DirectoryDescriptor,
     _github_escape,
+    directory_ranges,
     inspect_directory_descriptor,
     summarize_descriptor,
     summarize_index,
@@ -44,7 +45,23 @@ class FigshareProbeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             summarize_index(self.artifact, tuple(), sample_limit=33)
 
-    def test_descriptor_observes_over_ceiling_without_admitting_it(self):
+    def test_measured_shape_is_outside_old_ceiling_but_inside_probe_ceiling(self):
+        descriptor = DirectoryDescriptor(22_397, 2_526_579_061, 2_941_785)
+        self.assertFalse(descriptor.within_current_admission_ceiling)
+        self.assertTrue(descriptor.within_probe_ceiling)
+        ranges = directory_ranges(descriptor)
+        self.assertEqual(len(ranges), 2)
+        self.assertEqual(ranges[0][1] - ranges[0][0] + 1, 2 * 1024 * 1024)
+        self.assertEqual(sum(end - start + 1 for start, end in ranges), descriptor.size)
+        self.assertEqual(ranges[0][1] + 1, ranges[1][0])
+
+    def test_probe_ceiling_remains_fail_closed(self):
+        with self.assertRaisesRegex(ValueError, "probe ceiling"):
+            directory_ranges(DirectoryDescriptor(25_001, 100, 1))
+        with self.assertRaisesRegex(ValueError, "probe ceiling"):
+            directory_ranges(DirectoryDescriptor(10, 100, 4 * 1024 * 1024 + 1))
+
+    def test_descriptor_observes_over_old_ceiling_without_admitting_member_payload(self):
         archive_size = 4_000_000
         central_size = 3 * 1024 * 1024
         central_offset = 500_000
@@ -69,14 +86,17 @@ class FigshareProbeTests(unittest.TestCase):
         self.assertEqual(descriptor.entry_count, entry_count)
         self.assertEqual(descriptor.size, central_size)
         self.assertFalse(descriptor.within_current_admission_ceiling)
+        self.assertTrue(descriptor.within_probe_ceiling)
         summary = summarize_descriptor(self.artifact, descriptor)
         self.assertFalse(summary["directory"]["within_current_admission_ceiling"])
+        self.assertTrue(summary["directory"]["within_probe_ceiling"])
         self.assertFalse(summary["central_directory_fetched"])
         self.assertFalse(summary["member_payload_fetched"])
 
     def test_descriptor_accepts_observation_inside_current_ceiling(self):
         descriptor = DirectoryDescriptor(2017, 1000, 500_000)
         self.assertTrue(descriptor.within_current_admission_ceiling)
+        self.assertTrue(descriptor.within_probe_ceiling)
 
     def test_descriptor_rejects_zip64_sentinel(self):
         archive_size = 128
