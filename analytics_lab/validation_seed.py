@@ -1,10 +1,12 @@
-"""Prepare the bounded, rights-reviewed GMDCSA-24 real-video validation seed.
+"""Prepare a bounded, rights-reviewed GMDCSA-24 real-video validation subset.
 
-This module is deliberately opt-in and is never invoked by ordinary repository
-CI. It fetches only two pinned GMDCSA-24 clips plus the four already-reviewed
-Open Model Zoo artifacts, verifies exact upstream identities, computes local
-media SHA-256 values, and emits a validation manifest. It does not install
-OpenVINO, retain decoded frames, or make any accuracy claim.
+The accepted Subject-1 seed remains pinned for reproducibility, while the active
+evidence subset is a disjoint Subject-2 positive/hard-negative pair. This module
+is deliberately opt-in and is never invoked by ordinary repository CI. It
+fetches only the active two clips plus the four already-reviewed Open Model Zoo
+artifacts, verifies exact upstream identities, computes local media SHA-256
+values, and emits a validation manifest. It does not install OpenVINO, retain
+decoded frames, or make any accuracy claim.
 """
 from __future__ import annotations
 
@@ -67,7 +69,9 @@ class SeedMediaSpec:
         return _GMD_RAW + quote(self.relative_path, safe="/")
 
 
-GMDCSA24_SEED = (
+# Accepted seed retained verbatim so the first end-to-end staged-real result can
+# always be reproduced without relying on mutable external selection logic.
+GMDCSA24_ACCEPTED_SEED = (
     SeedMediaSpec(
         sample_id="gmdcsa24-s1-fall-05",
         relative_path="Subject 1/Fall/05.mp4",
@@ -86,6 +90,35 @@ GMDCSA24_SEED = (
         end_timestamp_ms=7_000,
     ),
 )
+
+
+# First disjoint held-out rotation: a different subject, with a long side-fall
+# positive and a prone sleeping normal-negative chosen specifically to stress
+# false-alert behavior without increasing the two-clip resource envelope.
+GMDCSA24_HELDOUT_S2 = (
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s2-fall-01",
+        relative_path="Subject 2/Fall/01.mp4",
+        size_bytes=6_472_725,
+        git_blob_sha1="6f308a3873d5768ea81b932d45a521e520368592",
+        end_timestamp_ms=6_000,
+        label_start_timestamp_ms=1_400,
+        label_end_timestamp_ms=6_000,
+        label_id="gmdcsa24-s2-fall-01-labelled-falling",
+    ),
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s2-adl-12",
+        relative_path="Subject 2/ADL/12.mp4",
+        size_bytes=7_791_870,
+        git_blob_sha1="aa83cc15559687e49c40afad920949be7befa61d",
+        end_timestamp_ms=7_000,
+    ),
+)
+
+
+# Keep the active PR-only evidence lane bounded to two clips. The accepted seed
+# above remains separately addressable for exact historical reproduction.
+GMDCSA24_SEED = GMDCSA24_HELDOUT_S2
 
 
 def _ensure_root(root: Path) -> Path:
@@ -238,18 +271,19 @@ def _manifest(identities: dict[str, str]) -> dict[str, Any]:
 
 def _attribution_text() -> str:
     source = require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
+    selected = "; ".join(spec.relative_path for spec in GMDCSA24_SEED)
     return (
         f"{source.title}\n"
         f"Version: {source.version}\n"
         f"License: {source.license_id}\n"
         f"Provenance: {source.provenance_ref}\n"
-        "Selected clips: Subject 1/Fall/05.mp4; Subject 1/ADL/15.mp4\n"
-        "This local evidence seed is for bounded evaluation; media is not committed to Analytics-lab.\n"
+        f"Selected clips: {selected}\n"
+        "This local evidence subset is for bounded evaluation; media is not committed to Analytics-lab.\n"
     )
 
 
 def prepare_seed(output_dir: str | Path, *, opener: Callable[..., Any] = urllib.request.urlopen) -> Path:
-    """Acquire and verify the exact two-clip seed plus reviewed OMZ artifacts."""
+    """Acquire and verify the active two-clip subset plus reviewed OMZ artifacts."""
     root = _ensure_root(Path(output_dir))
     identities = _download_media(root, opener=opener)
     _download_models(root, opener=opener)
