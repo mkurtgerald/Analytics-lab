@@ -62,15 +62,13 @@ The already-reviewed real-world source registry contains:
 
 Public source metadata exposes Figshare article **28596332 version 2** and reviewed file id **52990358**. The source is approximately **2.36 GB** as published, so downloading the monolithic object is outside the existing five-minute / bounded-evidence design and is not authorized merely because the repository is public.
 
-The current implementation work therefore adds a fail-closed acquisition adapter that can:
-1. request only bounded Figshare article JSON metadata;
-2. bind the exact reviewed article/version/file id, title, CC BY 4.0 license metadata, file size, HTTPS download URL and provider-supplied MD5 identity;
-3. require exact HTTP `206` byte-range responses and reject servers that fall back to full-body `200` responses;
-4. inspect only a bounded ZIP tail and central directory (maximum 128 KiB tail and 2 MiB central index);
-5. reject multi-disk, encrypted, ZIP64-sentinel or unsafe-path cases rather than broadening the parser silently; and
-6. identify only archive video members already inside the existing **16 MiB per-item ceiling**, without downloading member payloads.
+PR #46 merged a fail-closed acquisition adapter that can request bounded article metadata, bind the exact reviewed article/version/file/license identity, require exact HTTP `206` ranges, inspect at most a **128 KiB ZIP tail** and **2 MiB central index**, reject unsupported archive structures, and identify only video members inside the existing **16 MiB per-item ceiling** without downloading member payloads.
 
-This change does **not** admit any Figshare video, run inference, train a model, retain media, alter the retained person-down algorithm, change CI resource ceilings, or make a commercial-accuracy claim. Offline unit tests use generated ZIP bytes only and are synthetic acquisition-contract tests, not video-accuracy evidence.
+PR #47 is the sole active implementation/evidence PR. Its first exact head `a46dbf3f4b6b53a8c1722aeab5298771c9b8e9a5` passed policy preflight, all **43 guardrail regressions**, all **234 synthetic tests** with one optional OpenCV skip, and synthetic replay. The live Figshare step then failed deterministically only after the reviewed metadata and bounded ZIP tail had succeeded: the strict `ZipDirectory` constructor reported `ZIP directory exceeds bounded index limits`. Windows was correctly skipped and the final gate failed. No unchanged retry was used, no member payload was fetched, and no central-directory bytes were admitted after that failure.
+
+The current corrective cycle does **not** increase the 2 MiB index ceiling. Instead it measures the classic-ZIP EOCD descriptor—entry count, central-directory offset and central-directory size—from the same bounded 128 KiB tail and reports whether those values fit the existing admission limits. This separates a source-shape/resource mismatch from parser or transport failure before any bound change is considered. The descriptor probe still rejects multi-disk and ZIP64-sentinel cases and never downloads central-directory or media-member bodies.
+
+This work does **not** admit any Figshare video, run inference, train a model, retain media, alter the retained person-down algorithm, change persistence/association/posture thresholds, or make a commercial-accuracy claim.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -97,7 +95,7 @@ This change does **not** admit any Figshare video, run inference, train a model,
 ## Efficiency ledger
 One worker, one acceptance-moving work item, at most one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
 
-Live base for this approach is `main` at `9bb42dfc8841f55717fb445855f5b276cfc6d320`, whose main Analytics quality run #106 completed successfully on attempt 1. At intake there were **0 open implementation PRs** and **0 active runs for the live main head**. The prior stalled GMDCSA rotation is stopped; this is a changed acquisition approach, not a renamed retry.
+Live base remains `main` at `18661bfe25d5e60e961e863684267d8199fc049d`, whose post-PR-#46 Analytics quality run #111 passed on attempt 1. PR #47 is the only open implementation PR. Before its corrective push there are **0 active runs for the current head**, **0 unchanged retries**, **1 CI-triggering push/dispatch already consumed this session**, and **1 session without tested acceptance improvement**. The correction is the second and final CI-triggering push available in this session.
 
 ## Reproduce
 Repository checks:
@@ -116,12 +114,16 @@ python -m analytics_lab.validation_cli --manifest /path/to/private-validation/va
 python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/private-validation/validation-manifest.json --candidate-dir /path/to/private-detector-cache
 ```
 
-The Figshare adapter is intentionally not wired to ordinary CI network access in this change. Its acquisition contract is validated offline first; any live range probe must remain explicitly bounded and reviewed before media admission.
+Figshare bounded descriptor probe (evidence branch only):
+
+```sh
+python -m analytics_lab.figshare_probe
+```
 
 ## Next executable decision
-Run the exact current acquisition-branch head through Linux, Windows and the Analytics quality gate once. If exact-head CI is green, merge this bounded acquisition adapter on the unchanged tested base.
+Run the corrected exact PR #47 head through Linux, Windows and the Analytics quality gate once. Read the aggregate EOCD descriptor from the exact-head log. Do **not** increase the current 2 MiB central-index ceiling in this session.
 
-After merge, the next acceptance-moving step is a small, explicitly bounded live metadata/range probe against the reviewed Figshare article/file identity. If the source supports exact ranges and the archive index can be obtained inside the hard ceilings, pin the smallest disjoint positive/negative member pair with exact provenance/attribution, member size and hashes before downloading those members. If the source ignores ranges, requires ZIP64 beyond the reviewed parser, or does not expose sufficiently small disjoint members, stop that acquisition path rather than downloading the 2.36 GB object.
+If the descriptor fits the existing entry-count and byte ceilings, the following session may fetch and parse the bounded central index and pin the smallest disjoint positive/negative member pair with exact provenance/attribution, member size and cryptographic identity before member download. If the descriptor exceeds the current ceiling, use the measured size/entry count to decide whether a narrowly justified bounded acquisition redesign is worthwhile; if it implies a materially large or unsupported archive path, stop Figshare acquisition rather than downloading the 2.36 GB monolith.
 
 Only after a member pair is admitted should the unchanged retained detector -> orientation recovery -> OpenPose decode -> bounded association -> posture -> temporal evaluator run on it.
 

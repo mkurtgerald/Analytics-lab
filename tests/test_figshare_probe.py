@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import struct
 import unittest
 
 from analytics_lab.figshare_acquisition import FigshareArtifact, ZipMember
-from analytics_lab.figshare_probe import _github_escape, summarize_index
+from analytics_lab.figshare_probe import (
+    DirectoryDescriptor,
+    _github_escape,
+    inspect_directory_descriptor,
+    summarize_descriptor,
+    summarize_index,
+)
 
 
 class FigshareProbeTests(unittest.TestCase):
@@ -11,7 +18,7 @@ class FigshareProbeTests(unittest.TestCase):
         self.artifact = FigshareArtifact(
             file_id=52990358,
             name="VideoDataset.zip",
-            size_bytes=2_000_000,
+            size_bytes=4_000_000,
             download_url="https://figshare.com/ndownloader/files/52990358",
             md5="0123456789abcdef0123456789abcdef",
         )
@@ -36,6 +43,60 @@ class FigshareProbeTests(unittest.TestCase):
     def test_summary_limit_is_hard_bounded(self):
         with self.assertRaises(ValueError):
             summarize_index(self.artifact, tuple(), sample_limit=33)
+
+    def test_descriptor_observes_over_ceiling_without_admitting_it(self):
+        archive_size = 4_000_000
+        central_size = 3 * 1024 * 1024
+        central_offset = 500_000
+        entry_count = 12_000
+        eocd = struct.pack(
+            "<4s4H2LH",
+            b"PK\x05\x06",
+            0,
+            0,
+            entry_count,
+            entry_count,
+            central_size,
+            central_offset,
+            0,
+        )
+        tail_start = archive_size - len(eocd)
+        descriptor = inspect_directory_descriptor(
+            eocd,
+            tail_start=tail_start,
+            archive_size=archive_size,
+        )
+        self.assertEqual(descriptor.entry_count, entry_count)
+        self.assertEqual(descriptor.size, central_size)
+        self.assertFalse(descriptor.within_current_admission_ceiling)
+        summary = summarize_descriptor(self.artifact, descriptor)
+        self.assertFalse(summary["directory"]["within_current_admission_ceiling"])
+        self.assertFalse(summary["central_directory_fetched"])
+        self.assertFalse(summary["member_payload_fetched"])
+
+    def test_descriptor_accepts_observation_inside_current_ceiling(self):
+        descriptor = DirectoryDescriptor(2017, 1000, 500_000)
+        self.assertTrue(descriptor.within_current_admission_ceiling)
+
+    def test_descriptor_rejects_zip64_sentinel(self):
+        archive_size = 128
+        eocd = struct.pack(
+            "<4s4H2LH",
+            b"PK\x05\x06",
+            0,
+            0,
+            0xFFFF,
+            0xFFFF,
+            1,
+            1,
+            0,
+        )
+        with self.assertRaisesRegex(ValueError, "ZIP64"):
+            inspect_directory_descriptor(
+                eocd,
+                tail_start=archive_size - len(eocd),
+                archive_size=archive_size,
+            )
 
     def test_actions_notice_escaping(self):
         self.assertEqual(_github_escape("a%\nb\r"), "a%25%0Ab%0D")
