@@ -67,6 +67,11 @@
           "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"
         },
         {
+          "name": "Bounded Figshare member-admission evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-member-') }}",
+          "run": "set -euo pipefail\npython -m analytics_lab.figshare_member_admission --output-dir \"$RUNNER_TEMP/analytics-figshare\"\n"
+        },
+        {
           "name": "Bounded real-video CPU evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') }}",
           "env": {

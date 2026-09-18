@@ -43,7 +43,7 @@ Do not retry `0005`/`0006`, tune them around Subject 4, lower required-keypoint 
 ## Stalled same-source rotation closed
 PR #45 attempted another file-disjoint GMDCSA-24 robustness pair on Subject 3. Two exact-head runs passed repository guardrails/synthetic regressions but failed deterministically at the `validation_cli` boundary before any real-video evidence was emitted. The single evidence-bound correction did not remove the failure. PR #45 was closed unmerged rather than spending a third session on the same path.
 
-## Current acceptance-moving work — bounded Figshare archive map
+## Current acceptance-moving work — bounded Figshare member admission
 The broader-source path uses the already-reviewed real-world registry entry:
 - source: `figshare-fall-2017-activities`;
 - title: `Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects`;
@@ -53,21 +53,19 @@ The broader-source path uses the already-reviewed real-world registry entry:
 
 PR #46 merged the fail-closed Figshare acquisition adapter. It binds article **28596332 version 2** and file id **52990358**, requires exact HTTP `206` byte ranges, limits article metadata to 512 KiB and ZIP tail reads to 128 KiB, rejects unsupported archive structures, and never downloads member payloads during index inspection.
 
-PR #47 is the sole open implementation/evidence PR. Its first exact head failed deterministically because the published archive exceeded the original **10,000-entry / 2 MiB** central-directory admission ceiling. The corrective exact head `03db110674bfa322dfcdcb3cc713ace4ee38953c` passed Linux, Windows and the Analytics quality gate on attempt 1 and measured the archive without fetching its central directory or any member payload:
-- file: `VideoDataset.zip`;
-- published size: **2,529,520,868 bytes**;
-- provider MD5: `c784167d08f2fa94e3afd36cec758e1f`;
-- classic-ZIP entries: **22,397**;
-- central-directory offset: **2,526,579,061**;
-- central-directory size: **2,941,785 bytes** (~2.81 MiB);
-- `central_directory_fetched=false`;
-- `member_payload_fetched=false`.
+PR #47 merged the measured archive-map boundary into `main` at `8016f6678301542628d18b2439f2fa56411c98ab`. The reviewed `VideoDataset.zip` is **2,529,520,868 bytes**, provider MD5 `c784167d08f2fa94e3afd36cec758e1f`, with **22,397** classic-ZIP entries and a **2,941,785-byte** central directory at offset **2,526,579,061**. The directory was fetched in exactly two requests of **2,097,152 + 844,633 bytes** under the existing 2 MiB per-request ceiling. It parsed **20,324** non-directory members and **2,022** bounded MP4 entries; no member payload was fetched by the index probe.
 
-The measured mismatch is modest enough to justify one narrowly bounded archive-map step without changing the normal acquisition adapter's **2 MiB per-request** limit. The active correction therefore admits only a probe envelope of **25,000 entries / 4 MiB aggregate central-directory bytes**, splits the measured directory into at most **two exact <=2 MiB range requests**, reuses the existing fail-closed central-directory parser, emits only public member metadata, and still downloads **no video member payload**. This is a source-index measurement boundary, not media admission and not a commercial-accuracy claim.
+The smallest clear file-disjoint pair from that public map was pinned before payload admission:
+- negative: `VideoDataset/ADL/SBJ_01_LOC3/ACT25_R_1/20240923130459.mp4`, compressed **277,756**, uncompressed **278,497**, CRC32 `44ac1304`, local-header offset **1,084,380,237**;
+- positive: `VideoDataset/Fall/SBJ_10_LOC3/ACT10_R_2/20240915184434.mp4`, compressed **359,774**, uncompressed **360,498**, CRC32 `41961303`, local-header offset **1,738,471,658**.
 
-If the exact-head live probe parses the directory cleanly, use its smallest bounded video-member summary to identify the smallest genuinely disjoint positive/negative pair. Before any member download, record exact member path, compressed/uncompressed size, CRC32, local-header offset, source/version/license/provenance/attribution and an exact cryptographic identity plan. Keep the existing **16 MiB per-item ceiling**. If the source cannot produce a clearly labeled disjoint pair within the bounded member envelope, stop this acquisition path rather than widening it or downloading the 2.36 GiB monolith.
+PR #48 is the sole implementation/evidence PR. Its first exact-head run #116 at `b0c4cb07f2b4340a57e786b65e9d0b3ed053061c` passed Linux on attempt 1, including all **43 guardrail regressions**, all **244 synthetic tests** with one optional OpenCV skip, synthetic replay, the bounded archive-index probe and the new exact member-admission lane. Windows and the Analytics quality gate also passed on attempt 1.
 
-Only after a member pair is admitted should the unchanged retained detector -> orientation recovery -> OpenPose decode -> bounded association -> posture -> temporal evaluator run on it.
+The live member-admission step fetched only exact local-header/name/payload ranges for the two pinned deflate members, verified central/local ZIP identity relationships, declared size, CRC32 and the existing 16 MiB item ceiling, computed SHA-256 over the uncompressed video bytes, and wrote only to ephemeral runner storage. Exact admitted identities are:
+- negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`;
+- positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`.
+
+No media is committed or uploaded, and this admission is **not** accuracy evidence. The person detector, orientation recovery, OpenPose 0001, association, posture logic, **3000 ms** persistence and **750 ms** unknown-gap budget remain unchanged. A directory name such as `Fall` is sufficient to select a source-positive clip but is not by itself permission to invent frame-level event timing. Before the temporal evaluator can score this pair, the next boundary must establish decoded duration/timestamps and a defensible label interval or source annotation mapping without tuning the analytic around these clips.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -81,7 +79,8 @@ Only after a member pair is admitted should the unchanged retained detector -> o
 - reviewed source id `figshare-fall-2017-activities`;
 - reviewed license `CC-BY-4.0`;
 - reviewed provenance `figshare:28596332:version-2`;
-- exact media members are **not admitted yet**.
+- exact ephemeral media identities admitted by PR #48: negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`, positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`;
+- media remains outside public GitHub and has not yet been used as labeled accuracy evidence.
 
 ### Runtime/model provenance
 - Open Model Zoo commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0;
@@ -94,7 +93,7 @@ Only after a member pair is admitted should the unchanged retained detector -> o
 ## Efficiency ledger
 One worker, one acceptance-moving work item, at most one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
 
-Live base is `main` at `18661bfe25d5e60e961e863684267d8199fc049d`. PR #47 is the only open implementation PR. At this session's intake its exact head `03db110674bfa322dfcdcb3cc713ace4ee38953c` had completed Analytics quality run #113 successfully, with **0 active runs for the head**, **0 unchanged retries in this session**, **0 CI-triggering pushes/dispatches in this session**, and **1 prior session without tested acceptance improvement**. The archive-map correction is one coherent implementation push, not a duplicate lane.
+Live base at this work item's intake is `main` at `8016f6678301542628d18b2439f2fa56411c98ab`. PR #48 is the only open implementation PR. Its pre-state-update exact head `b0c4cb07f2b4340a57e786b65e9d0b3ed053061c` completed Analytics quality run #116 successfully on attempt 1, with **0 active runs after completion**, **0 unchanged retries**, and **1 CI-triggering PR dispatch in this session**. This state-binding change accompanies the substantive member-admission implementation and live evidence; it is the **second and final CI-triggering mutation permitted in this session**. No further push or retry is allowed this session if the resulting exact-head run fails.
 
 ## Reproduce
 Repository checks:
@@ -113,14 +112,15 @@ python -m analytics_lab.validation_cli --manifest /path/to/private-validation/va
 python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/private-validation/validation-manifest.json --candidate-dir /path/to/private-detector-cache
 ```
 
-Figshare bounded index probe (evidence branch only):
+Figshare bounded index probe and exact member admission (evidence branch only):
 
 ```sh
 python -m analytics_lab.figshare_probe
+python -m analytics_lab.figshare_member_admission --output-dir /path/to/ephemeral-output
 ```
 
 ## Next executable decision
-Run the new exact PR #47 head through Linux, Windows and the Analytics quality gate once. If the bounded live index step passes, inspect only its aggregate/public member-map evidence and select the smallest clearly labeled disjoint positive/negative candidate pair before any payload admission. If the index parser fails deterministically, preserve that failure and diagnose the exact archive-record cause; do not broaden the 25,000-entry / 4 MiB aggregate probe envelope in the same cycle.
+Run the resulting exact PR #48 head through Linux, Windows and the Analytics quality gate once. If all required checks are green on the unchanged base, merge the bounded member-admission boundary. The next work item is not threshold tuning: establish exact decoded timing plus defensible positive-label timing/source annotation for the admitted pair, then run the unchanged retained detector -> orientation recovery -> OpenPose 0001 -> bounded association -> posture -> temporal evaluator path on CPU. If label timing cannot be established from source documentation or a reproducible annotation protocol, treat this pair as qualitative/diagnostic media only rather than inventing accuracy ground truth.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across genuinely different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and miss measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
