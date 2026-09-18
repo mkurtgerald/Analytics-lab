@@ -14,6 +14,7 @@ model family, alter production defaults, retain media, or infer injury/cause.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -33,12 +34,19 @@ from .detector_thresholds import (
     _target_candidate,
 )
 from .evaluation import EvaluationSample, aggregate_person_down_evaluations, evaluate_person_down_candidates
-from .openpose_association_diagnostics import _bounded_fallback, _decoded_candidates
+from .openpose_association_diagnostics import (
+    _bounded_fallback,
+    _candidate_metrics,
+    _decoded_candidates,
+    _nearest_candidate,
+    _summary,
+)
 from .openpose_diagnostics import _ReferenceRuntime, _pixel_bbox
-from .openpose_pose_geometry import select_reference_pose
+from .openpose_pose_geometry import AssociatedReferencePose, select_reference_pose
 from .openpose_reference import ReferenceOpenPoseDecoder
 from .openvino_omz import _OpenVINORuntime
 from .person_down_e2e_diagnostics import _TemporalTrace, _corrected_posture, _measured_temporal_config
+from .posture_quality_diagnostics import _pose_metrics
 from .temporal import Observation, PersonDownEngine
 from .validation import ValidationSampleSpec
 from .validation_cli import load_manifest
@@ -47,6 +55,29 @@ from .video import OpenCVVideoFileSource
 _RUNTIME_PREFIX = "2026.3.1"
 _TRACK_ID = "continuity-track"
 _ROTATIONS = (-1, 1)
+# The first exact-head fragmentation measurement isolated one positive reset as
+# truly diagonal/non-decisive: |horizontal - vertical| ~= 0.00017. In the same
+# evidence run the prone-normal `other` population stayed at least ~0.056 away
+# from the diagonal using its measured horizontal-min / vertical-max envelope.
+# Keep a wide safety margin and convert only this narrow ambiguous geometry to
+# `unknown`, where the existing 750 ms unknown-gap budget still fails closed.
+_DIAGONAL_AMBIGUITY_DELTA = 0.02
+_ASSOCIATION_METRICS = (
+    "selection_iou",
+    "center_distance_norm",
+    "edge_gap_norm",
+    "pose_width_ratio",
+    "pose_height_ratio",
+    "pose_area_ratio",
+)
+_POSTURE_METRICS = (
+    "min_required_confidence",
+    "torso_fraction",
+    "vertical_fraction",
+    "horizontal_fraction",
+    "width_over_height",
+    "height_over_width",
+)
 
 
 def _window_name(sample: ValidationSampleSpec, timestamp_ms: int) -> str:
@@ -72,6 +103,111 @@ def _freeze_windows(windows: dict[str, dict[str, int]]) -> dict[str, dict[str, i
             "coverage": selected / frames if frames else 0.0,
         }
     return frozen
+
+
+def _bounded_posture(item: AssociatedReferencePose | None) -> tuple[str, float, str]:
+    """Turn only measured near-diagonal non-decisive geometry into unknown.
+
+    This does not promote a pose to `down`, does not bridge `upright`, and does
+    not alter the temporal duration/gap rules. It prevents a pose whose torso is
+    essentially 45 degrees from being treated as contradictory evidence when
+    the geometric classifier itself says the orientation is non-decisive.
+    """
+    posture, confidence, basis = _corrected_posture(item)
+    if item is None or posture != "other" or basis != "geometry_not_decisive":
+        return posture, confidence, basis
+    metrics = _pose_metrics(item)
+    horizontal = metrics.get("horizontal_fraction")
+    vertical = metrics.get("vertical_fraction")
+    if horizontal is None or vertical is None:
+        return posture, confidence, basis
+    if abs(float(horizontal) - float(vertical)) <= _DIAGONAL_AMBIGUITY_DELTA:
+        return "unknown", confidence, "diagonal_torso_ambiguous"
+    return posture, confidence, basis
+
+
+class _FragmentationAccumulator:
+    """Aggregate association/posture causes without retaining frame-level data."""
+
+    def __init__(self) -> None:
+        self.frames = 0
+        self.association_reasons: Counter[str] = Counter()
+        self.postures: Counter[str] = Counter()
+        self.posture_bases: Counter[str] = Counter()
+        self.unmatched_required_points: Counter[int] = Counter()
+        self.unmatched_association_metrics: dict[str, list[float]] = {
+            name: [] for name in _ASSOCIATION_METRICS
+        }
+        self.reset_reasons: Counter[str] = Counter()
+        self.reset_bases: Counter[str] = Counter()
+        self.reset_association_reasons: Counter[str] = Counter()
+        self.reset_required_points: Counter[int] = Counter()
+        self.reset_posture_metrics: dict[str, list[float]] = {
+            name: [] for name in _POSTURE_METRICS
+        }
+
+    def add(
+        self,
+        *,
+        association_reason: str,
+        posture: str,
+        basis: str,
+        associated: AssociatedReferencePose | None,
+        nearest: tuple[AssociatedReferencePose, dict[str, float | int]] | None,
+        reset_reason: str | None,
+    ) -> None:
+        self.frames += 1
+        self.association_reasons[association_reason] += 1
+        self.postures[posture] += 1
+        self.posture_bases[basis] += 1
+        if associated is None and nearest is not None:
+            item, metrics = nearest
+            self.unmatched_required_points[item.required_points] += 1
+            for name in _ASSOCIATION_METRICS:
+                value = metrics.get(name)
+                if value is not None:
+                    self.unmatched_association_metrics[name].append(float(value))
+        if reset_reason is None:
+            return
+        self.reset_reasons[reset_reason] += 1
+        self.reset_bases[basis] += 1
+        self.reset_association_reasons[association_reason] += 1
+        if associated is None:
+            return
+        self.reset_required_points[associated.required_points] += 1
+        metrics = _pose_metrics(associated)
+        for name in _POSTURE_METRICS:
+            value = metrics.get(name)
+            if value is not None:
+                self.reset_posture_metrics[name].append(float(value))
+
+    def freeze(self) -> dict[str, Any]:
+        return {
+            "frames": self.frames,
+            "association_reason_counts": dict(sorted(self.association_reasons.items())),
+            "posture_counts": dict(sorted(self.postures.items())),
+            "posture_basis_counts": dict(sorted(self.posture_bases.items())),
+            "unmatched_nearest_required_points_histogram": {
+                str(key): value for key, value in sorted(self.unmatched_required_points.items())
+            },
+            "unmatched_nearest_association_metrics": {
+                name: _summary(values)
+                for name, values in self.unmatched_association_metrics.items()
+            },
+            "decisive_resets": {
+                "count": sum(self.reset_reasons.values()),
+                "reason_counts": dict(sorted(self.reset_reasons.items())),
+                "posture_basis_counts": dict(sorted(self.reset_bases.items())),
+                "association_reason_counts": dict(sorted(self.reset_association_reasons.items())),
+                "required_points_histogram": {
+                    str(key): value for key, value in sorted(self.reset_required_points.items())
+                },
+                "pose_metrics": {
+                    name: _summary(values)
+                    for name, values in self.reset_posture_metrics.items()
+                },
+            },
+        }
 
 
 def _scan_sample(
@@ -102,6 +238,7 @@ def _scan_sample(
     first_timestamp_ms: int | None = None
     last_timestamp_ms: int | None = None
     windows: dict[str, dict[str, int]] = {}
+    fragmentation: dict[str, _FragmentationAccumulator] = {}
     started_sample = time.perf_counter()
 
     with OpenCVVideoFileSource(path, start_timestamp_ms=sample.start_timestamp_ms) as frames:
@@ -152,9 +289,13 @@ def _scan_sample(
                     row["fallback_selected_frames"] += 1
 
             corrected_associated = None
+            nearest = None
+            association_reason = "no_selected_detection"
             if selected is not None:
                 bbox = _pixel_bbox(selected, frame.image)
-                if bbox is not None:
+                if bbox is None:
+                    association_reason = "invalid_selection_bbox"
+                else:
                     started = time.perf_counter()
                     heatmaps, pafs, resized_width, resized_height = runtime.infer(frame.image)
                     pose_inference_ms += (time.perf_counter() - started) * 1000.0
@@ -169,15 +310,37 @@ def _scan_sample(
                         resized_height=resized_height,
                     )
                     corrected_associated = select_reference_pose(poses, scores, **kwargs)
-                    if corrected_associated is None:
+                    if corrected_associated is not None:
+                        association_reason = "baseline_overlap"
+                        nearest = (
+                            corrected_associated,
+                            _candidate_metrics(corrected_associated, bbox),
+                        )
+                    else:
                         decoded = _decoded_candidates(poses, scores, **kwargs)
-                        corrected_associated, _reason, _count = _bounded_fallback(decoded, bbox)
+                        nearest = _nearest_candidate(decoded, bbox)
+                        corrected_associated, association_reason, _count = _bounded_fallback(decoded, bbox)
                     pose_decode_ms += (time.perf_counter() - started) * 1000.0
 
             if corrected_associated is not None:
                 associated_frames += 1
-            posture, confidence, basis = _corrected_posture(corrected_associated)
+            posture, confidence, basis = _bounded_posture(corrected_associated)
+            before_resets = trace.reset_reasons.copy()
             trace.observe(frame.timestamp_ms, posture, confidence, basis)
+            reset_delta = trace.reset_reasons - before_resets
+            if sum(reset_delta.values()) > 1:
+                raise RuntimeError("one observation produced multiple temporal reset reasons")
+            reset_reason = next(iter(reset_delta), None)
+            targets = ("overall",) if window == "overall" else ("overall", window)
+            for name in targets:
+                fragmentation.setdefault(name, _FragmentationAccumulator()).add(
+                    association_reason=association_reason,
+                    posture=posture,
+                    basis=basis,
+                    associated=corrected_associated,
+                    nearest=nearest,
+                    reset_reason=reset_reason,
+                )
             events.extend(engine.observe(Observation(
                 timestamp_ms=frame.timestamp_ms,
                 track_id=_TRACK_ID,
@@ -227,6 +390,10 @@ def _scan_sample(
             "detector_inference_ms": fallback_detector_ms,
         },
         "temporal_trace": trace.freeze(),
+        "fragmentation_windows": {
+            name: accumulator.freeze()
+            for name, accumulator in sorted(fragmentation.items())
+        },
         "detector_inference_ms": detector_ms,
         "pose_inference_ms": pose_inference_ms,
         "pose_decode_ms": pose_decode_ms,
@@ -272,7 +439,7 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
     total_frames = sum(int(item["frames_processed"]) for item in results)
     total_elapsed_ms = sum(float(item["elapsed_ms"]) for item in results)
     return {
-        "schema_version": 1,
+        "schema_version": 3,
         "diagnostic": "person_down_orientation_fallback",
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
@@ -282,6 +449,27 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
             "same_detector_and_weights": True,
             "primary_miss_only": True,
             "requires_prior_spatial_link": True,
+            "production_promoted": False,
+        },
+        "fragmentation_diagnostic": {
+            "aggregate_only": True,
+            "frame_timestamps_retained": False,
+            "measures": [
+                "association_reason_counts",
+                "unmatched_nearest_association_geometry",
+                "posture_basis_counts",
+                "temporal_reset_reason_counts",
+                "reset_pose_geometry",
+            ],
+            "changes_inference_or_temporal_behavior": False,
+        },
+        "bounded_posture_correction": {
+            "scope": "geometry_not_decisive_only",
+            "diagonal_orientation_delta": _DIAGONAL_AMBIGUITY_DELTA,
+            "output": "unknown",
+            "down_promotion": False,
+            "upright_bridge": False,
+            "temporal_rules_changed": False,
             "production_promoted": False,
         },
         "pose_model": "human-pose-estimation-0001",
