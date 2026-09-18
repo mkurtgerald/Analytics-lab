@@ -24,6 +24,7 @@ from .figshare_acquisition import (
     fetch_exact_range,
     parse_zip_directory,
 )
+from .figshare_generalization import select_next_generalization_pair
 
 _MAX_SAMPLE_MEMBERS = 32
 _MAX_GROUPS = 24
@@ -186,10 +187,13 @@ def summarize_index(
     members: tuple[ZipMember, ...],
     *,
     sample_limit: int = _MAX_SAMPLE_MEMBERS,
+    include_generalization_pair: bool = False,
 ) -> dict[str, Any]:
     """Return compact public member metadata without touching member bodies."""
     if type(sample_limit) is not int or not 1 <= sample_limit <= _MAX_SAMPLE_MEMBERS:
         raise ValueError("sample_limit outside bounded summary ceiling")
+    if type(include_generalization_pair) is not bool:
+        raise TypeError("include_generalization_pair must be bool")
     if not isinstance(artifact, FigshareArtifact):
         raise TypeError("artifact must be FigshareArtifact")
     if not isinstance(members, tuple) or not all(isinstance(item, ZipMember) for item in members):
@@ -202,7 +206,7 @@ def summarize_index(
         for item in videos
     )
     sample = sorted(videos, key=lambda item: (item.uncompressed_size, item.name))[:sample_limit]
-    return {
+    summary: dict[str, Any] = {
         "artifact": {
             "file_id": artifact.file_id,
             "name": artifact.name,
@@ -228,6 +232,9 @@ def summarize_index(
             for item in sample
         ],
     }
+    if include_generalization_pair:
+        summary["next_generalization_pair"] = select_next_generalization_pair(members)
+    return summary
 
 
 def _github_escape(value: str) -> str:
@@ -236,7 +243,7 @@ def _github_escape(value: str) -> str:
 
 def main() -> int:
     artifact, descriptor, members, ranges = fetch_bounded_probe_index()
-    summary = summarize_index(artifact, members)
+    summary = summarize_index(artifact, members, include_generalization_pair=True)
     summary["directory"] = {
         "entry_count": descriptor.entry_count,
         "offset": descriptor.offset,
