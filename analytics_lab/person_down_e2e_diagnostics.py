@@ -47,19 +47,25 @@ from .video import OpenCVVideoFileSource
 _RUNTIME_PREFIX = "2026.3.1"
 _TRACK_ID = "continuity-track"
 _BASELINE_TEMPORAL_MIN_CONFIDENCE = TemporalConfig().min_confidence
+_PRIOR_MEASURED_TEMPORAL_CONFIG = TemporalConfig(
+    min_confidence=_POSTURE_CONFIG.min_keypoint_confidence,
+)
 
 
 def _measured_temporal_config() -> TemporalConfig:
-    """Apply the one measured temporal correction without changing other defaults.
+    """Apply one bounded persistence correction to the prior measured config.
 
-    The first exact-head staged-real run produced 85 positive `down` frames, but
-    every one was rejected by the historical 0.70 temporal confidence floor;
-    the highest accepted posture confidence was only ~0.56. Posture acceptance
-    is already fail-closed at the reviewed 0.10 required-keypoint floor. Align
-    only this temporal gate to that existing evidence boundary and leave
-    persistence/sample/gap limits unchanged for the next measurement.
+    The accepted confidence correction produced 85 qualifying positive `down`
+    frames, but the longest uninterrupted run was only 464 ms / 15 frames.
+    Measured reset causes were dominated by `unknown` posture interruptions,
+    while `upright` and `other` remain conflicting evidence. Bridge only an
+    `unknown` span bounded by the existing 750 ms inter-observation gap budget;
+    keep duration, sample count, confidence, TTL and capacity unchanged.
     """
-    return TemporalConfig(min_confidence=_POSTURE_CONFIG.min_keypoint_confidence)
+    return TemporalConfig(
+        min_confidence=_PRIOR_MEASURED_TEMPORAL_CONFIG.min_confidence,
+        max_unknown_gap_ms=_PRIOR_MEASURED_TEMPORAL_CONFIG.max_gap_ms,
+    )
 
 
 def _corrected_posture(
@@ -93,15 +99,25 @@ class _TemporalTrace:
         self.down_confidences: list[float] = []
         self.qualified_down_frames = 0
         self.low_confidence_down_frames = 0
+        self.bridged_unknown_frames = 0
+        self.longest_bridged_unknown_gap_ms = 0
         self.reset_reasons: Counter[str] = Counter()
         self._run_start: int | None = None
         self._run_count = 0
+        self._last_qualified_down_ms: int | None = None
+        self._unknown_since_down = False
         self.longest_down_run_ms = 0
         self.longest_down_run_samples = 0
         self._raw_run_start: int | None = None
         self._raw_run_count = 0
         self.longest_raw_down_run_ms = 0
         self.longest_raw_down_run_samples = 0
+
+    def _reset_qualified_run(self) -> None:
+        self._run_start = None
+        self._run_count = 0
+        self._last_qualified_down_ms = None
+        self._unknown_since_down = False
 
     def observe(self, timestamp_ms: int, posture: str, confidence: float, basis: str) -> None:
         self.postures[posture] += 1
@@ -129,16 +145,42 @@ class _TemporalTrace:
                 self.qualified_down_frames += 1
             else:
                 self.low_confidence_down_frames += 1
+
         if qualified:
+            if (
+                self._unknown_since_down
+                and self._last_qualified_down_ms is not None
+                and timestamp_ms - self._last_qualified_down_ms > self.config.max_unknown_gap_ms
+            ):
+                self.reset_reasons["unknown_gap_exceeded"] += 1
+                self._reset_qualified_run()
             if self._run_start is None:
                 self._run_start = timestamp_ms
                 self._run_count = 0
             self._run_count += 1
+            self._last_qualified_down_ms = timestamp_ms
+            self._unknown_since_down = False
             duration = timestamp_ms - self._run_start
             if (duration, self._run_count) > (self.longest_down_run_ms, self.longest_down_run_samples):
                 self.longest_down_run_ms = duration
                 self.longest_down_run_samples = self._run_count
             return
+
+        if (
+            posture == "unknown"
+            and self.config.max_unknown_gap_ms > 0
+            and self._run_count
+            and self._last_qualified_down_ms is not None
+            and timestamp_ms - self._last_qualified_down_ms <= self.config.max_unknown_gap_ms
+        ):
+            self.bridged_unknown_frames += 1
+            self.longest_bridged_unknown_gap_ms = max(
+                self.longest_bridged_unknown_gap_ms,
+                timestamp_ms - self._last_qualified_down_ms,
+            )
+            self._unknown_since_down = True
+            return
+
         if self._run_count:
             reason = (
                 "down_confidence_below_threshold"
@@ -146,8 +188,7 @@ class _TemporalTrace:
                 else f"posture_{posture}"
             )
             self.reset_reasons[reason] += 1
-        self._run_start = None
-        self._run_count = 0
+        self._reset_qualified_run()
 
     def freeze(self) -> dict[str, Any]:
         return {
@@ -155,6 +196,8 @@ class _TemporalTrace:
             "basis_counts": dict(sorted(self.bases.items())),
             "qualified_down_frames": self.qualified_down_frames,
             "low_confidence_down_frames": self.low_confidence_down_frames,
+            "bridged_unknown_frames": self.bridged_unknown_frames,
+            "longest_bridged_unknown_gap_ms": self.longest_bridged_unknown_gap_ms,
             "down_confidence": _summary(self.down_confidences),
             "longest_raw_down_run_ms": self.longest_raw_down_run_ms,
             "longest_raw_down_run_samples": self.longest_raw_down_run_samples,
@@ -314,7 +357,7 @@ def run_person_down_e2e_diagnostic(
     total_frames = sum(int(item["frames_processed"]) for item in results)
     total_elapsed_ms = sum(float(item["elapsed_ms"]) for item in results)
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "diagnostic": "person_down_staged_real_e2e",
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
@@ -325,9 +368,13 @@ def run_person_down_e2e_diagnostic(
         "temporal_config": asdict(cfg),
         "temporal_correction": {
             "baseline_min_confidence": _BASELINE_TEMPORAL_MIN_CONFIDENCE,
+            "prior_measured_min_confidence": _PRIOR_MEASURED_TEMPORAL_CONFIG.min_confidence,
             "measured_min_confidence": cfg.min_confidence,
-            "derived_from": "first_exact_head_all_positive_down_postures_below_baseline_confidence_floor",
-            "other_temporal_thresholds_changed": False,
+            "prior_max_unknown_gap_ms": _PRIOR_MEASURED_TEMPORAL_CONFIG.max_unknown_gap_ms,
+            "measured_max_unknown_gap_ms": cfg.max_unknown_gap_ms,
+            "derived_from": "qualified_down_persistence_fragmented_by_measured_unknown_posture_breaks",
+            "upright_or_other_bridge_allowed": False,
+            "low_confidence_down_bridge_allowed": False,
             "production_promoted": False,
         },
         "preparation_elapsed_ms": preparation_elapsed_ms,

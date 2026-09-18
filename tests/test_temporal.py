@@ -37,6 +37,34 @@ class TemporalTests(unittest.TestCase):
         self.assertEqual(self.feed(engine, range(3500, 6500, 500)), [])
         self.assertEqual(len(self.feed(engine, [6500])), 1)
 
+    def test_bounded_unknown_gap_can_bridge_when_explicitly_enabled(self):
+        engine = self.engine(max_unknown_gap_ms=750)
+        self.feed(engine, [0, 500, 1000, 1500])
+        self.feed(engine, [2000], "unknown")
+        self.assertEqual(self.feed(engine, [2250]), [])
+        event = self.feed(engine, [3000])
+        self.assertEqual(len(event), 1)
+        self.assertEqual(event[0]["metadata"]["thresholds"]["max_unknown_gap_ms"], 750)
+        self.assertEqual(event[0]["observations"][0]["sample_count"], 6)
+
+    def test_unknown_gap_beyond_bound_resets_even_with_intermediate_unknowns(self):
+        engine = self.engine(down_duration_ms=1000, max_gap_ms=750, max_unknown_gap_ms=750)
+        self.feed(engine, [0, 250, 500])
+        self.feed(engine, [750], "unknown")
+        self.feed(engine, [1000], "unknown")
+        self.feed(engine, [1250], "unknown")
+        self.assertEqual(self.feed(engine, [1500]), [])
+        self.assertEqual(self.feed(engine, [1750, 2000]), [])
+        self.assertEqual(len(self.feed(engine, [2500])), 1)
+
+    def test_upright_still_breaks_unknown_tolerant_run(self):
+        engine = self.engine(down_duration_ms=1000, max_unknown_gap_ms=750)
+        self.feed(engine, [0, 250, 500])
+        self.feed(engine, [750], "unknown")
+        self.feed(engine, [1000], "upright")
+        self.assertEqual(self.feed(engine, [1250, 1500, 1750, 2000]), [])
+        self.assertEqual(len(self.feed(engine, [2250])), 1)
+
     def test_low_confidence_interrupts_continuity(self):
         engine = self.engine()
         self.feed(engine, range(0, 3000, 500))
@@ -139,7 +167,9 @@ class TemporalTests(unittest.TestCase):
 
     def test_invalid_config_is_rejected(self):
         for kwargs in ({"min_samples": 1}, {"max_tracks": 0}, {"down_duration_ms": 0},
-                       {"max_gap_ms": -1}, {"track_ttl_ms": 750}, {"min_confidence": float("nan")}):
+                       {"max_gap_ms": -1}, {"max_unknown_gap_ms": -1},
+                       {"max_unknown_gap_ms": 751}, {"track_ttl_ms": 750},
+                       {"min_confidence": float("nan")}):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 Config(**kwargs)
 
