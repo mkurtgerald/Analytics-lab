@@ -124,6 +124,9 @@ def run_figshare_person_down_diagnostic(
     admitted = admit_pinned_pair(root / "media", opener=opener)
     if len(admitted) != 2 or {item.role for item in admitted} != {"negative", "positive"}:
         raise RuntimeError("Figshare diagnostic requires the exact admitted pair")
+    # Bind every admitted media identity before spending runner time on model
+    # provisioning. A changed payload must fail closed at the source boundary.
+    specs = {item.role: _sample_spec(item) for item in admitted}
 
     artifact_root = _download_models(root / "models", opener=opener)
     candidate = _target_candidate()
@@ -143,7 +146,7 @@ def run_figshare_person_down_diagnostic(
     total_frames = 0
     total_elapsed_ms = 0.0
     for item in admitted:
-        spec = _sample_spec(item)
+        spec = specs[item.role]
         measured, _ = _scan_sample(spec, detector, runtime, decoder)
         total_frames += int(measured["frames_processed"])
         total_elapsed_ms += float(measured["elapsed_ms"])
