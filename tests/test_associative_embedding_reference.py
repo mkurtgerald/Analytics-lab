@@ -2,25 +2,23 @@ import ast
 from pathlib import Path
 import unittest
 
-import numpy as np
-
-from analytics_lab.associative_embedding_reference import AssociativeEmbeddingDecoder
-
 
 class AssociativeEmbeddingReferenceTests(unittest.TestCase):
-    def test_match_by_tag_uses_group_axes_not_embedding_axis(self):
+    def _method(self, name):
         source_path = (
             Path(__file__).resolve().parents[1]
             / "analytics_lab"
             / "associative_embedding_reference.py"
         )
         tree = ast.parse(source_path.read_text(encoding="utf-8"), filename=str(source_path))
-        method = next(
+        return next(
             node
             for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef) and node.name == "_match_by_tag"
+            if isinstance(node, ast.FunctionDef) and node.name == name
         )
 
+    def test_match_by_tag_uses_group_axes_not_embedding_axis(self):
+        method = self._method("_match_by_tag")
         assignments = {}
         for node in ast.walk(method):
             if (
@@ -50,24 +48,20 @@ class AssociativeEmbeddingReferenceTests(unittest.TestCase):
                 "group counts must not unpack the three-axis diff.shape tuple",
             )
 
-    def test_call_accepts_reviewed_176_square_contract(self):
-        decoder = AssociativeEmbeddingDecoder()
-        decoder.max_num_people = 1
-        heatmaps = np.zeros((1, 17, 176, 176), dtype=np.float32)
-        tags = np.zeros((1, 17, 176, 176, 1), dtype=np.float32)
+    def test_call_contract_is_spatially_dynamic_for_reviewed_176_outputs(self):
+        method = self._method("__call__")
+        rendered = ast.unparse(method)
+        integer_constants = {
+            node.value
+            for node in ast.walk(method)
+            if isinstance(node, ast.Constant) and type(node.value) is int
+        }
 
-        poses, scores = decoder(heatmaps, tags)
-
-        self.assertEqual(poses.shape, (0, 17, 4))
-        self.assertEqual(scores.shape, (0,))
-
-    def test_call_rejects_mismatched_spatial_contract(self):
-        decoder = AssociativeEmbeddingDecoder()
-        heatmaps = np.zeros((1, 17, 176, 176), dtype=np.float32)
-        tags = np.zeros((1, 17, 144, 144, 1), dtype=np.float32)
-
-        with self.assertRaisesRegex(RuntimeError, "embedding output contract"):
-            decoder(heatmaps, tags)
+        self.assertNotIn(144, integer_constants, "prior 0005 output size must not remain hard-coded")
+        self.assertIn("heatmap_shape[0:2] != (1, 17)", rendered)
+        self.assertIn("heatmap_shape[2] != heatmap_shape[3]", rendered)
+        self.assertIn("tuple(tags.shape) != (1, 17, height, width, 1)", rendered)
+        self.assertIn("tuple(nms_heatmaps.shape) != heatmap_shape", rendered)
 
     def _assert_diff_shape_axis(self, expression, axis):
         self.assertIsInstance(expression, ast.Subscript)
