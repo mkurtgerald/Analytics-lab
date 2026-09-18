@@ -92,7 +92,7 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertEqual(document["samples"][0]["end_timestamp_ms"], 7000)
         self.assertEqual(document["samples"][1]["end_timestamp_ms"], 8000)
         self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 1800)
-        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 7000)
+        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 6500)
         self.assertEqual(document["samples"][0]["sample_id"], "gmdcsa24-s3-fall-16")
         self.assertEqual(document["samples"][1]["sample_id"], "gmdcsa24-s3-adl-06")
         self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
