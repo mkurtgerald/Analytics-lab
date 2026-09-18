@@ -103,7 +103,10 @@ class AssociativeEmbeddingDecoder:
                 diff_normed[close] *= dists[close]
             if self.use_detection_val:
                 diff_normed = np.round(diff_normed) * 100 - joints[:, 2:3]
-            num_added, num_grouped = diff.shape
+            # `diff` retains the embedding dimension: (new, grouped, tag_size).
+            # Match the pinned OMZ implementation by taking only its first two axes.
+            num_added = diff.shape[0]
+            num_grouped = diff.shape[1]
             if num_added > num_grouped:
                 diff_normed = np.pad(
                     diff_normed,
