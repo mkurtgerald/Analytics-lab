@@ -44,13 +44,12 @@ _ACTIVITY_REFERENCE = {
     "doi": "10.30970/eli.33.12",
     "license_id": "CC-BY-4.0",
 }
-# Filled after the first exact bounded admission run. Until then, the exact
-# archive path/size/CRC/offset identity is already fail-closed and the computed
-# digest is emitted as evidence; a follow-up changed head pins these digests
-# before merge.
-_EXPECTED_SHA256: dict[str, str | None] = {
-    "negative": None,
-    "positive": None,
+# Exact uncompressed-media digests measured by the first bounded PR #51 run
+# after the archive path/size/CRC/offset identities had already been pinned.
+# Every later diagnostic fails closed on a changed payload before model setup.
+_EXPECTED_SHA256: dict[str, str] = {
+    "negative": "1f9b3f44b67576c93a61921311830286b4a9eebe45277b90d0c9eb2625fa2a24",
+    "positive": "a54f715f3ad7d8fc2fe64390842f2c5c16ee03ace2e70f6a785cbeef6ff5f54c",
 }
 _ACTIVITY = {
     "negative": {
@@ -81,8 +80,7 @@ def _sample_spec(item) -> ValidationSampleSpec:
         raise TypeError("admitted Figshare member role is unsupported")
     if not _valid_sha256(item.sha256):
         raise RuntimeError("admitted Figshare SHA-256 is malformed")
-    expected = _EXPECTED_SHA256[item.role]
-    if expected is not None and item.sha256 != expected:
+    if item.sha256 != _EXPECTED_SHA256[item.role]:
         raise RuntimeError("admitted Figshare SHA-256 identity changed")
     activity = _ACTIVITY[item.role]
     return ValidationSampleSpec(

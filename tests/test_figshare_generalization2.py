@@ -10,7 +10,10 @@ from analytics_lab.figshare_generalization2_admission import (
     FALL_POSITIVE,
     select_pinned_pair,
 )
-from analytics_lab.figshare_generalization2_person_down_diagnostic import _sample_spec
+from analytics_lab.figshare_generalization2_person_down_diagnostic import (
+    _EXPECTED_SHA256,
+    _sample_spec,
+)
 from analytics_lab.figshare_member_admission import AdmittedMember
 
 
@@ -60,7 +63,7 @@ class FigshareGeneralization2Tests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "missing or changed"):
             select_pinned_pair(members)
 
-    def test_sample_specs_bind_computed_sha_and_distinct_sites(self) -> None:
+    def test_sample_specs_bind_pinned_sha_and_distinct_sites(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             negative = AdmittedMember(
@@ -70,7 +73,7 @@ class FigshareGeneralization2Tests(unittest.TestCase):
                 compressed_size=ADL_NEGATIVE.compressed_size,
                 uncompressed_size=ADL_NEGATIVE.uncompressed_size,
                 crc32=ADL_NEGATIVE.crc32,
-                sha256="a" * 64,
+                sha256=_EXPECTED_SHA256["negative"],
                 local_path=root / "negative.mp4",
             )
             positive = AdmittedMember(
@@ -80,18 +83,33 @@ class FigshareGeneralization2Tests(unittest.TestCase):
                 compressed_size=FALL_POSITIVE.compressed_size,
                 uncompressed_size=FALL_POSITIVE.uncompressed_size,
                 crc32=FALL_POSITIVE.crc32,
-                sha256="b" * 64,
+                sha256=_EXPECTED_SHA256["positive"],
                 local_path=root / "positive.mp4",
             )
             negative_spec = _sample_spec(negative)
             positive_spec = _sample_spec(positive)
 
-        self.assertEqual(negative_spec.media_sha256, "a" * 64)
-        self.assertEqual(positive_spec.media_sha256, "b" * 64)
+        self.assertEqual(negative_spec.media_sha256, _EXPECTED_SHA256["negative"])
+        self.assertEqual(positive_spec.media_sha256, _EXPECTED_SHA256["positive"])
         self.assertEqual(negative_spec.site_id, "figshare-28596332-location-1")
         self.assertEqual(positive_spec.site_id, "figshare-28596332-location-2")
         self.assertEqual(negative_spec.labels, ())
         self.assertEqual(positive_spec.labels, ())
+
+    def test_changed_valid_sha_fails_closed(self) -> None:
+        item = AdmittedMember(
+            role="negative",
+            name=ADL_NEGATIVE.name,
+            compression_method=8,
+            compressed_size=ADL_NEGATIVE.compressed_size,
+            uncompressed_size=ADL_NEGATIVE.uncompressed_size,
+            crc32=ADL_NEGATIVE.crc32,
+            sha256="f" * 64,
+            local_path=Path("negative.mp4"),
+        )
+        self.assertNotEqual(item.sha256, _EXPECTED_SHA256["negative"])
+        with self.assertRaisesRegex(RuntimeError, "identity changed"):
+            _sample_spec(item)
 
     def test_malformed_sha_fails_before_measurement(self) -> None:
         item = AdmittedMember(
