@@ -10,10 +10,12 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
 import sys
 import time
 from typing import Any
+import urllib.request
 
 from .artifacts import ArtifactSpec, OPENVINO_OMZ_2023_FP16, verify_artifact_set
 from .associative_embedding_reference import AssociativeEmbeddingDecoder
@@ -25,12 +27,12 @@ from .openpose_reference import ReferenceOpenPoseDecoder
 from .openvino_omz import _OpenVINORuntime
 from .person_down_orientation_diagnostics import _scan_sample
 from .validation_cli import load_manifest
-from .validation_seed import _download_exact
 
 _RUNTIME_PREFIX = "2026.3.1"
 _OMZ_COMMIT = "6697dead54ed1cdd664b0313189c2cb52ee6335e"
 _OMZ_LICENSE = f"https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/{_OMZ_COMMIT}/LICENSE"
 _MODEL_BASE = "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/human-pose-estimation-0005/FP16"
+_MAX_CANDIDATE_ARTIFACT_BYTES = 20 * 1024 * 1024
 _POSE_0005 = (
     ArtifactSpec(
         component="open-model-zoo/human-pose-estimation-0005/fp16",
@@ -65,6 +67,43 @@ def _target(root: Path, relative_path: str) -> Path:
     return target
 
 
+def _download_pose_artifact(spec: ArtifactSpec, target: Path) -> None:
+    """Download one reviewed pose artifact under its dedicated exact-size bound."""
+    if spec not in _POSE_0005:
+        raise ValueError("unreviewed pose artifact is not accepted")
+    expected_size = spec.size_bytes
+    if expected_size < 1 or expected_size > _MAX_CANDIDATE_ARTIFACT_BYTES:
+        raise ValueError("pose candidate artifact exceeds bounded item budget")
+    if target.exists():
+        if target.is_symlink() or not target.is_file() or target.stat().st_size != expected_size:
+            raise ValueError("existing pose candidate artifact has wrong size or type")
+        return
+    partial = target.with_name(target.name + ".partial")
+    if partial.exists():
+        raise ValueError("stale pose candidate partial exists")
+    request = urllib.request.Request(
+        spec.source_url,
+        headers={"User-Agent": "Analytics-lab-pose-ab/1"},
+    )
+    total = 0
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response, partial.open("xb") as handle:
+            while True:
+                block = response.read(1024 * 1024)
+                if not block:
+                    break
+                total += len(block)
+                if total > expected_size:
+                    raise RuntimeError("pose candidate artifact exceeded pinned byte count")
+                handle.write(block)
+        if total != expected_size:
+            raise RuntimeError("pose candidate artifact byte count mismatch")
+        os.replace(partial, target)
+    except Exception:
+        partial.unlink(missing_ok=True)
+        raise
+
+
 def _provision_pose_0005(root: Path) -> tuple[Any, ...]:
     root.mkdir(parents=True, exist_ok=True)
     if root.is_symlink() or not root.is_dir():
@@ -72,7 +111,7 @@ def _provision_pose_0005(root: Path) -> tuple[Any, ...]:
     root = root.resolve(strict=True)
     for spec in _POSE_0005:
         target = _target(root, spec.relative_path)
-        _download_exact(spec.source_url, target, expected_size=spec.size_bytes)
+        _download_pose_artifact(spec, target)
     return verify_artifact_set(root, _POSE_0005)
 
 
