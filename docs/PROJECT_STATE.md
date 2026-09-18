@@ -17,30 +17,49 @@ On the pinned Subject-1 pair, the retained evidence-only configuration produced 
 
 This remains a tiny engineering seed, not a commercial accuracy claim.
 
-## Held-out Subject-2 result — accepted evidence, algorithm not promoted
-PR #34 was merged to live `main` at `49a558ee2df95afb990de377c1484c40892b7afc`. The unchanged exact PR head `2269196bda90da7f85d6247c02941ec7130ae442` passed Linux, **217 repository tests**, Windows, the Analytics quality gate, and the bounded real-video lane on attempt 1. Post-merge Linux/Windows/quality also passed on `main`.
+## Held-out Subject-2 baseline — accepted evidence, algorithm not promoted
+PR #34 was merged to `main` at `49a558ee2df95afb990de377c1484c40892b7afc`. The unchanged exact PR head passed Linux, 217 repository tests, Windows, the Analytics quality gate, and the bounded real-video lane on attempt 1.
 
 The disjoint Subject-2 pair produced a legitimate generalization failure:
 
 - positive `Subject 2/Fall/01.mp4`: **1 labeled positive, 0 candidates, 0 matches, 1 miss**;
 - prone sleeping normal `Subject 2/ADL/12.mp4`: **0 candidates, 0 false alerts**;
-- decoded camera-hours: **0.0038578** across the two clips;
-- aggregate evidence-only end-to-end throughput on the hosted CPU run: about **63.5 FPS** for 417 frames.
+- decoded camera-hours: **0.0038578** across the two clips.
 
-The dominant positive error moved upstream to person detection. At the retained 0.10 detector floor, the labeled fall interval selected only **94/138 frames = 68.12%**, below the predeclared 85% continuity coverage bar. Link quality on selected detections remained **89.19%**, so identity continuity was not the primary deficit. The normal-negative retained **216/227 = 95.15%** detector coverage, **98.56%** link rate, and zero candidate/false alert.
-
-Downstream evidence confirms that simply weakening temporal persistence is the wrong response. The Subject-2 positive produced 30 qualified `down` frames, but the longest qualified run was only **768 ms / 23 samples** because detector/association loss created 96 `unknown` frames. The prone sleeping negative produced 17 `down`-like frames yet its longest qualified run was only **960 ms / 17 samples** and correctly emitted no candidate. The maximum bridged unknown gap already reached **736 ms** of the existing 750 ms bound.
+At the retained 0.10 detector floor, the labeled fall interval selected only **94/138 frames = 68.12%**, below the predeclared 85% continuity coverage bar. The prone-normal negative retained high detector coverage and still emitted zero candidate/false alert. The positive longest qualified down run was only 768 ms; the negative reached 960 ms, so weakening the unchanged 3000 ms persistence requirement was rejected.
 
 The prior bounded donor shootout already consumed the permitted three detector alternatives and retained `person-detection-0200`; no fourth detector search is authorized by this work item. Subject 2 remains held out from any future training/adaptation data.
 
-## Current acceptance-moving work — same-detector orientation recovery
-Live `main` at intake is `49a558ee2df95afb990de377c1484c40892b7afc`; there were **0 open implementation PRs** and no active run for that main head. The single evidence branch is `evidence/person-down-orientation-fallback`.
+## Accepted same-detector orientation recovery
+PR #35 was merged to live `main` at `5a9cf9c27df395bf28a481adf53b8433a54bbc9a`. The exact tested head `80e790cc0eb2bc63040177f9c7d6a2772455b85e` passed Linux, Windows, the Analytics quality gate, and the bounded rights-cleared real-video lane on attempt 1. Post-merge `main` verification also passed.
 
-Before spending a training cycle, this work tests the smallest measured explanation for the current detector miss: `person-detection-0200` is upright-oriented and loses the person as the body becomes horizontal. The correction does **not** add a detector, weights, donor, training framework, data source, paid resource, or production behavior.
+The retained evidence-only correction keeps the exact pinned `person-detection-0200` weights/runtime. Only on a primary-orientation miss, and only with a prior continuity box, the same detector runs on bounded +/-90-degree views. A mapped box is admitted only if it clears the existing 0.10 confidence floor and 0.05 spatial continuity IoU floor. Primary-orientation detections always win. No new detector, weights, donor, training framework, data source, or production default was added.
 
-On a primary-orientation miss only, and only when a prior continuity box exists, the exact same pinned detector is run on bounded `numpy.rot90` views at -90 and +90 degrees. Detections are mapped back to source coordinates and only a box that clears the existing 0.10 confidence floor **and** existing 0.05 IoU continuity floor may be admitted. Primary-orientation detections always win. No prior box means no rotated reacquisition. The original OpenPose, pose-association, posture and temporal rules remain unchanged.
+On held-out Subject 2:
 
-The same held-out Subject-2 clips are rerun for direct comparison. Retain this evidence-only correction only if it materially improves the positive detector/selection deficit without unacceptable regression. The primary comparison bar is the already-declared **85% positive fall-window coverage**; hard-negative candidate events and false alerts must remain **0**. Record fallback attempts/accepts, mapped/linked candidates, selection coverage by labeled window, matched/missed events, false alerts, alert delay, posture/temporal trace and CPU cost. If orientation recovery does not clear a meaningful acceptance improvement, do not broaden it; the next safe path is a rights-pinned, subject-separated detector adaptation/training experiment.
+- labeled-fall selection coverage improved from the same-run baseline **92/138 = 66.67%** to **126/138 = 91.30%**;
+- 34 fall-window frames were recovered by the bounded same-detector orientation fallback;
+- associated frames improved **98 -> 135**;
+- qualified `down` frames improved **31 -> 57**;
+- longest qualified run improved **768 ms -> 1472 ms**;
+- the positive still produced **0 candidates / 0 matches / 1 miss**;
+- the prone-normal negative remained **0 candidates / 0 false alerts**;
+- overall evidence-only throughput was about **10.20 FPS**.
+
+Detector coverage is therefore no longer the dominant Subject-2 blocker. The next measured wall is the remaining pose-association/posture fragmentation that breaks persistence after the detector recovers the person.
+
+## Current acceptance-moving work — fragmentation measurement
+Live `main` at intake is `5a9cf9c27df395bf28a481adf53b8433a54bbc9a`; there are **0 open implementation PRs** and no active run for that main head. The one prepared evidence branch is `evidence/person-down-fragmentation-diagnostics`.
+
+This work changes **measurement only**. It does not alter detector, pose decoder, association thresholds, posture thresholds, temporal persistence, model artifacts, media set, or production behavior. The existing orientation diagnostic now records only aggregate, non-frame-retaining evidence for:
+
+- association outcomes (`baseline_overlap`, bounded edge-gap recovery, unmatched/ambiguous cases, missing selected detection);
+- nearest unmatched pose geometry when a decoded pose exists;
+- posture and posture-basis counts by labeled window;
+- the exact temporal reset reasons that interrupt an active qualifying down run;
+- association reason, required-keypoint count, and posture geometry for those decisive reset frames.
+
+No frame timestamps, images, clips, model artifacts or identity data are emitted. The goal is to determine whether the remaining Subject-2 miss is dominated by association loss or by genuinely conflicting posture geometry. Only after that exact-head real-video measurement may one bounded correction be retained. A correction must improve the same held-out positive without creating a prone-normal candidate/false alert. Persistence relaxation, a fourth detector, and Subject-2 training admission remain out of scope.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -64,7 +83,7 @@ The same held-out Subject-2 clips are rerun for direct comparison. Retain this e
 ## Efficiency ledger
 One worker, one acceptance-moving work item, at most one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
 
-At this work-item intake: open implementation PRs **0**, active runs for live main **0**, unchanged retries **0**, CI-triggering requests **0/2**, consecutive sessions without tested acceptance progress **0**. The execution environment available to the worker does not provide a local clone/runtime, so a local machine preflight is not claimed; live repository/head/PR/run counts were tool-verified before mutation. Branch preparation is batched before opening the one PR so exact-head CI/evidence runs once.
+At this work-item intake: open implementation PRs **0**, active runs for live main **0**, unchanged retries **0**, CI-triggering requests **0/2**, consecutive sessions without tested acceptance progress **0**. Live main/open-PR/run counts were tool-verified. The repository-local preflight logic was executed against that verified snapshot and allowed the implementation action. Branch preparation is batched before opening the one PR so exact-head CI/evidence runs once.
 
 ## Reproduce
 Repository checks:
@@ -89,9 +108,9 @@ python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/
 ```
 
 ## Next executable decision
-Run exact-head CI plus the existing bounded Subject-2 real-video lane once. Compare the same-detector orientation result directly to the accepted 68.12% positive fall-window detector coverage and zero-negative-alert baseline. Keep the change only for measured acceptance improvement without hard-negative regression. Do not tune temporal persistence, add a fourth detector, or admit Subject 2 into training.
+Open one evidence PR from `evidence/person-down-fragmentation-diagnostics` and run exact-head Linux/Windows/quality plus the existing bounded Subject-2 real-video lane once. Read the new aggregate `fragmentation_windows.during` evidence. If one measured association or posture defect clearly dominates, make at most one bounded correction on this same branch, add regression coverage, and compare against the same held-out positive and prone-normal negative. If the measurement does not isolate a safe correction, do not guess or relax persistence; record the blocker and move to the next evidence-supported path.
 
-Merge only when exact-head Linux, Windows and Analytics quality are green on the unchanged tested base and the bounded real-video evidence lane completes. Main post-merge verification intentionally does not reacquire real-video/model evidence.
+Merge only when the final unchanged head is green on Linux, Windows and Analytics quality and the bounded real-video evidence shows a tested acceptance improvement without hard-negative alert regression. Main post-merge verification intentionally does not reacquire real-video/model evidence.
 
 ## Outstanding commercial-release gates
 Expanded held-out positive/negative real-video evidence across genuinely different cameras/sites and multi-person scenes; generalizable detector recall/identity behavior; false-alert and missed-event measurements at meaningful scale; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; platform/native dependency provenance; versioned installable integration adapter; packaging/notices; and explicit owner release approval. Small GMDCSA-24 subject rotations do not establish commercial accuracy or commercial readiness.
