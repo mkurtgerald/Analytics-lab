@@ -1,10 +1,12 @@
 """Select the next bounded Figshare generalization pair from archive metadata only.
 
-This selector never downloads member payloads.  It operates only on the reviewed
-central-directory map and chooses one difficult ADL negative plus one fall-class
-positive that are disjoint from the first Figshare pair by subject and location.
-The result is candidate metadata for a later exact admission step, not accuracy
-evidence and not authorization to train on the clips.
+This selector never downloads member payloads. It operates only on the reviewed
+central-directory map and chooses a difficult sitting ADL negative plus a
+sit-attempt fall-class positive. Subjects already used by the first two Figshare
+pairs are excluded, the two candidates must be subject/location-disjoint, and at
+least one candidate must come from a location not exercised by those pairs.
+The result is candidate metadata for later exact admission, not accuracy evidence
+and not authorization to train on the clips.
 """
 from __future__ import annotations
 
@@ -20,19 +22,22 @@ _MEMBER_RE = re.compile(
     r"ACT(?P<activity>\d+)_R_(?P<repetition>\d+)/[^/]+\.mp4$"
 )
 
-# The first admitted Figshare pair used Subject 01 / Location 3 for ACT25 and
-# Subject 10 / Location 3 for ACT10.  The next evidence pair intentionally moves
-# off both subjects and off Location 3 before any payload is admitted.
-_EXCLUDED_SUBJECTS = frozenset({"01", "10"})
-_EXCLUDED_LOCATIONS = frozenset({"3"})
+# First pair: Subject 01 / Location 3 and Subject 10 / Location 3.
+# Second pair: Subject 06 / Location 1 and Subject 03 / Location 2.
+# The next pair must move to untouched subjects and include a location outside
+# the already exercised 1/2/3 set before any member payload or model output is
+# inspected.
+_EXCLUDED_SUBJECTS = frozenset({"01", "03", "06", "10"})
+_USED_LOCATIONS = frozenset({"1", "2", "3"})
 
-# ACT19 (Laying) is a deliberately difficult ADL negative.  ACT4 (Fall on the
-# back) is a distinct fall morphology from the first ACT10 sit-on-chair fall.
-_NEGATIVE_ACTIVITY = 19
-_POSITIVE_ACTIVITY = 4
+# The published activity map identifies ACT16 as Sitting and ACT11 as
+# Try to sit on chair, fall. This creates a deliberately difficult behavior
+# boundary without changing any analytics threshold.
+_NEGATIVE_ACTIVITY = 16
+_POSITIVE_ACTIVITY = 11
 _ACTIVITY_NAMES = {
-    19: "Laying",
-    4: "Fall on the back",
+    16: "Sitting",
+    11: "Try to sit on chair, fall",
 }
 
 
@@ -73,8 +78,7 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
     if match is None:
         return None
     subject = match.group("subject")
-    location = match.group("location")
-    if subject in _EXCLUDED_SUBJECTS or location in _EXCLUDED_LOCATIONS:
+    if subject in _EXCLUDED_SUBJECTS:
         return None
     source_class = match.group("source_class")
     activity = int(match.group("activity"))
@@ -88,7 +92,7 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
         role=role,
         source_class=source_class,
         subject_id=subject,
-        location_id=location,
+        location_id=match.group("location"),
         activity_code=activity,
         repetition=int(match.group("repetition")),
         member=member,
@@ -96,11 +100,12 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
 
 
 def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str, Any]:
-    """Return the smallest subject/location-disjoint ACT19/ACT4 metadata pair.
+    """Return a small untouched ACT16/ACT11 pair with new-location coverage.
 
-    Selection minimizes total uncompressed bytes, then maximum member size, then
-    stable path order.  This keeps the later admission/evaluation cost bounded
-    without tuning the analytics around any observed model result.
+    Selection is metadata-only. It first maximizes the count of members from
+    previously unused locations, then minimizes total uncompressed bytes,
+    maximum member size, and stable path order. No model output can influence
+    the choice.
     """
     if not isinstance(members, tuple) or not all(isinstance(item, ZipMember) for item in members):
         raise TypeError("members must be a tuple of ZipMember")
@@ -114,32 +119,44 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
         for positive in positives
         if negative.subject_id != positive.subject_id
         and negative.location_id != positive.location_id
+        and (
+            negative.location_id not in _USED_LOCATIONS
+            or positive.location_id not in _USED_LOCATIONS
+        )
     ]
     if not pairs:
-        raise RuntimeError("no bounded subject/location-disjoint ACT19/ACT4 Figshare pair")
+        raise RuntimeError(
+            "no bounded subject/location-disjoint ACT16/ACT11 Figshare pair with a novel location"
+        )
 
-    negative, positive = min(
-        pairs,
-        key=lambda pair: (
+    def sort_key(pair: tuple[GeneralizationMember, GeneralizationMember]) -> tuple[Any, ...]:
+        novel_locations = sum(item.location_id not in _USED_LOCATIONS for item in pair)
+        return (
+            -novel_locations,
             pair[0].member.uncompressed_size + pair[1].member.uncompressed_size,
             max(pair[0].member.uncompressed_size, pair[1].member.uncompressed_size),
             pair[0].member.name,
             pair[1].member.name,
-        ),
-    )
+        )
+
+    negative, positive = min(pairs, key=sort_key)
     return {
         "selection_scope": "central-directory metadata only; no member payload fetched",
         "commercial_accuracy_claim": False,
         "selection_policy": {
-            "negative_activity_code": "ACT19",
+            "negative_activity_code": "ACT16",
             "negative_activity_name": _ACTIVITY_NAMES[_NEGATIVE_ACTIVITY],
-            "positive_activity_code": "ACT4",
+            "positive_activity_code": "ACT11",
             "positive_activity_name": _ACTIVITY_NAMES[_POSITIVE_ACTIVITY],
             "excluded_subject_ids": sorted(_EXCLUDED_SUBJECTS),
-            "excluded_location_ids": sorted(_EXCLUDED_LOCATIONS),
+            "previously_used_location_ids": sorted(_USED_LOCATIONS),
             "require_subject_disjoint_pair": True,
             "require_location_disjoint_pair": True,
-            "optimization": "minimum total uncompressed bytes; deterministic metadata tie-breaks",
+            "require_at_least_one_novel_location": True,
+            "optimization": (
+                "maximize novel-location members, then minimum total uncompressed bytes; "
+                "deterministic metadata tie-breaks"
+            ),
         },
         "members": [negative.as_dict(), positive.as_dict()],
     }
