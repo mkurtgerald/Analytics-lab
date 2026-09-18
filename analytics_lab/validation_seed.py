@@ -1,12 +1,12 @@
 """Prepare a bounded, rights-reviewed GMDCSA-24 real-video validation subset.
 
-The accepted Subject-1 seed remains pinned for reproducibility, while the active
-evidence subset is a disjoint Subject-2 positive/hard-negative pair. This module
-is deliberately opt-in and is never invoked by ordinary repository CI. It
-fetches only the active two clips plus the four already-reviewed Open Model Zoo
-artifacts, verifies exact upstream identities, computes local media SHA-256
-values, and emits a validation manifest. It does not install OpenVINO, retain
-decoded frames, or make any accuracy claim.
+Accepted Subject-1 and held-out Subject-2 seeds remain pinned for reproducibility,
+while the active evidence subset is a disjoint Subject-3 positive/hard-negative
+pair. This module is deliberately opt-in and is never invoked by ordinary
+repository CI. It fetches only the active two clips plus the four already-reviewed
+Open Model Zoo artifacts, verifies exact upstream identities, computes local
+media SHA-256 values, and emits a validation manifest. It does not install
+OpenVINO, retain decoded frames, or make any accuracy claim.
 """
 from __future__ import annotations
 
@@ -116,9 +116,34 @@ GMDCSA24_HELDOUT_S2 = (
 )
 
 
-# Keep the active PR-only evidence lane bounded to two clips. The accepted seed
-# above remains separately addressable for exact historical reproduction.
-GMDCSA24_SEED = GMDCSA24_HELDOUT_S2
+# Second disjoint held-out rotation: Subject 3 provides a backward floor fall
+# after a standing interval plus a normal sitting-to-sleeping-on-floor clip.
+# The negative is intentionally posture-confusable and the pair remains below
+# the existing 16 MiB aggregate two-clip evidence budget.
+GMDCSA24_HELDOUT_S3 = (
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s3-fall-03",
+        relative_path="Subject 3/Fall/03.mp4",
+        size_bytes=5_753_609,
+        git_blob_sha1="41daaee74ceb00e8db32f34525a57c704994f0b5",
+        end_timestamp_ms=5_000,
+        label_start_timestamp_ms=1_500,
+        label_end_timestamp_ms=5_000,
+        label_id="gmdcsa24-s3-fall-03-labelled-falling",
+    ),
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s3-adl-08",
+        relative_path="Subject 3/ADL/08.mp4",
+        size_bytes=5_172_948,
+        git_blob_sha1="a38dca4aed2a27d930354beeb7d36911a7b8dd55",
+        end_timestamp_ms=4_000,
+    ),
+)
+
+
+# Keep the active PR-only evidence lane bounded to two clips. Historical seeds
+# above remain separately addressable for exact reproduction and regression.
+GMDCSA24_SEED = GMDCSA24_HELDOUT_S3
 
 
 def _ensure_root(root: Path) -> Path:
