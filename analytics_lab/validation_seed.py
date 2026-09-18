@@ -1,9 +1,9 @@
 """Prepare a bounded, rights-reviewed GMDCSA-24 real-video validation subset.
 
 Accepted Subject-1 and held-out Subject-2/Subject-3/Subject-4 seeds remain
-pinned for reproducibility. The active evidence subset is now a second
-untouched cross-view robustness pair from Subject 2: a night side-view backward
-fall and a floor-to-standing normal activity. This is deliberately NOT
+pinned for reproducibility. The active evidence subset is now a third untouched
+cross-view robustness pair from Subject 3: a night sideways fall and a
+controlled exercise-to-floor sitting normal activity. This is deliberately NOT
 new-subject evidence; all four GMDCSA-24 subjects have already been exercised.
 The module is opt-in and never invoked by ordinary repository CI. It fetches
 only the active two clips plus the four already-reviewed Open Model Zoo
@@ -217,9 +217,35 @@ GMDCSA24_ROBUSTNESS_S2_NIGHT = (
 )
 
 
+# Third untouched-file robustness rotation. Subject 3 previously missed a
+# different day backward-fall holdout. This measurement changes lighting and
+# fall direction without tuning that subject: a night sideways fall is paired
+# with an exercise-to-controlled-floor-sitting hard negative. The positive has
+# 5.2 seconds of labeled fall time and the pair remains inside the 16 MiB cap.
+GMDCSA24_ROBUSTNESS_S3_NIGHT_SW = (
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s3-fall-16",
+        relative_path="Subject 3/Fall/16.mp4",
+        size_bytes=3_349_906,
+        git_blob_sha1="a66bfe75bebe8643865bf685fb74e867f23ad6e9",
+        end_timestamp_ms=7_000,
+        label_start_timestamp_ms=1_800,
+        label_end_timestamp_ms=7_000,
+        label_id="gmdcsa24-s3-fall-16-labelled-falling",
+    ),
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s3-adl-06",
+        relative_path="Subject 3/ADL/06.mp4",
+        size_bytes=9_084_601,
+        git_blob_sha1="e66544079bc009369f1c4068b136de9f27606e2d",
+        end_timestamp_ms=8_000,
+    ),
+)
+
+
 # Keep the active PR-only evidence lane bounded to two clips. Historical seeds
 # above remain separately addressable for exact reproduction and regression.
-GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S2_NIGHT
+GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S3_NIGHT_SW
 
 
 def _ensure_root(root: Path) -> Path:
