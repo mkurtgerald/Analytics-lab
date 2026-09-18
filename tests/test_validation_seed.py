@@ -10,6 +10,7 @@ from analytics_lab.validation_seed import (
     GMDCSA24_HELDOUT_S3,
     GMDCSA24_HELDOUT_S4,
     GMDCSA24_ROBUSTNESS_S1_BW,
+    GMDCSA24_ROBUSTNESS_S2_FW,
     GMDCSA24_SEED,
     SeedMediaSpec,
     _attribution_text,
@@ -29,16 +30,17 @@ class _Response(io.BytesIO):
 
 class ValidationSeedTests(unittest.TestCase):
     def test_active_subset_is_untouched_file_pair_under_bounded_budget(self):
-        self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S1_BW)
+        self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_FW)
         self.assertEqual(len(GMDCSA24_ACCEPTED_SEED), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S2), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S3), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S4), 2)
         self.assertEqual(len(GMDCSA24_ROBUSTNESS_S1_BW), 2)
+        self.assertEqual(len(GMDCSA24_ROBUSTNESS_S2_FW), 2)
         self.assertLess(sum(item.size_bytes for item in GMDCSA24_SEED), 16 * 1024 * 1024)
         self.assertEqual(sum(item.label_id is not None for item in GMDCSA24_SEED), 1)
         self.assertEqual(sum(item.label_id is None for item in GMDCSA24_SEED), 1)
-        self.assertTrue(all(item.relative_path.startswith("Subject 1/") for item in GMDCSA24_SEED))
+        self.assertTrue(all(item.relative_path.startswith("Subject 2/") for item in GMDCSA24_SEED))
         historical_paths = {
             item.relative_path
             for seed in (
@@ -46,6 +48,7 @@ class ValidationSeedTests(unittest.TestCase):
                 GMDCSA24_HELDOUT_S2,
                 GMDCSA24_HELDOUT_S3,
                 GMDCSA24_HELDOUT_S4,
+                GMDCSA24_ROBUSTNESS_S1_BW,
             )
             for item in seed
         }
@@ -75,28 +78,29 @@ class ValidationSeedTests(unittest.TestCase):
             self.assertFalse(target.exists())
             self.assertFalse((Path(temp) / "x.bin.partial").exists())
 
-    def test_manifest_has_one_positive_and_ground_reach_hard_negative(self):
+    def test_manifest_has_one_positive_and_floor_transition_hard_negative(self):
         identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_SEED)}
         document = _manifest(identities)
         self.assertEqual(document["schema_version"], 1)
         self.assertEqual(document["config"]["max_samples"], 2)
-        self.assertEqual(document["config"]["max_total_video_bytes"], 9_543_369)
+        self.assertEqual(document["config"]["max_total_video_bytes"], 12_449_385)
         self.assertEqual(len(document["samples"][0]["labels"]), 1)
         self.assertEqual(document["samples"][1]["labels"], [])
-        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 6000)
-        self.assertEqual(document["samples"][1]["end_timestamp_ms"], 3000)
-        self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 1000)
-        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 6000)
-        self.assertEqual(document["samples"][0]["sample_id"], "gmdcsa24-s1-fall-11")
-        self.assertEqual(document["samples"][1]["sample_id"], "gmdcsa24-s1-adl-16")
+        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 4000)
+        self.assertEqual(document["samples"][1]["end_timestamp_ms"], 7000)
+        self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 2000)
+        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 4000)
+        self.assertEqual(document["samples"][0]["sample_id"], "gmdcsa24-s2-fall-07")
+        self.assertEqual(document["samples"][1]["sample_id"], "gmdcsa24-s2-adl-10")
         self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
         self.assertNotEqual(document["samples"][0]["camera_id"], document["samples"][1]["camera_id"])
         self.assertTrue(all(sample["camera_id"].startswith("gmdcsa24-clip-") for sample in document["samples"]))
 
     def test_attribution_tracks_exact_active_files(self):
         text = _attribution_text()
-        self.assertIn("Subject 1/Fall/11.mp4", text)
-        self.assertIn("Subject 1/ADL/16.mp4", text)
+        self.assertIn("Subject 2/Fall/07.mp4", text)
+        self.assertIn("Subject 2/ADL/10.mp4", text)
+        self.assertNotIn("Subject 1/Fall/11.mp4", text)
         self.assertNotIn("Subject 4/Fall/03.mp4", text)
         self.assertNotIn("Subject 3/Fall/03.mp4", text)
         self.assertNotIn("Subject 2/Fall/01.mp4", text)
