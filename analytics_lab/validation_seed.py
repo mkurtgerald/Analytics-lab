@@ -1,15 +1,15 @@
 """Prepare a bounded, rights-reviewed GMDCSA-24 real-video validation subset.
 
 Accepted Subject-1 and held-out Subject-2/Subject-3/Subject-4 seeds remain
-pinned for reproducibility. The active evidence subset is now an untouched
-cross-view robustness pair from Subject 1: a backward fall and a ground-reach
-normal activity. This is deliberately NOT new-subject evidence; all four
-GMDCSA-24 subjects have already been exercised. The module is opt-in and never
-invoked by ordinary repository CI. It fetches only the active two clips plus
-the four already-reviewed Open Model Zoo artifacts, verifies exact upstream
-identities, computes local media SHA-256 values, and emits a validation
-manifest. It does not install OpenVINO, retain decoded frames, or make any
-accuracy claim.
+pinned for reproducibility. The active evidence subset is now a second
+untouched cross-view robustness pair from Subject 2: a forward fall after a
+ground-reach action and a floor-to-standing normal activity. This is deliberately
+NOT new-subject evidence; all four GMDCSA-24 subjects have already been
+exercised. The module is opt-in and never invoked by ordinary repository CI. It
+fetches only the active two clips plus the four already-reviewed Open Model Zoo
+artifacts, verifies exact upstream identities, computes local media SHA-256
+values, and emits a validation manifest. It does not install OpenVINO, retain
+decoded frames, or make any accuracy claim.
 """
 from __future__ import annotations
 
@@ -167,12 +167,8 @@ GMDCSA24_HELDOUT_S4 = (
 )
 
 
-# All four source subjects have now been used at least once. Before widening
-# the acquisition/resource envelope to another dataset, exercise two untouched
-# files under the existing reviewed source and budget. This pair intentionally
-# changes fall direction (backward) and hard-negative behavior (seated ground
-# reach) while remaining file-disjoint from every historical evidence pair.
-# It is within-subject/cross-view robustness evidence, not new-subject evidence.
+# First untouched-file robustness rotation after all four source subjects had
+# been exercised: a Subject-1 backward fall plus a seated ground-reach normal.
 GMDCSA24_ROBUSTNESS_S1_BW = (
     SeedMediaSpec(
         sample_id="gmdcsa24-s1-fall-11",
@@ -194,9 +190,36 @@ GMDCSA24_ROBUSTNESS_S1_BW = (
 )
 
 
+# Second untouched-file robustness rotation. Subject 2 previously missed a
+# different side-fall holdout; this measurement does not tune that subject. It
+# changes the positive to a forward fall after a ground-reach action and uses a
+# floor-to-standing/walking normal as a hard negative. The pair is file-disjoint
+# from every historical evidence pair and remains inside the existing 16 MiB
+# aggregate two-clip envelope.
+GMDCSA24_ROBUSTNESS_S2_FW = (
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s2-fall-07",
+        relative_path="Subject 2/Fall/07.mp4",
+        size_bytes=4_719_515,
+        git_blob_sha1="7b1cfd4cd0b314b35d82af83fbcdf68c623df032",
+        end_timestamp_ms=4_000,
+        label_start_timestamp_ms=2_000,
+        label_end_timestamp_ms=4_000,
+        label_id="gmdcsa24-s2-fall-07-labelled-falling",
+    ),
+    SeedMediaSpec(
+        sample_id="gmdcsa24-s2-adl-10",
+        relative_path="Subject 2/ADL/10.mp4",
+        size_bytes=7_729_870,
+        git_blob_sha1="f50ccfcbaf330a5128247baa828c7464932accab",
+        end_timestamp_ms=7_000,
+    ),
+)
+
+
 # Keep the active PR-only evidence lane bounded to two clips. Historical seeds
 # above remain separately addressable for exact reproduction and regression.
-GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S1_BW
+GMDCSA24_SEED = GMDCSA24_ROBUSTNESS_S2_FW
 
 
 def _ensure_root(root: Path) -> Path:
