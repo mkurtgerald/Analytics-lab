@@ -5,8 +5,11 @@ import tempfile
 import unittest
 
 from analytics_lab.validation_seed import (
+    GMDCSA24_ACCEPTED_SEED,
+    GMDCSA24_HELDOUT_S2,
     GMDCSA24_SEED,
     SeedMediaSpec,
+    _attribution_text,
     _download_exact,
     _manifest,
     verify_seed_media,
@@ -22,11 +25,16 @@ class _Response(io.BytesIO):
 
 
 class ValidationSeedTests(unittest.TestCase):
-    def test_pinned_seed_is_two_real_world_clips_under_bounded_budget(self):
-        self.assertEqual(len(GMDCSA24_SEED), 2)
+    def test_active_subset_is_disjoint_subject2_pair_under_bounded_budget(self):
+        self.assertEqual(GMDCSA24_SEED, GMDCSA24_HELDOUT_S2)
+        self.assertEqual(len(GMDCSA24_ACCEPTED_SEED), 2)
+        self.assertEqual(len(GMDCSA24_HELDOUT_S2), 2)
         self.assertLess(sum(item.size_bytes for item in GMDCSA24_SEED), 16 * 1024 * 1024)
-        self.assertIsNotNone(GMDCSA24_SEED[0].label_id)
-        self.assertIsNone(GMDCSA24_SEED[1].label_id)
+        self.assertEqual(sum(item.label_id is not None for item in GMDCSA24_SEED), 1)
+        self.assertEqual(sum(item.label_id is None for item in GMDCSA24_SEED), 1)
+        self.assertTrue(all(item.relative_path.startswith("Subject 2/") for item in GMDCSA24_SEED))
+        baseline_paths = {item.relative_path for item in GMDCSA24_ACCEPTED_SEED}
+        self.assertTrue(baseline_paths.isdisjoint(item.relative_path for item in GMDCSA24_SEED))
         self.assertIn("%20", GMDCSA24_SEED[0].source_url)
 
     def test_verify_seed_media_binds_git_blob_and_sha256(self):
@@ -52,21 +60,31 @@ class ValidationSeedTests(unittest.TestCase):
             self.assertFalse(target.exists())
             self.assertFalse((Path(temp) / "x.bin.partial").exists())
 
-    def test_manifest_has_positive_and_hard_negative_with_exact_identities(self):
+    def test_manifest_has_one_positive_and_prone_sleeping_hard_negative(self):
         identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_SEED)}
         document = _manifest(identities)
         self.assertEqual(document["schema_version"], 1)
         self.assertEqual(document["config"]["max_samples"], 2)
         self.assertEqual(len(document["samples"][0]["labels"]), 1)
         self.assertEqual(document["samples"][1]["labels"], [])
-        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 5000)
+        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 6000)
         self.assertEqual(document["samples"][1]["end_timestamp_ms"], 7000)
+        self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 1400)
+        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 6000)
         # Independent source files are independent validation streams. Reusing
         # one camera timeline would make their clip-local 0-based intervals
         # overlap and would corrupt aggregate camera-hour accounting.
         self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
         self.assertNotEqual(document["samples"][0]["camera_id"], document["samples"][1]["camera_id"])
         self.assertTrue(all(sample["camera_id"].startswith("gmdcsa24-clip-") for sample in document["samples"]))
+
+    def test_attribution_tracks_exact_active_files(self):
+        text = _attribution_text()
+        self.assertIn("Subject 2/Fall/01.mp4", text)
+        self.assertIn("Subject 2/ADL/12.mp4", text)
+        self.assertNotIn("Subject 1/Fall/05.mp4", text)
+        self.assertIn("git:5abac7693229900cf80f722e878fbb119211fc1c", text)
+        self.assertIn("MIT", text)
 
 
 if __name__ == "__main__":
