@@ -55,26 +55,30 @@ PR #46 merged the fail-closed Figshare acquisition adapter. It binds article **2
 
 PR #47 merged the measured archive-map boundary into `main` at `8016f6678301542628d18b2439f2fa56411c98ab`. The reviewed `VideoDataset.zip` is **2,529,520,868 bytes**, provider MD5 `c784167d08f2fa94e3afd36cec758e1f`, with **22,397** classic-ZIP entries and a **2,941,785-byte** central directory at offset **2,526,579,061**. The directory was fetched in exactly two requests of **2,097,152 + 844,633 bytes** under the existing 2 MiB per-request ceiling. It parsed **20,324** non-directory members and **2,022** bounded MP4 entries; no member payload was fetched by the index probe.
 
-The smallest clear file-disjoint pair from that public map was pinned before payload admission:
+The first file-disjoint pair was pinned before payload admission:
 - negative: `VideoDataset/ADL/SBJ_01_LOC3/ACT25_R_1/20240923130459.mp4`, compressed **277,756**, uncompressed **278,497**, CRC32 `44ac1304`, local-header offset **1,084,380,237**;
 - positive: `VideoDataset/Fall/SBJ_10_LOC3/ACT10_R_2/20240915184434.mp4`, compressed **359,774**, uncompressed **360,498**, CRC32 `41961303`, local-header offset **1,738,471,658**.
 
-PR #48 merged the exact bounded member-admission boundary to `main` at `6e6c6121e2f45b3daf61f0dac849a77e7002f98f`. Post-merge Analytics quality run #118 passed on attempt 1. The live member-admission step fetched only exact local-header/name/payload ranges for the two pinned deflate members, verified central/local ZIP identity relationships, declared size, CRC32 and the existing 16 MiB item ceiling, computed SHA-256 over the uncompressed video bytes, and wrote only to ephemeral runner storage. Exact admitted identities are:
-- negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`;
-- positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`.
+PR #48 merged exact bounded member admission. Exact first-pair identities are negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92` and positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`; media remained ephemeral.
 
-PR #49 measured the unchanged retained pipeline on that first broader-source pair and merged to `main` at `46c31fc138ed1b969eaf552238bff5b7b54794d3`. Post-merge Analytics quality run #121 passed on attempt 1. The source publication maps **ACT10** to `Sit on chair, fall` (Fall) and **ACT25** to `Descend` (ADL), but no independent frame-level positive interval has been established for these exact clips. The diagnostic therefore scored the ADL clip normally for candidate/false-alert behavior while treating the Fall clip as **diagnostic-only** for detector coverage, pose association, posture/temporal fragmentation, candidate behavior, decoded duration and CPU cost. It deliberately did **not** score positive match/miss or alert delay from a directory/activity label.
+PR #49 measured the unchanged retained pipeline on that pair. The **ACT25 ADL negative** had 56/56 detector selections, 56/56 safe pose associations, 56/56 upright postures and **0 candidates / 0 false alerts** over **1833 ms = 0.000509 camera-hours**. The **ACT10 Fall-class positive** had 57/57 detector selections and 56/56 linked detector transitions but only **32/57 safe pose associations**, with **25/57** no-associated-pose frames; posture output was **1 down, 4 other, 32 unknown, 20 upright** and no candidate. Because no independent frame-level interval exists, that positive is not scored as a miss and alert delay remains unscored. Across both clips throughput was about **10.02 FPS**.
 
-The cross-source measurement is diagnostic but decisive about stage attribution:
-- **ACT25 ADL negative:** 56/56 detector selections, 56/56 safe pose associations, 56/56 `upright` posture observations, **0 candidate events / 0 false alerts**, decoded duration **1833 ms = 0.000509 camera-hours**, and about **10.03 FPS** evidence throughput.
-- **ACT10 Fall-class positive:** 57/57 detector selections and 56/56 linked detector transitions (**100% detector coverage/continuity**), but only **32/57 safe pose associations**; **25/57** frames ended `no_candidate_within_bound` / `no_associated_pose`. Posture output was **1 down, 4 other, 32 unknown, 20 upright**; only one qualified-down observation occurred, so the longest qualified run was **0 ms** and the clip produced **0 candidate events**. Because no independent frame-level positive interval exists, this is **not scored as a miss** and alert delay remains unscored.
-- Across both clips the unchanged evidence path processed **113 frames at about 10.02 FPS**. The retained detector/orientation stage remained strong while pose association/posture continuity collapsed on the Fall-class clip.
+PR #50 merged the metadata-only selection of a second pair at `27ad4df631bc91734c5158316ca235b0fe1b04da`, before any member payload or model output was inspected:
+- negative ACT19 `Laying`: `VideoDataset/ADL/SBJ_06_LOC1/ACT19_R_1/20240920140827.mp4`, Subject 06 / Location 1, compressed **592,355**, uncompressed **593,051**, CRC32 `78d8749b`, local-header offset **1,323,417,041**;
+- positive ACT4 `Fall on the back`: `VideoDataset/Fall/SBJ_03_LOC2/ACT4_R_1/20240912_111106.mp4`, Subject 03 / Location 2, compressed **598,064**, uncompressed **598,720**, CRC32 `c8e45df7`, local-header offset **2,000,888,480**.
+The pair is subject- and location-disjoint from each other and moves off Subjects 01/10 and Location 3 used by the first Figshare pair.
 
-This independent-source result repeats the downstream weakness already seen on difficult GMDCSA held-outs: detection/continuity can be high while OpenPose association and usable posture continuity fail. It therefore strengthens the justification for a bounded, commercially clean **pose representation/adaptation decision** rather than weakening association bounds, confidence floors, 3000 ms persistence or the 750 ms unknown-gap budget. One short pair is still not commercial accuracy evidence.
+PR #51 is the current single implementation PR. Exact-head run #124 on initial head `703b513be7d139bfc0c226236198955febef5663` passed Linux, all **43 guardrail tests**, the **253-test** full suite (one optional OpenCV skip), synthetic replay, bounded Figshare index evidence, the bounded person-down CPU evidence lane, Windows, and the Analytics quality gate on attempt 1. It admitted only the two exact PR #50 members through reviewed byte ranges, verified archive identities and computed these uncompressed-media SHA-256 values:
+- ACT19 negative: `1f9b3f44b67576c93a61921311830286b4a9eebe45277b90d0c9eb2625fa2a24`;
+- ACT4 positive: `a54f715f3ad7d8fc2fe64390842f2c5c16ee03ace2e70f6a785cbeef6ff5f54c`.
+The current changed head pins those digests so later evidence fails closed before model provisioning if the payload changes.
 
-The current branch `evidence/figshare-generalization-2` performs the next measurement-first step without downloading any additional media. The bounded archive probe deterministically selects the smallest pair that satisfies all of these pre-declared constraints: **ACT19 `Laying`** as a difficult ADL negative, **ACT4 `Fall on the back`** as a distinct positive morphology, neither Subject 01 nor Subject 10, neither member from Location 3, and the two selected clips must be both subject-disjoint and location-disjoint. Selection is based only on central-directory metadata and minimizes total uncompressed bytes with deterministic tie-breaks. The exact member names, sizes, CRC32 values and local-header offsets must be emitted by the live bounded probe before any payload admission or SHA-256 binding is allowed.
+The unchanged second-pair measurement is another strong stage-attribution result, not a commercial accuracy estimate:
+- **ACT19 `Laying` ADL negative:** 56/56 detector selections, 55/55 linked detector transitions, 56/56 safe pose associations, posture counts **42 upright / 8 other / 6 unknown / 0 down**, **0 candidates / 0 false alerts**, longest qualified down run **0 ms**, decoded duration **1833 ms = 0.000509 camera-hours**, about **9.85 FPS**. Detector inference was about **441 ms**, pose inference **4888 ms**, pose decode **210 ms**, total evidence elapsed **5683 ms**.
+- **ACT4 `Fall on the back` Fall-class positive:** 56/56 detector selections and 54/55 linked transitions, but only **47/56 safe pose associations**; 9 frames were `no_candidate_within_bound` / `no_associated_pose`. Posture counts were **39 upright / 9 unknown / 4 other / 4 down**. The longest raw and qualified down run was only **100 ms / 4 samples**, with 9 bridged unknown frames and a maximum bridged unknown gap of **300 ms**; **0 candidate events**. Unmatched nearest poses were not borderline associations: measured selection IoU was 0 and edge-gap-normalized p50 was about **1.76**, so widening association is not justified by this evidence. Detector inference was about **447 ms**, pose inference **4875 ms**, pose decode **198 ms**, total evidence elapsed **5633 ms**.
+- Across both clips the unchanged stack processed **112 frames at about 9.90 FPS**. The detector remained strong; the positive again fragmented downstream in pose association/posture representation. The positive is **not scored as a miss and has no scored alert delay** because no independent frame-level event interval exists.
 
-This second-pair selection is intentionally independent of model output: it does not inspect frames, tune thresholds, alter association, weaken persistence, or choose a clip because the current analytic happens to pass it. After exact candidate identities are measured, a later narrow admission step may fetch only those exact members, verify CRC/SHA-256/provenance and run the unchanged retained baseline. Until that happens, there is no new real-video accuracy evidence from this pair.
+This repeats the same downstream failure boundary across an independent source, different subjects and different locations while a difficult lying negative remains clean. It strengthens the evidence-based case for a bounded commercially clean pose representation/adaptation decision package. It does **not** justify weakening association bounds, keypoint-confidence floors, the 3000 ms persistence requirement, the 750 ms unknown-gap ceiling, or changing the retained detector. Two short Figshare pairs remain engineering evidence only, not commercial accuracy.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -89,9 +93,9 @@ This second-pair selection is intentionally independent of model output: it does
 - reviewed license `CC-BY-4.0`;
 - reviewed provenance `figshare:28596332:version-2`;
 - activity mapping reference: `Vision Transformer Based Fall Detection: A Spatial Temporal Attention Mechanism for Robust Video Analysis`, DOI `10.30970/eli.33.12`, CC-BY-4.0;
-- exact ephemeral media identities admitted by PR #48: negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`, positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`;
-- current next-pair activity targets are ACT19 `Laying` (ADL) and ACT4 `Fall on the back` (Fall); exact archive identities remain unpinned until the live bounded index probe emits them;
-- media remains outside public GitHub; Fall clips have only source clip/activity classes for current purposes unless an independent frame-level interval is established.
+- first-pair exact ephemeral identities: negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`, positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`;
+- second-pair exact ephemeral identities: ACT19 negative SHA-256 `1f9b3f44b67576c93a61921311830286b4a9eebe45277b90d0c9eb2625fa2a24`, ACT4 positive SHA-256 `a54f715f3ad7d8fc2fe64390842f2c5c16ee03ace2e70f6a785cbeef6ff5f54c`;
+- media remains outside public GitHub; Fall clips have only source clip/activity classes unless an independent frame-level interval is established.
 
 ### Runtime/model provenance
 - Open Model Zoo commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0;
@@ -102,9 +106,9 @@ This second-pair selection is intentionally independent of model output: it does
 - corrected OpenPose decoder pinned to the same OMZ revision with attribution preserved.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
+One worker, one acceptance-moving work item, one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
 
-Live base at this work item's intake is `main` at `46c31fc138ed1b969eaf552238bff5b7b54794d3`; post-merge Analytics quality run #121 passed on attempt 1. There were **0 open implementation PRs** and **0 active runs for the live head** at intake. The local policy preflight for this implementation action passed with **0 unchanged retries**, **0 CI dispatches in this session**, and **0 consecutive no-progress sessions**. Opening the single `evidence/figshare-generalization-2` PR is the first CI-triggering dispatch for this session; one further changed-head dispatch remains available only if a deterministic first-attempt defect is diagnosed and corrected.
+Live base for PR #51 is `main` at `27ad4df631bc91734c5158316ca235b0fe1b04da`; post-merge run #123 was green. Intake had **0 open implementation PRs** and **0 active runs for main**. The first PR-head dispatch, run #124, passed on attempt 1 with **0 unchanged retries**. This single changed-head follow-up is the second and final CI-triggering push/dispatch for this session; it only pins the measured SHA-256 identities, adds the corresponding fail-closed regression, and records the measured evidence. No third dispatch is permitted in this session.
 
 ## Reproduce
 Repository checks:
@@ -123,16 +127,18 @@ python -m analytics_lab.validation_cli --manifest /path/to/private-validation/va
 python -m analytics_lab.person_down_orientation_diagnostics --manifest /path/to/private-validation/validation-manifest.json --candidate-dir /path/to/private-detector-cache
 ```
 
-Figshare bounded index probe, exact member admission and broader-source diagnostic (evidence branch only):
+Figshare evidence paths (evidence branches only):
 
 ```sh
 python -m analytics_lab.figshare_probe
 python -m analytics_lab.figshare_member_admission --output-dir /path/to/ephemeral-output
 python -m analytics_lab.figshare_person_down_diagnostic --output-dir /path/to/ephemeral-diagnostic --candidate-dir /path/to/private-detector-cache
+python -m analytics_lab.figshare_generalization2_admission --output-dir /path/to/ephemeral-output-2
+python -m analytics_lab.figshare_generalization2_person_down_diagnostic --output-dir /path/to/ephemeral-diagnostic-2 --candidate-dir /path/to/private-detector-cache
 ```
 
 ## Next executable decision
-Run the exact `evidence/figshare-generalization-2` head through Linux, Windows and the Analytics quality gate once. The live bounded probe must emit one ACT19/ACT4 subject- and location-disjoint pair with exact archive metadata while fetching no member payload. If the exact head is green and the selection succeeds, merge this bounded selection capability. The next work item is then to pin only those measured member identities, perform exact bounded admission with SHA-256/provenance binding, and run the **unchanged** retained baseline before any algorithm change. Continue preparing a commercially clean pose adaptation/replacement decision package in bounded research, but launch no training until trainer revision/dependencies, pretrained-weight and transitive rights, export/runtime compatibility, subject-separated splits and CPU/resource ceilings are all pinned; never train on Subjects 2-4 merely to make prior held-outs pass.
+Run the exact changed PR #51 head once through Linux, Windows, the Analytics quality gate and the bounded second-pair CPU lane. It must reproduce the exact pinned media SHA-256 identities and preserve the unchanged analytic configuration. If that exact head is green on the unchanged tested base, merge PR #51 and verify main. Then broaden untouched evidence further while preparing the pose representation/adaptation decision package. No training may begin until exact trainer revision/dependencies, pretrained weights and transitive commercial rights, export/runtime compatibility, subject-separated train/validation/holdout splits and CPU/resource ceilings are pinned; Subjects 2-4 remain held out and must not be trained on merely to make prior misses pass.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across genuinely different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and miss measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
