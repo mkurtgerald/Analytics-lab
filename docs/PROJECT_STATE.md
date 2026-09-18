@@ -11,26 +11,28 @@ The person-down **candidate** path under measured validation is:
 Candidate events do not infer injury, cause, fault, intent, negligence or medical condition. Real-video evidence binds exact media hashes, reviewed model/runtime identities, decoded coverage, continuity, timing and evaluation metrics without retaining video in public GitHub.
 
 ## Current acceptance-moving work
-Live `main` entering PR #32 is `08720e96d0e49efcfcd0f94e9b27fe35af25dc87`; its post-merge Analytics quality run passed on attempt 1. PR #32 is the single implementation/evidence vehicle for first end-to-end staged-real temporal evidence.
+Live `main` entering the current work item is `01ba93ce80d63bb2f512b75f7ccc2d9c752870db`; its post-merge Analytics quality run passed on attempt 1. There was no open implementation PR at intake. The single current evidence branch is `evidence/person-down-unknown-gap` and it attacks only the measured temporal persistence fragmentation.
 
-### First exact-head end-to-end measurement
-Exact head `5202180b35e28fbb33008906535f62d90be0a5ae` passed Linux, Windows, the Analytics quality gate and the bounded rights-cleared real-video lane on attempt 1. It used the existing temporal defaults unchanged: 3000 ms down duration, 750 ms maximum gap, 4 minimum samples and 0.70 minimum confidence.
+### Accepted staged-real temporal evidence through PR #32
+The first end-to-end run with historical temporal defaults (3000 ms down duration, 750 ms maximum inter-observation gap, 4 minimum samples and 0.70 minimum confidence) produced a legitimate staged-real miss: **1 labeled positive episode, 0 matched events, 1 miss and 0 false alerts** across the bounded two-clip seed. The positive clip produced 85 `down` posture frames, but all 85 were below the historical 0.70 temporal confidence floor.
 
-The result is legitimate staged-real performance evidence, and it is a **miss**:
+The one measured confidence correction changed only temporal `min_confidence` to the already-reviewed posture keypoint floor of **0.10**. On the same exact media/model/runtime identities it converted the positive `down` postures into **85 qualifying down frames** while the hard negative remained **0 down / 0 candidate events / 0 false alerts**. The positive still missed because persistence was fragmented: the longest uninterrupted qualifying run was only **464 ms / 15 frames**, versus the unchanged 3000 ms requirement. Measured run breaks were dominated by **14 `unknown` posture interruptions**, with **1 `other` interruption** also observed. End-to-end CPU throughput remained about **10.1 FPS** on this tiny seed.
 
-- Aggregate decoded evidence: **1 positive episode, 0 matched events, 1 miss, 0 false alerts, 0 candidate events, recall 0.0, 0 false alerts per decoded camera-hour** across **0.0036 decoded camera-hours**.
-- Positive clip: **174 frames / 5824 ms**, 166 associated poses, 85 `down`, 66 `upright`, 22 `unknown`, 1 `other`; **all 85 down frames were below the 0.70 temporal confidence floor**.
-- Positive down-confidence distribution: **min ~0.102, p50 ~0.161, p90 ~0.452, max ~0.561**. Therefore **0 qualified down frames** and no temporal run could begin.
-- Hard negative: **212 frames / 7136 ms**, 212 associated poses, **0 down**, 181 upright, 30 other, 1 unknown, **0 candidate events / 0 false alerts**.
-- End-to-end measured throughput on the two clips: **~10.10 FPS**, **38.23 s** measured sample execution, plus **~0.61 s** preparation.
-- Tracking continuity remained strong on this seed: positive 173/174 selected with 170 linked transitions and 1 reset; hard negative 212/212 selected with 211 linked transitions and 0 resets.
+This evidence changes the next target: confidence is no longer the temporal blocker. The dominant measured error is short `unknown` fragmentation inside an otherwise recovered down-posture episode.
 
-This isolates the next temporal error source cleanly: the historical 0.70 temporal confidence gate is incompatible with the confidence semantics of the already-accepted posture path. It is not a calibrated probability; accepted real-video `down` posture confidence is bounded by the required OpenPose keypoint scores.
+### One bounded unknown-gap correction under test
+The temporal engine now has an explicit, default-off `max_unknown_gap_ms` setting. Default behavior remains fail-closed: `unknown` interrupts persistence when the value is zero. For this evidence-only measurement, the existing reviewed **750 ms max-gap budget** is reused as the maximum total span from the last accepted `down` observation to the next accepted `down` observation across one or more `unknown` observations.
 
-### One bounded temporal correction under test
-The next exact head changes **only** temporal `min_confidence`, from 0.70 to the already-reviewed posture required-keypoint floor of **0.10**. Down-duration, max-gap, minimum-sample, TTL and capacity limits remain unchanged. The diagnostic also records the longest raw and qualifying down run so that, if persistence still blocks the event, the next decision is measured rather than guessed.
+The correction is intentionally narrow:
 
-This correction is evidence-only and not production-promoted. Retain it only if it converts the previously rejected positive down frames into qualifying temporal evidence without creating a hard-negative candidate/false alert. If the positive event still misses, do not lower persistence blindly; use the exact longest qualifying run and reset causes to identify the next bounded temporal defect.
+- `unknown` may bridge only when a down run is already active and the complete gap remains <= 750 ms;
+- `upright` and `other` still reset immediately;
+- low-confidence `down` still resets immediately;
+- an unknown span that exceeds the bound resets before the next down sample;
+- 3000 ms persistence, 4-sample minimum, 0.10 measured confidence floor, TTL and capacity remain unchanged;
+- default production-facing behavior remains `max_unknown_gap_ms=0` until evidence justifies promotion.
+
+Retain this correction only if the exact same staged-real positive produces a matched candidate without creating a hard-negative candidate/false alert. The diagnostic records bridged-unknown count, longest bridged gap, reset causes, candidate/match/miss/false-alert results, alert delay, continuity and CPU timing. If this still misses, the next run attacks the remaining measured reset source rather than lowering persistence blindly or model-shopping.
 
 ## Measured perception baseline
 The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-only spatial continuity recovered the low-confidence prone-person trajectory on this deliberately tiny staged-real seed:
@@ -39,7 +41,7 @@ The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-o
 - Positive overall: **173/174 frames = 99.43% coverage**; **1 reset / 171 transitions = 0.58%**.
 - Hard negative: **212/212 frames = 100% coverage**; **211/211 transitions = 100% linked**; **0 resets**.
 
-Bounded pose association previously improved fall-window association from **36/96 to 90/96** and post-fall from **0/24 to 23/24**, with zero ambiguous fallback frames. The retained three-keypoint posture fallback produced the measured end-to-end positive total of 85 `down` frames while preserving **0 down** on the hard negative. These are seed-specific engineering measurements, not general detector/tracker accuracy claims.
+Bounded pose association improved fall-window association from **36/96 to 90/96** and post-fall from **0/24 to 23/24**, with zero ambiguous fallback frames. The retained three-keypoint posture fallback materially reduced positive `unknown` output while preserving **0 down** on the hard negative. These are seed-specific engineering measurements, not general detector/tracker accuracy claims.
 
 ## Evidence/data baseline
 ### GMDCSA-24 staged-real seed
@@ -58,9 +60,9 @@ Bounded pose association previously improved fall-window association from **36/9
 - Reference decoder source: `demos/common/python/model_zoo/model_api/models/open_pose.py` at the same pinned OMZ commit; adapted diagnostic code preserves Intel copyright and Apache-2.0 attribution.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
+One worker, one acceptance-moving work item, at most one implementation PR. No additional model family, training job, paid resource, self-hosted runner, home/customer media or duplicate agent is introduced.
 
-PR #32 first exact-head measurement was **CI request 1/2** and passed on attempt 1; unchanged retries remain **0**. The measured confidence-floor correction is the single coherent **CI request 2/2** for this session. No further feature-branch CI-triggering mutation is permitted in this session. If the second exact-head run exposes another deterministic temporal blocker, preserve that evidence for the next session rather than pushing again.
+Current work item intake: open implementation PRs **0**, active runs for live main **0**, unchanged retries **0**, CI-triggering requests in this work session **0/2**, consecutive sessions without tested acceptance progress **0**. Branch preparation occurred before opening the single PR so the coherent change can trigger one exact-head CI/evidence run rather than serial invalidations.
 
 ## Reproduce
 Repository checks:
@@ -92,7 +94,7 @@ python -m analytics_lab.person_down_e2e_diagnostics \
 ```
 
 ## Next executable decision
-Measure the 0.10 temporal confidence correction on the identical positive and hard-negative clips. Keep every other temporal threshold fixed. Preserve exact candidate/match/miss/false-alert/delay, longest-down-run, reset, continuity and CPU timing evidence. If the event still misses, the next run must attack the measured persistence/reset blocker rather than model-shopping, training or broad threshold tuning.
+Run the bounded 750 ms `unknown`-gap correction on the identical positive and hard-negative staged-real clips. Preserve exact candidate/match/miss/false-alert/delay, bridged-unknown, longest-gap, reset, continuity and CPU timing evidence. Keep the change only if it improves end-to-end acceptance without hard-negative regression. Do not lower the 3000 ms persistence requirement, bridge `upright`/`other`, retrain, or add another perception model unless this measurement proves the bounded correction inadequate.
 
 Merge only when exact-head Linux, Windows and Analytics quality are green on the unchanged tested base and the bounded real-video evidence lane completes. Main post-merge verification intentionally does not reacquire real-video/model evidence.
 
