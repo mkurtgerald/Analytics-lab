@@ -184,7 +184,7 @@ def run_figshare_person_down_diagnostic(
         "preparation_elapsed_ms": preparation_elapsed_ms,
         "samples": samples,
         "negative_false_alerts": int(negative_evaluation["false_alerts"]),
-        "negative_decoded_camera_hours": float(negative_evaluation["decoded_camera_hours"]),
+        "negative_decoded_camera_hours": float(negative_evaluation["duration_ms"]) / 3_600_000.0,
         "total_frames_processed": total_frames,
         "total_elapsed_ms": total_elapsed_ms,
         "throughput_fps": total_frames * 1000.0 / total_elapsed_ms if total_elapsed_ms > 0 else 0.0,
