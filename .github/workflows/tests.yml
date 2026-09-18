@@ -62,8 +62,13 @@
           "run": "python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id ci-fixture"
         },
         {
+          "name": "Bounded Figshare archive-index evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-') }}",
+          "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"
+        },
+        {
           "name": "Bounded real-video CPU evidence",
-          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') }}",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
