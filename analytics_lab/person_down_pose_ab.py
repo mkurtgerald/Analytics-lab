@@ -55,6 +55,51 @@ _POSE_0005 = (
 )
 _INPUT = 288
 _OUTPUT_SCALE_COMPATIBILITY = 2.0 / 8.0
+_FAILURE_STAGES = frozenset({
+    "candidate_provision",
+    "candidate_runtime_contract",
+    "baseline_path",
+    "candidate_inference",
+    "candidate_decode",
+    "candidate_downstream",
+    "serialization",
+    "unknown",
+})
+
+
+class _PoseABStageError(RuntimeError):
+    """Fail-closed error carrying only an allowlisted non-sensitive stage name."""
+
+    def __init__(self, stage: str) -> None:
+        safe_stage = stage if stage in _FAILURE_STAGES else "unknown"
+        super().__init__(safe_stage)
+        self.stage = safe_stage
+
+
+def _stage_call(stage: str, fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run one evidence stage without exposing exception text or media details."""
+    try:
+        return fn(*args, **kwargs)
+    except _PoseABStageError:
+        raise
+    except Exception as exc:
+        raise _PoseABStageError(stage) from exc
+
+
+class _StageRuntime:
+    def __init__(self, runtime: Any) -> None:
+        self.runtime = runtime
+
+    def infer(self, image: Any) -> Any:
+        return _stage_call("candidate_inference", self.runtime.infer, image)
+
+
+class _StageDecoder:
+    def __init__(self, decoder: Any) -> None:
+        self.decoder = decoder
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return _stage_call("candidate_decode", self.decoder, *args, **kwargs)
 
 
 def _target(root: Path, relative_path: str) -> Path:
@@ -243,15 +288,28 @@ def run_pose_ab(manifest: str | Path, candidate_root: str | Path) -> dict[str, A
     current_runtime = _ReferenceRuntime(current_base)
     current_decoder = ReferenceOpenPoseDecoder()
 
-    candidate_verified = _provision_pose_0005(candidate_root / "pose-0005")
-    candidate_runtime = _Pose0005Runtime(candidate_verified, "CPU")
+    candidate_verified = _stage_call(
+        "candidate_provision", _provision_pose_0005, candidate_root / "pose-0005"
+    )
+    candidate_runtime = _stage_call(
+        "candidate_runtime_contract", _Pose0005Runtime, candidate_verified, "CPU"
+    )
     if not candidate_runtime.runtime_version.startswith(_RUNTIME_PREFIX):
-        raise RuntimeError("candidate OpenVINO runtime does not match reviewed release")
+        raise _PoseABStageError("candidate_runtime_contract")
     candidate_decoder = _Pose0005Decoder()
     preparation_elapsed_ms = (time.perf_counter() - preparation_started) * 1000.0
 
-    baseline = _run_path(samples, detector, current_runtime, current_decoder)
-    candidate = _run_path(samples, detector, candidate_runtime, candidate_decoder)
+    baseline = _stage_call(
+        "baseline_path", _run_path, samples, detector, current_runtime, current_decoder
+    )
+    candidate = _stage_call(
+        "candidate_downstream",
+        _run_path,
+        samples,
+        detector,
+        _StageRuntime(candidate_runtime),
+        _StageDecoder(candidate_decoder),
+    )
     return {
         "schema_version": 1,
         "diagnostic": "person_down_pose_model_ab",
@@ -284,15 +342,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--candidate-dir", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        print(json.dumps(
-            run_pose_ab(args.manifest, args.candidate_dir),
+        result = run_pose_ab(args.manifest, args.candidate_dir)
+    except _PoseABStageError as exc:
+        print(f"Person-down pose A/B diagnostic rejected at stage: {exc.stage}.", file=sys.stderr)
+        return 2
+    except Exception:
+        print("Person-down pose A/B diagnostic rejected at stage: unknown.", file=sys.stderr)
+        return 2
+    try:
+        payload = json.dumps(
+            result,
             allow_nan=False,
             sort_keys=True,
             separators=(",", ":"),
-        ))
-    except (OSError, ValueError, TypeError, RuntimeError, OverflowError):
-        print("Person-down pose A/B diagnostic rejected.", file=sys.stderr)
+        )
+    except Exception:
+        print("Person-down pose A/B diagnostic rejected at stage: serialization.", file=sys.stderr)
         return 2
+    print(payload)
     return 0
 
 
