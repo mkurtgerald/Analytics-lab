@@ -48,6 +48,21 @@ def _archive() -> bytes:
     return stream.getvalue()
 
 
+def _large_archive() -> bytes:
+    """Keep member headers outside the bounded 128 KiB tail used by the index probe."""
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("subject-05/fall-01.mp4", b"fall-bytes")
+        archive.writestr("subject-05/adl-01.mp4", b"adl-bytes")
+        archive.writestr("notes/readme.txt", b"metadata")
+        archive.writestr(
+            "padding.bin",
+            b"x" * (192 * 1024),
+            compress_type=zipfile.ZIP_STORED,
+        )
+    return stream.getvalue()
+
+
 def _metadata(archive: bytes) -> bytes:
     return json.dumps({
         "id": FIGSHARE_ARTICLE_ID,
@@ -107,7 +122,12 @@ class FigshareAcquisitionTests(unittest.TestCase):
             )
 
     def test_high_level_index_fetch_never_requests_member_payload(self):
-        archive = _archive()
+        # The first attempt used a sub-128 KiB synthetic archive. By definition,
+        # a bounded 128 KiB tail request then covered that entire tiny fixture,
+        # including local member headers. Use a larger generated archive so this
+        # test exercises the production invariant: only the tail and central
+        # directory of a large remote object are requested.
+        archive = _large_archive()
         metadata = _metadata(archive)
         requested_ranges: list[tuple[int, int]] = []
 
@@ -130,7 +150,7 @@ class FigshareAcquisitionTests(unittest.TestCase):
 
         artifact, members = fetch_bounded_archive_index(opener=opener)
         self.assertEqual(artifact.size_bytes, len(archive))
-        self.assertEqual(len(members), 3)
+        self.assertEqual(len(members), 4)
         self.assertEqual(len(requested_ranges), 2)
         self.assertTrue(all(end - start + 1 <= 2 * 1024 * 1024 for start, end in requested_ranges))
         self.assertFalse(any(
