@@ -10,7 +10,7 @@ from analytics_lab.validation_seed import (
     GMDCSA24_HELDOUT_S3,
     GMDCSA24_HELDOUT_S4,
     GMDCSA24_ROBUSTNESS_S1_BW,
-    GMDCSA24_ROBUSTNESS_S2_FW,
+    GMDCSA24_ROBUSTNESS_S2_NIGHT,
     GMDCSA24_SEED,
     SeedMediaSpec,
     _attribution_text,
@@ -30,13 +30,13 @@ class _Response(io.BytesIO):
 
 class ValidationSeedTests(unittest.TestCase):
     def test_active_subset_is_untouched_file_pair_under_bounded_budget(self):
-        self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_FW)
+        self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_NIGHT)
         self.assertEqual(len(GMDCSA24_ACCEPTED_SEED), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S2), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S3), 2)
         self.assertEqual(len(GMDCSA24_HELDOUT_S4), 2)
         self.assertEqual(len(GMDCSA24_ROBUSTNESS_S1_BW), 2)
-        self.assertEqual(len(GMDCSA24_ROBUSTNESS_S2_FW), 2)
+        self.assertEqual(len(GMDCSA24_ROBUSTNESS_S2_NIGHT), 2)
         self.assertLess(sum(item.size_bytes for item in GMDCSA24_SEED), 16 * 1024 * 1024)
         self.assertEqual(sum(item.label_id is not None for item in GMDCSA24_SEED), 1)
         self.assertEqual(sum(item.label_id is None for item in GMDCSA24_SEED), 1)
@@ -83,14 +83,14 @@ class ValidationSeedTests(unittest.TestCase):
         document = _manifest(identities)
         self.assertEqual(document["schema_version"], 1)
         self.assertEqual(document["config"]["max_samples"], 2)
-        self.assertEqual(document["config"]["max_total_video_bytes"], 12_449_385)
+        self.assertEqual(document["config"]["max_total_video_bytes"], 9_347_373)
         self.assertEqual(len(document["samples"][0]["labels"]), 1)
         self.assertEqual(document["samples"][1]["labels"], [])
-        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 4000)
+        self.assertEqual(document["samples"][0]["end_timestamp_ms"], 8000)
         self.assertEqual(document["samples"][1]["end_timestamp_ms"], 7000)
-        self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 2000)
-        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 4000)
-        self.assertEqual(document["samples"][0]["sample_id"], "gmdcsa24-s2-fall-07")
+        self.assertEqual(document["samples"][0]["labels"][0]["start_timestamp_ms"], 2500)
+        self.assertEqual(document["samples"][0]["labels"][0]["end_timestamp_ms"], 8000)
+        self.assertEqual(document["samples"][0]["sample_id"], "gmdcsa24-s2-fall-13")
         self.assertEqual(document["samples"][1]["sample_id"], "gmdcsa24-s2-adl-10")
         self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
         self.assertNotEqual(document["samples"][0]["camera_id"], document["samples"][1]["camera_id"])
@@ -98,7 +98,7 @@ class ValidationSeedTests(unittest.TestCase):
 
     def test_attribution_tracks_exact_active_files(self):
         text = _attribution_text()
-        self.assertIn("Subject 2/Fall/07.mp4", text)
+        self.assertIn("Subject 2/Fall/13.mp4", text)
         self.assertIn("Subject 2/ADL/10.mp4", text)
         self.assertNotIn("Subject 1/Fall/11.mp4", text)
         self.assertNotIn("Subject 4/Fall/03.mp4", text)
