@@ -2,6 +2,10 @@ import ast
 from pathlib import Path
 import unittest
 
+import numpy as np
+
+from analytics_lab.associative_embedding_reference import AssociativeEmbeddingDecoder
+
 
 class AssociativeEmbeddingReferenceTests(unittest.TestCase):
     def test_match_by_tag_uses_group_axes_not_embedding_axis(self):
@@ -45,6 +49,25 @@ class AssociativeEmbeddingReferenceTests(unittest.TestCase):
                 and node.value.attr == "shape",
                 "group counts must not unpack the three-axis diff.shape tuple",
             )
+
+    def test_call_accepts_reviewed_176_square_contract(self):
+        decoder = AssociativeEmbeddingDecoder()
+        decoder.max_num_people = 1
+        heatmaps = np.zeros((1, 17, 176, 176), dtype=np.float32)
+        tags = np.zeros((1, 17, 176, 176, 1), dtype=np.float32)
+
+        poses, scores = decoder(heatmaps, tags)
+
+        self.assertEqual(poses.shape, (0, 17, 4))
+        self.assertEqual(scores.shape, (0,))
+
+    def test_call_rejects_mismatched_spatial_contract(self):
+        decoder = AssociativeEmbeddingDecoder()
+        heatmaps = np.zeros((1, 17, 176, 176), dtype=np.float32)
+        tags = np.zeros((1, 17, 144, 144, 1), dtype=np.float32)
+
+        with self.assertRaisesRegex(RuntimeError, "embedding output contract"):
+            decoder(heatmaps, tags)
 
     def _assert_diff_shape_axis(self, expression, axis):
         self.assertIsInstance(expression, ast.Subscript)

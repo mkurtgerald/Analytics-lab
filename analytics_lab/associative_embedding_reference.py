@@ -195,10 +195,20 @@ class AssociativeEmbeddingDecoder:
         return keypoints
 
     def __call__(self, heatmaps: Any, tags: Any, *, nms_heatmaps: Any | None = None) -> tuple[Any, Any]:
-        if tuple(heatmaps.shape) != (1, 17, 144, 144):
-            raise RuntimeError("AE heatmap output shape changed")
-        if tuple(tags.shape) != (1, 17, 144, 144, 1):
-            raise RuntimeError("AE embedding output shape changed")
+        heatmap_shape = tuple(heatmaps.shape)
+        if (
+            len(heatmap_shape) != 4
+            or heatmap_shape[0:2] != (1, 17)
+            or heatmap_shape[2] <= 0
+            or heatmap_shape[3] <= 0
+            or heatmap_shape[2] != heatmap_shape[3]
+        ):
+            raise RuntimeError("AE heatmap output contract changed")
+        height, width = heatmap_shape[2:]
+        if tuple(tags.shape) != (1, 17, height, width, 1):
+            raise RuntimeError("AE embedding output contract changed")
+        if nms_heatmaps is not None and tuple(nms_heatmaps.shape) != heatmap_shape:
+            raise RuntimeError("AE NMS heatmap output contract changed")
         nms = heatmaps if nms_heatmaps is None else nms_heatmaps
         tag_k, loc_k, val_k = self.top_k(nms, tags)
         grouped = tuple(map(self._match_by_tag, zip(tag_k, loc_k, val_k)))
