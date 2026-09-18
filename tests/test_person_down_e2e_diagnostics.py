@@ -51,11 +51,12 @@ class PersonDownE2EDiagnosticTests(unittest.TestCase):
     def test_missing_pose_fails_closed(self):
         self.assertEqual(_corrected_posture(None), ("unknown", 0.0, "no_associated_pose"))
 
-    def test_measured_temporal_correction_changes_only_confidence_floor(self):
+    def test_measured_temporal_correction_changes_only_measured_confidence_and_unknown_gap(self):
         baseline = Config()
         corrected = _measured_temporal_config()
         self.assertEqual(corrected.min_confidence, _POSTURE_CONFIG.min_keypoint_confidence)
         self.assertLess(corrected.min_confidence, baseline.min_confidence)
+        self.assertEqual(corrected.max_unknown_gap_ms, baseline.max_gap_ms)
         self.assertEqual(corrected.down_duration_ms, baseline.down_duration_ms)
         self.assertEqual(corrected.max_gap_ms, baseline.max_gap_ms)
         self.assertEqual(corrected.min_samples, baseline.min_samples)
@@ -71,6 +72,7 @@ class PersonDownE2EDiagnosticTests(unittest.TestCase):
         frozen = trace.freeze()
         self.assertEqual(frozen["qualified_down_frames"], 2)
         self.assertEqual(frozen["low_confidence_down_frames"], 1)
+        self.assertEqual(frozen["bridged_unknown_frames"], 0)
         self.assertEqual(frozen["reset_reason_counts"], {
             "down_confidence_below_threshold": 1,
             "posture_unknown": 1,
@@ -79,6 +81,27 @@ class PersonDownE2EDiagnosticTests(unittest.TestCase):
         self.assertEqual(frozen["longest_raw_down_run_samples"], 3)
         self.assertEqual(frozen["longest_qualified_down_run_ms"], 0)
         self.assertEqual(frozen["longest_qualified_down_run_samples"], 1)
+
+    def test_temporal_trace_bridges_only_bounded_unknown(self):
+        trace = _TemporalTrace(Config(
+            down_duration_ms=1000,
+            max_gap_ms=750,
+            min_samples=2,
+            min_confidence=0.7,
+            max_unknown_gap_ms=750,
+        ))
+        trace.observe(0, "down", 0.8, "down")
+        trace.observe(250, "down", 0.8, "down")
+        trace.observe(500, "unknown", 0.0, "missing")
+        trace.observe(750, "down", 0.9, "down")
+        trace.observe(1000, "down", 0.9, "down")
+        trace.observe(1250, "other", 0.0, "other")
+        frozen = trace.freeze()
+        self.assertEqual(frozen["bridged_unknown_frames"], 1)
+        self.assertEqual(frozen["longest_bridged_unknown_gap_ms"], 250)
+        self.assertEqual(frozen["longest_qualified_down_run_ms"], 1000)
+        self.assertEqual(frozen["longest_qualified_down_run_samples"], 4)
+        self.assertEqual(frozen["reset_reason_counts"], {"posture_other": 1})
 
 
 if __name__ == "__main__":
