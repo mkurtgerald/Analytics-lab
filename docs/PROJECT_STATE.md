@@ -6,18 +6,32 @@ Analytics Lab develops platform-independent video analytics for paid integration
 ## Current product path
 The implemented person-down **candidate** path remains:
 
-`authorized local video -> reviewed detector + pose model -> temporary IoU tracking -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> held-out evaluation/aggregation -> rights-bound validation evidence`
+`authorized local video -> reviewed detector + pose model -> temporary tracking -> conservative posture classification -> temporal persistence -> evidence-linked candidate event -> held-out evaluation/aggregation -> rights-bound validation evidence`
 
 Candidate events do not infer injury, cause, fault, or intent. Validation binds exact local-media SHA-256 identity, reviewed model-artifact identities, runtime/device identity, decoded coverage, throughput and evaluation metrics without retaining video.
 
 ## Current acceptance-moving work
-Live `main` entering this work item is `fe0b48457ee06dca813ffb93d28a3110d9dedd92`; its Analytics quality run `35285472162` passed on attempt 1. At intake there were zero open implementation PRs and zero active runs for that head.
+Live `main` entering this work item is `b1af22f7a126dee106a2a1c45efc80031a01989b`; its post-merge Analytics quality run `35287570905` passed on attempt 1. PR #31 is the single implementation/evidence vehicle. Its first exact head `56ab42ec45b17b7d56ca437d09d57621e1bfcc44` passed Linux, Windows, the Analytics quality gate and the bounded rights-cleared real-video lane on attempt 1.
 
-The single work item is now **decoded-pose to continuity-track association geometry** on the exact same rights-cleared two-clip staged-real seed. PR #29 showed that the pinned Open Model Zoo reference decoding semantics materially improved posture discrimination without introducing a hard-negative `down` classification, but the pose model still decoded the person on frames where the current overlap-based association rejected the pose. This work therefore measures the nearest decoded pose relative to the continuity-selected detector box before changing the association rule.
+The single work item is **posture quality on the continuity-selected, bounded-associated OpenPose track** on the exact same rights-cleared two-clip staged-real seed. PR #30 materially recovered pose association without hard-negative regression: fall-window association improved from 36/96 to 90/96 and post-fall from 0/24 to 23/24, while before-fall and the hard negative remained fully associated.
 
-The evidence-only diagnostic records, separately for matched and unmatched frames and for before/during/after windows, the nearest decoded pose's selection IoU, normalized center distance, normalized edge gap, pose/selection width-height-area ratios, and decoded-keypoint-inside counts. Media and model artifacts remain outside GitHub. The production perception backend, tracker, temporal event logic and commercial release state remain unchanged.
+### First exact-head posture measurement
+The remaining `unknown` error is now isolated to **missing decoded required shoulder/hip keypoints**, not the confidence, torso-size, orientation or aspect thresholds:
 
-### Measured detector baseline
+- Positive before-fall: **53/53 associated; 53 upright; 0 unknown**.
+- Positive fall window: **90/96 associated; 50 down, 13 upright, 1 other, 26 unknown**. All 26 unknowns are `required_keypoints_missing`; required-point counts are **3 points: 19, 2 points: 5, 1 point: 2**.
+- Positive post-fall: **23/24 associated; 12 down, 11 unknown**. All 11 unknowns are `required_keypoints_missing`; required-point counts are **3 points: 5, 2 points: 2, 1 point: 4**.
+- Hard negative: **212/212 associated; 180 upright, 30 other, 2 unknown, 0 down**. Both unknowns have exactly three required points.
+- Association fallback remains unchanged: 77 positive frames recovered, zero ambiguous fallback frames, and no hard-negative fallback use.
+
+The 50 fall-window `down` poses have all four required points and strongly horizontal measured geometry (horizontal-fraction p50 ~0.993; decoded-pose width/height p50 ~2.43). The 12 post-fall `down` poses are similarly horizontal (p50 ~0.997; width/height p50 ~2.78). The unknown poses cannot reach the existing torso-geometry classifier because one or more required keypoints are absent.
+
+### Bounded correction under test
+The evidence lane now tests one fail-closed correction only for an existing `unknown` pose with **exactly three of the four required shoulder/hip keypoints**. With exactly one joint absent, one body side is necessarily complete. The diagnostic uses that complete same-side shoulder-to-hip vector with the **existing** required-keypoint floor (0.10), torso-fraction floor (0.10), orientation threshold (0.70), and bbox aspect threshold (1.15). It accepts only decisive `upright` or `down`; incomplete, low-confidence or ambiguous geometry remains `unknown`.
+
+This correction does not alter production perception, detector continuity, OpenPose decoding or pose association. It is retained only if the identical real-video seed recovers a material share of the **24 positive three-point unknown frames** while the hard negative remains at **0 down**, before-fall remains unchanged, and no existing associated classification regresses. A useful acceptance bar for this bounded experiment is at least half of those 24 positive three-point frames becoming decisive with zero hard-negative down regression.
+
+## Measured detector baseline
 The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-only spatial continuity recovered the low-confidence prone-person trajectory on this deliberately tiny staged-real seed:
 
 - Positive fall interval: **96/96 frames = 100% coverage**; **94/95 transitions = 98.95% linked**.
@@ -25,13 +39,6 @@ The reviewed `person-detection-0200` detector at confidence 0.10 plus evidence-o
 - Hard negative: **212/212 frames = 100% coverage**; **211/211 transitions = 100% linked**; **0 resets**.
 
 Threshold lowering alone was rejected because duplicate/noisy boxes rose sharply. The continuity selector is not a general detector promotion; the current seed is single-person and does not prove crowded-scene identity separation.
-
-### Measured pose/posture baseline
-The original detector-crop/global-heatmap-peak path was inadequate. The bounded threshold matrix did not recover enough discrimination to promote threshold changes.
-
-The pinned Open Model Zoo full-frame preserve-aspect + 3x3 NMS + PAF-grouping path materially improved the same real-video seed. On the positive clip the corrected path classified all **53/53 pre-fall frames upright**. During the 96-frame fall interval, associated poses produced **21 down, 13 upright, 1 other and 1 unknown**. The hard negative produced **180 upright, 30 other, 2 unknown and 0 down** across 212 frames.
-
-The remaining dominant error is association coverage: the pose model decoded a person on **96/96 fall-window frames** and **24/24 post-fall frames**, but the current pose-to-track rule associated only **36/96 fall-window frames** and **0/24 post-fall frames**. Before the fall association was **53/53** and the hard negative remained **212/212**. That is the measured reason association, not another pose model or temporal tuning, is the next target.
 
 ## Evidence/data baseline
 ### GMDCSA-24 staged-real seed
@@ -44,13 +51,15 @@ The remaining dominant error is association coverage: the pose model decoded a p
 
 ### Runtime/model provenance
 - Open Model Zoo commit: `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0.
-- Pose artifact: `human-pose-estimation-0001` FP16, already exact-size/hash reviewed.
-- Evidence detector: `person-detection-0200` FP16, already exact-size/hash reviewed.
+- Pose artifact: `human-pose-estimation-0001` FP16, exact-size/hash reviewed.
+- Evidence detector: `person-detection-0200` FP16, exact-size/hash reviewed.
 - OpenVINO Runtime: `2026.3.1`; evidence decoder: `opencv-python-headless==4.12.0.88`.
 - Reference decoder source: `demos/common/python/model_zoo/model_api/models/open_pose.py` at the same pinned OMZ commit; adapted diagnostic code preserves Intel copyright and Apache-2.0 attribution.
 
 ## Efficiency / execution ledger
-One worker, one acceptance-moving work item, at most one implementation PR. Intake snapshot for this work item: `main=fe0b48457ee06dca813ffb93d28a3110d9dedd92`, open implementation PRs `0`, active runs for live main head `0`, unchanged retries `0`, CI-triggering requests this session `0`, consecutive sessions without tested acceptance progress `0`. The proposed evidence PR's automatic exact-head run is request **1/2**. No paid resource, self-hosted runner, home/customer media, new model family or additional worker is introduced.
+One worker, one acceptance-moving work item, one implementation PR. Intake: `main=b1af22f7a126dee106a2a1c45efc80031a01989b`, open implementation PRs `0`, active runs for live main `0`, unchanged retries `0`, CI-triggering requests `0`, consecutive sessions without tested acceptance progress `0`.
+
+PR #31 exact-head measurement was CI request **1/2** and passed on attempt 1. The coherent three-point fallback correction is request **2/2** for this session. No unchanged retry, paid resource, self-hosted runner, home/customer media, new model family or additional worker is introduced. After the second exact-head run, no further feature-branch CI mutation is permitted in this session.
 
 ## Reproduce
 Repository checks:
@@ -79,11 +88,9 @@ python -m analytics_lab.openpose_diagnostics_v2 \
 ```
 
 ## Next executable decision
-Run the exact-head association-geometry diagnostic on the same positive and hard-negative clips. Quantify the unmatched nearest-pose edge gap, center distance, scale/shape change and decoded-keypoint-inside distributions before/during/after the fall. Do not change the association rule until those distributions identify the smallest bounded correction.
+Run the exact-head three-point fallback correction on the same positive and hard-negative clips. Retain it only if it materially reduces positive fall/post-fall unknowns without creating a hard-negative `down` classification or changing already-decisive four-point classifications. If it fails that bar, stop this fallback rather than broadening it to two-point/bbox-only inference.
 
-If the first exact-head measurement isolates a safe geometric boundary, make one coherent association correction on the same PR, add a regression, and compare against the identical held-out seed. Keep it only if fall/post-fall association materially improves without creating hard-negative misassociation or unacceptable multi-pose ambiguity. If the measurement does not separate matched from unmatched geometry, change approach rather than widening thresholds blindly.
-
-Do not start another detector/pose search, training, tracker rewrite or temporal tuning while association remains the measured largest error source.
+If retained and exact-head Linux, Windows and Analytics quality remain green, merge this evidence improvement. The next session should then reconnect the measured detector + association + posture path through temporal event validation so the first legitimate end-to-end staged-real person-down event metrics can be produced. Do not start another detector/pose search, training or tracker rewrite while this measured path remains viable.
 
 ## Outstanding commercial-release gates
 Expanded held-out positive/negative real-video evidence across cameras/sites and multi-person scenes; generalizable detector recall/identity behavior; functional pose/posture discrimination on real video; safe pose-to-track association; false-alert and missed-event measurements at meaningful scale; alert-latency distribution once events fire; latency/resource envelope; platform/native dependency provenance; security/privacy/provenance review; versioned installable integration adapter; packaging/notices; and explicit owner release approval. Synthetic tests and this two-clip staged-real seed do not establish commercial accuracy or commercial readiness.
