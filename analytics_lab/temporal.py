@@ -60,6 +60,7 @@ class Config:
     max_gap_ms: int = 750
     min_samples: int = 4
     min_confidence: float = 0.7
+    max_unknown_gap_ms: int = 0
     track_ttl_ms: int = 30000
     max_tracks: int = 1024
 
@@ -68,6 +69,9 @@ class Config:
             _integer(getattr(self, name), name, 1)
         _integer(self.min_samples, "min_samples", 2)
         _score(self.min_confidence, "min_confidence")
+        _integer(self.max_unknown_gap_ms, "max_unknown_gap_ms")
+        if self.max_unknown_gap_ms > self.max_gap_ms:
+            raise ValueError("max_unknown_gap_ms cannot exceed max_gap_ms")
         if self.track_ttl_ms <= self.max_gap_ms:
             raise ValueError("track_ttl_ms must exceed max_gap_ms")
 
@@ -79,12 +83,16 @@ class _Track:
     min_confidence: float = 1.0
     count: int = 0
     emitted: bool = False
+    last_down_timestamp_ms: int | None = None
+    unknown_since_down: bool = False
 
     def reset_run(self) -> None:
         self.start_timestamp_ms = None
         self.min_confidence = 1.0
         self.count = 0
         self.emitted = False
+        self.last_down_timestamp_ms = None
+        self.unknown_since_down = False
 
 
 class PersonDownEngine:
@@ -94,6 +102,12 @@ class PersonDownEngine:
     timestamps for each track. A new stream/tracker session needs a new engine
     and session_id. Do not reuse a track ID for a different person within its
     TTL. Calls are synchronous and not thread-safe. Track count is bounded.
+
+    By default, every non-down posture breaks persistence. A caller may
+    explicitly set ``max_unknown_gap_ms`` to bridge a short run of ``unknown``
+    observations only. ``upright``, ``other`` and low-confidence ``down`` still
+    reset immediately, and an unknown span is bounded from the last accepted
+    down observation to the next accepted down observation.
     """
 
     def __init__(self, source_id: str, session_id: str, config: Config | None = None):
@@ -137,14 +151,38 @@ class PersonDownEngine:
 
         self._watermark = t
         track.last_timestamp_ms = t
-        if observation.posture != "down" or observation.confidence < self.config.min_confidence:
-            # Missing, uncertain, or conflicting observations cannot extend a run.
+
+        if observation.posture == "unknown":
+            if (
+                self.config.max_unknown_gap_ms > 0
+                and track.start_timestamp_ms is not None
+                and track.last_down_timestamp_ms is not None
+                and t - track.last_down_timestamp_ms <= self.config.max_unknown_gap_ms
+            ):
+                track.unknown_since_down = True
+                return []
             track.reset_run()
             return []
+
+        if observation.posture != "down" or observation.confidence < self.config.min_confidence:
+            # Conflicting or low-confidence observations cannot extend a run.
+            track.reset_run()
+            return []
+
+        if (
+            track.unknown_since_down
+            and track.last_down_timestamp_ms is not None
+            and t - track.last_down_timestamp_ms > self.config.max_unknown_gap_ms
+        ):
+            # The next accepted down sample arrived beyond the bounded unknown span.
+            track.reset_run()
+
         if track.start_timestamp_ms is None:
             track.start_timestamp_ms = t
         track.count += 1
         track.min_confidence = min(track.min_confidence, observation.confidence)
+        track.last_down_timestamp_ms = t
+        track.unknown_since_down = False
         if (not track.emitted
                 and t - track.start_timestamp_ms >= self.config.down_duration_ms
                 and track.count >= self.config.min_samples):
@@ -185,6 +223,7 @@ class PersonDownEngine:
                 "thresholds": {"down_duration_ms": self.config.down_duration_ms,
                                "max_gap_ms": self.config.max_gap_ms,
                                "min_samples": self.config.min_samples,
-                               "min_confidence": self.config.min_confidence},
+                               "min_confidence": self.config.min_confidence,
+                               "max_unknown_gap_ms": self.config.max_unknown_gap_ms},
             },
         }
