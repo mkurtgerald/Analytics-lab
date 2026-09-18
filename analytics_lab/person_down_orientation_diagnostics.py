@@ -1,15 +1,19 @@
-"""Evidence-only person-down diagnostic with bounded orientation recovery.
+"""Evidence-only person-down diagnostic with bounded orientation and pose recovery.
 
-Subject-2 held-out evidence showed that the reviewed person-detection-0200 path
-lost the person on 44/138 labelled fall frames while the hard negative remained
-safe. This diagnostic keeps the exact same detector, weights, confidence floor,
-OpenPose path, posture rules and temporal rules. Only when the primary detector
-returns no admitted person box and a prior continuity box exists, it evaluates
-+/-90-degree views with the same detector and admits at most one mapped box that
-still clears the existing spatial-continuity IoU floor.
+Held-out measurements showed two distinct failure modes in the reviewed path:
+fallen people can be lost by the upright-oriented detector, and full-frame
+OpenPose can decode a pose too far from the continuity-selected person box to
+associate safely. This diagnostic keeps the exact same detector, weights,
+confidence floor, pose model/decoder, posture rules and temporal rules.
+
+Detector recovery remains limited to +/-90-degree views of the same detector
+after a primary miss with prior spatial continuity. Pose recovery is attempted
+only after full-frame safe association fails: the already-selected person box
+is expanded by a fixed bounded margin, the same pinned OpenPose model is run on
+that crop, and the same association rules are applied inside the crop.
 
 The experiment is deliberately evidence-only. It does not train, add another
-model family, alter production defaults, retain media, or infer injury/cause.
+model family, alter temporal persistence, retain media, or infer injury/cause.
 """
 from __future__ import annotations
 
@@ -45,7 +49,14 @@ from .openpose_diagnostics import _ReferenceRuntime, _pixel_bbox
 from .openpose_pose_geometry import AssociatedReferencePose, select_reference_pose
 from .openpose_reference import ReferenceOpenPoseDecoder
 from .openvino_omz import _OpenVINORuntime
+from .perception import BBox
 from .person_down_e2e_diagnostics import _TemporalTrace, _corrected_posture, _measured_temporal_config
+from .pose_crop import (
+    DEFAULT_PADDING_FRACTION,
+    OPENPOSE_MAX_ASPECT_RATIO,
+    extract_person_crop,
+    plan_person_crop,
+)
 from .posture_quality_diagnostics import _pose_metrics
 from .temporal import Observation, PersonDownEngine
 from .validation import ValidationSampleSpec
@@ -210,6 +221,43 @@ class _FragmentationAccumulator:
         }
 
 
+def _associate_pose(
+    image: Any,
+    selection_bbox: BBox,
+    runtime: _ReferenceRuntime,
+    decoder: ReferenceOpenPoseDecoder,
+) -> tuple[
+    AssociatedReferencePose | None,
+    tuple[AssociatedReferencePose, dict[str, float | int]] | None,
+    str,
+    float,
+    float,
+]:
+    started = time.perf_counter()
+    heatmaps, pafs, resized_width, resized_height = runtime.infer(image)
+    inference_ms = (time.perf_counter() - started) * 1000.0
+    started = time.perf_counter()
+    poses, scores = decoder(heatmaps, pafs)
+    shape = image.shape
+    kwargs = dict(
+        selection_bbox=selection_bbox,
+        frame_width=int(shape[1]),
+        frame_height=int(shape[0]),
+        resized_width=resized_width,
+        resized_height=resized_height,
+    )
+    associated = select_reference_pose(poses, scores, **kwargs)
+    if associated is not None:
+        nearest = (associated, _candidate_metrics(associated, selection_bbox))
+        reason = "baseline_overlap"
+    else:
+        decoded = _decoded_candidates(poses, scores, **kwargs)
+        nearest = _nearest_candidate(decoded, selection_bbox)
+        associated, reason, _count = _bounded_fallback(decoded, selection_bbox)
+    decode_ms = (time.perf_counter() - started) * 1000.0
+    return associated, nearest, reason, inference_ms, decode_ms
+
+
 def _scan_sample(
     sample: ValidationSampleSpec,
     detector: _CompiledDetector,
@@ -229,12 +277,16 @@ def _scan_sample(
     fallback_detector_ms = 0.0
     pose_inference_ms = 0.0
     pose_decode_ms = 0.0
+    crop_pose_inference_ms = 0.0
+    crop_pose_decode_ms = 0.0
     associated_frames = 0
     frames_processed = 0
     fallback_attempted_frames = 0
     fallback_accepted_frames = 0
     fallback_mapped_candidates = 0
     fallback_linked_candidates = 0
+    crop_attempted_frames = 0
+    crop_associated_frames = 0
     first_timestamp_ms: int | None = None
     last_timestamp_ms: int | None = None
     windows: dict[str, dict[str, int]] = {}
@@ -296,31 +348,41 @@ def _scan_sample(
                 if bbox is None:
                     association_reason = "invalid_selection_bbox"
                 else:
-                    started = time.perf_counter()
-                    heatmaps, pafs, resized_width, resized_height = runtime.infer(frame.image)
-                    pose_inference_ms += (time.perf_counter() - started) * 1000.0
-                    started = time.perf_counter()
-                    poses, scores = decoder(heatmaps, pafs)
-                    shape = frame.image.shape
-                    kwargs = dict(
-                        selection_bbox=bbox,
-                        frame_width=int(shape[1]),
-                        frame_height=int(shape[0]),
-                        resized_width=resized_width,
-                        resized_height=resized_height,
-                    )
-                    corrected_associated = select_reference_pose(poses, scores, **kwargs)
-                    if corrected_associated is not None:
-                        association_reason = "baseline_overlap"
-                        nearest = (
-                            corrected_associated,
-                            _candidate_metrics(corrected_associated, bbox),
+                    (
+                        corrected_associated,
+                        nearest,
+                        association_reason,
+                        full_inference_ms,
+                        full_decode_ms,
+                    ) = _associate_pose(frame.image, bbox, runtime, decoder)
+                    pose_inference_ms += full_inference_ms
+                    pose_decode_ms += full_decode_ms
+
+                    if corrected_associated is None:
+                        crop_attempted_frames += 1
+                        shape = frame.image.shape
+                        plan = plan_person_crop(
+                            bbox,
+                            frame_width=int(shape[1]),
+                            frame_height=int(shape[0]),
                         )
-                    else:
-                        decoded = _decoded_candidates(poses, scores, **kwargs)
-                        nearest = _nearest_candidate(decoded, bbox)
-                        corrected_associated, association_reason, _count = _bounded_fallback(decoded, bbox)
-                    pose_decode_ms += (time.perf_counter() - started) * 1000.0
+                        crop = extract_person_crop(frame.image, plan, detector.np)
+                        (
+                            crop_associated,
+                            crop_nearest,
+                            crop_reason,
+                            crop_inference_ms,
+                            crop_decode_ms,
+                        ) = _associate_pose(crop, plan.selection_bbox, runtime, decoder)
+                        pose_inference_ms += crop_inference_ms
+                        pose_decode_ms += crop_decode_ms
+                        crop_pose_inference_ms += crop_inference_ms
+                        crop_pose_decode_ms += crop_decode_ms
+                        corrected_associated = crop_associated
+                        nearest = crop_nearest
+                        association_reason = f"crop_{crop_reason}"
+                        if corrected_associated is not None:
+                            crop_associated_frames += 1
 
             if corrected_associated is not None:
                 associated_frames += 1
@@ -389,6 +451,12 @@ def _scan_sample(
             "linked_candidates": fallback_linked_candidates,
             "detector_inference_ms": fallback_detector_ms,
         },
+        "pose_crop_fallback": {
+            "attempted_frames": crop_attempted_frames,
+            "associated_frames": crop_associated_frames,
+            "pose_inference_ms": crop_pose_inference_ms,
+            "pose_decode_ms": crop_pose_decode_ms,
+        },
         "temporal_trace": trace.freeze(),
         "fragmentation_windows": {
             name: accumulator.freeze()
@@ -439,7 +507,7 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
     total_frames = sum(int(item["frames_processed"]) for item in results)
     total_elapsed_ms = sum(float(item["elapsed_ms"]) for item in results)
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "diagnostic": "person_down_orientation_fallback",
         "detector": candidate.name,
         "detector_threshold": _CONTINUITY_THRESHOLD,
@@ -449,6 +517,17 @@ def run_orientation_diagnostic(manifest: str | Path, candidate_root: str | Path)
             "same_detector_and_weights": True,
             "primary_miss_only": True,
             "requires_prior_spatial_link": True,
+            "production_promoted": False,
+        },
+        "pose_crop_fallback": {
+            "trigger": "safe_full_frame_association_failure_only",
+            "same_pose_model_and_decoder": True,
+            "padding_fraction": DEFAULT_PADDING_FRACTION,
+            "max_input_aspect_ratio": OPENPOSE_MAX_ASPECT_RATIO,
+            "geometric_distortion": False,
+            "association_rules_changed": False,
+            "posture_rules_changed": False,
+            "temporal_rules_changed": False,
             "production_promoted": False,
         },
         "fragmentation_diagnostic": {
