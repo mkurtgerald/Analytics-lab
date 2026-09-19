@@ -41,7 +41,17 @@ class TrackingEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "image dimensions"):
             self._manifest(image_width=40_000)
 
-    def test_exhaustive_bound_manifest_is_eligible(self):
+    def test_manifest_requires_authoritative_rights_source(self):
+        with self.assertRaisesRegex(ValueError, "rights_source"):
+            self._manifest(rights_source="  ")
+
+    def test_manifest_rejects_noncommercial_or_unknown_commercial_rights(self):
+        with self.assertRaisesRegex(ValueError, "commercial_evaluation_authorized"):
+            self._manifest(commercial_evaluation_authorized=False)
+        with self.assertRaisesRegex(ValueError, "must be a boolean"):
+            self._manifest(commercial_evaluation_authorized=1)
+
+    def test_exhaustive_bound_rights_cleared_manifest_is_eligible(self):
         manifest = self._manifest()
         self.assertIsNone(require_multi_object_tracking_evidence(manifest))
 
@@ -53,6 +63,8 @@ class TrackingEvidenceTests(unittest.TestCase):
             "dataset_version": "revision-1",
             "license_expression": "CC-BY-4.0",
             "attribution": "Example Dataset Authors",
+            "rights_source": "https://example.invalid/authoritative-license",
+            "commercial_evaluation_authorized": True,
             "sequence_id": "test/sequence_450",
             "annotation_scope": EXHAUSTIVE_MULTI_OBJECT,
             "annotation_sha256": "2" * 64,
