@@ -1,10 +1,10 @@
 """Admit the predeclared fifth Figshare generalization pair through exact ranges.
 
 The pair was selected from central-directory metadata in PR #57 before any
-member payload or model output was inspected. This module pins those archive
-identities, reuses the reviewed bounded ZIP extraction path, computes SHA-256
-over the uncompressed video bytes, and writes only to caller-selected ephemeral
-storage. It does not change analytics thresholds or claim accuracy.
+member payload or model output was inspected. The exact media SHA-256 identities
+were discovered on preserved PR #58 run #143 before analytic execution. This
+module pins both archive and media identities, reuses the reviewed bounded ZIP
+extraction path, and writes only to caller-selected ephemeral storage.
 """
 from __future__ import annotations
 
@@ -21,6 +21,10 @@ from .figshare_probe import fetch_bounded_probe_index
 from .source_rights import FIGSHARE_FALL_2017, require_source
 
 PAIR_ID = "generalization-5"
+EXPECTED_SHA256 = {
+    "negative": "350587303666161ad00b812f69f64397b071e3b4d98b246556736943ca9c93f3",
+    "positive": "8ec4976d74bdf4ac046eea4946d2fd65a4b65ad834c76d02d8488da7fa5406a1",
+}
 
 ADL_NEGATIVE = PinnedMember(
     role="negative",
@@ -74,6 +78,8 @@ def admit_pinned_pair(output_dir: str | Path, *, opener: Any) -> tuple[AdmittedM
     admitted: list[AdmittedMember] = []
     for expected, member in selected:
         data, sha256 = fetch_verified_member(artifact, member, opener=opener)
+        if sha256 != EXPECTED_SHA256[expected.role]:
+            raise RuntimeError("fifth Figshare media SHA-256 identity changed")
         filename = (
             "figshare-g5-adl-negative.mp4"
             if expected.role == "negative"
@@ -130,6 +136,7 @@ def evidence_document(admitted: tuple[AdmittedMember, ...]) -> dict[str, Any]:
             for item in admitted
         ],
         "member_payload_fetched": True,
+        "media_sha256_pre_pinned": True,
         "media_retained_in_repository": False,
         "commercial_accuracy_claim": False,
     }

@@ -48,7 +48,9 @@ PR #57 selected this exact pair from reviewed archive metadata before either mem
 - negative ACT18 `Picking up`: SBJ_26 / LOC1, `VideoDataset/ADL/SBJ_26_LOC1/ACT18_R_1/20240921134706.mp4`, compressed 598,772 bytes, uncompressed 599,429 bytes, CRC32 `a199b8b5`, local-header offset 1,280,237,845;
 - positive ACT3 `Fall on the front`: SBJ_08 / LOC3, `VideoDataset/Fall/SBJ_08_LOC3/ACT3_R_1/20240914130429.mp4`, compressed 517,803 bytes, uncompressed 518,474 bytes, CRC32 `f9d06b88`, local-header offset 2,174,699,626.
 
-The current branch admits only those exact members through the existing bounded range/ZIP identity path, verifies CRC, computes SHA-256 over the verified uncompressed bytes, and keeps media only in ephemeral runner storage. SBJ_26 and SBJ_08 are locked out of pose-adaptation train/validation before admission. This first CI head is digest discovery only: it does not provision models or run the analytic and is not merge-eligible until the discovered hashes are pinned and the unchanged retained baseline is reproduced on a second exact head.
+Preserved PR #58 first-head run #143 passed its Linux admission stage on attempt 1, with 43 guardrails and 279 full regression tests, and discovered the exact uncompressed-media identities before any analytic execution: negative SHA-256 `350587303666161ad00b812f69f64397b071e3b4d98b246556736943ca9c93f3`; positive SHA-256 `8ec4976d74bdf4ac046eea4946d2fd65a4b65ad834c76d02d8488da7fa5406a1`. Windows and the Analytics quality gate also passed on attempt 1. Media remained ephemeral and outside public GitHub.
+
+The final evidence head pins both SHA-256 identities fail-closed before writing admitted media and runs the unchanged retained CPU baseline on only these exact bytes. SBJ_26 and SBJ_08 remain locked out of pose-adaptation train/validation. The positive remains unscored for match/miss and alert delay because the reviewed source has no independent frame-level interval for this clip; the ACT18 ADL clip is scored for false alerts.
 
 No detector, OpenPose model, association bound, posture threshold, 3000 ms persistence rule, 750 ms unknown-gap ceiling, training plan, paid resource, home/customer media or commercial-accuracy claim changes in this work item.
 
@@ -76,9 +78,9 @@ Repository `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`, pi
 Article `28596332`, version 2, reviewed license CC-BY-4.0, provenance `figshare:28596332:version-2`, activity mapping reference DOI `10.30970/eli.33.12` under CC-BY-4.0. Media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. This bounded session began from live `main` `cee431683163a8c73d0c04615dee935477c163ea`, zero open implementation PRs, zero active runs for main, zero unchanged retries, zero CI dispatches in this session and zero consecutive stalled sessions. Exact-head post-merge run #142 was green on attempt 1. The machine preflight snapshot allowed implementation before the branch was created.
+One worker, one acceptance-moving work item, one implementation PR. This bounded session began from live `main` `cee431683163a8c73d0c04615dee935477c163ea`, zero open implementation PRs before PR #58, zero active runs for main, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Exact-head post-merge run #142 was green on attempt 1. The machine preflight allowed implementation and the first CI-triggering action.
 
-The first branch head adds exact bounded admission, subject-holdout protection, focused tests, this state record, and an evidence-lane route that stops after admission/hash discovery. It trains nothing, changes no analytic threshold, uses no paid resource and makes no commercial-accuracy claim.
+PR #58 first exact head `86a9873290b0ab5007030404cd313d9fcf7e0200` run #143 passed on attempt 1 across Linux, Windows and the Analytics quality gate, discovered both media hashes, and consumed the first CI-triggering action. The final branch update is the second and last CI-triggering action permitted in this session. There are no unchanged retries.
 
 ## Reproduce
 ```sh
@@ -96,11 +98,9 @@ PY
 ```
 
 ## Next executable decision
-Open the sole implementation PR from `evidence/figshare-person-down-generalization-5`. Let the first exact head run once through Linux, Windows, the Analytics quality gate, the bounded archive-index probe, and exact fifth-pair admission only. Preserve the discovered negative/positive SHA-256 values and first-attempt outcome.
+Require the final PR #58 exact head to reproduce both pre-pinned SHA-256 identities and run the unchanged retained baseline on the same exact pair. Preserve its first-attempt Linux, Windows and Analytics quality-gate result and the complete bounded diagnostic. Merge only if the exact head is green against unchanged base `cee431683163a8c73d0c04615dee935477c163ea`.
 
-If that exact head is green, make one second and final CI-triggering branch update that pins both hashes fail-closed and adds the unchanged retained CPU diagnostic for this same pair. Require the identical admitted bytes plus green Linux, Windows and Analytics quality gate on the unchanged tested base before merge. If the first run fails deterministically, preserve the failure and correct only its root cause; do not retry unchanged.
-
-Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold. Do not train yet.
+After measurement, attack only the largest demonstrated error source. If another independent positive shows pose/posture fragmentation while the hard negative remains clean, continue the bounded pose-representation/adaptation prerequisite path rather than weakening persistence, widening association or shopping another detector. Do not train yet.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and missed-event measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
