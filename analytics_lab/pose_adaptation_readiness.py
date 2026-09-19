@@ -68,8 +68,6 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
         DependencyPin("opencv-python", "3.4.0.14"),
         DependencyPin("numpy", "1.14.0"),
     ),
-    # Direct package names are pinned, but their complete transitive binary/
-    # system dependency rights have not yet been enumerated and approved.
     dependency_rights_status="unverified-transitive-rights",
     pretrained=PretrainedArtifact(
         name="checkpoint_iter_370000.pth",
@@ -78,8 +76,6 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
             "openvino_training_extensions/models/human_pose_estimation/"
             "checkpoint_iter_370000.pth"
         ),
-        # The reviewed upstream trainer points to this artifact but does not
-        # publish a cryptographic identity or artifact-specific license.
         sha256=None,
         license_spdx=None,
         rights_status="hold-unresolved-artifact-rights",
@@ -92,8 +88,6 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
     ),
     export_runtime_target="OpenVINO Runtime 2026.3.1 CPU",
     export_smoke_tested=False,
-    # No adaptation corpus is admitted yet. Existing scored/diagnostic evidence
-    # remains evaluation-only and cannot silently leak into training.
     train_subjects=(),
     validation_subjects=(),
     holdout_subjects=(
@@ -106,6 +100,8 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
         "Figshare:SBJ_03",
         "Figshare:SBJ_02",
         "Figshare:SBJ_09",
+        "Figshare:SBJ_29",
+        "Figshare:SBJ_07",
     ),
     resource_ceiling=ResourceCeiling(
         cpu_only=True,
