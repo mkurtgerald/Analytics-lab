@@ -1,11 +1,10 @@
 """Select the next bounded Figshare generalization pair from archive metadata only.
 
 This selector never downloads member payloads. It operates only on the reviewed
-central-directory map and chooses a difficult floor-transition ADL negative plus
-a kneeling-fall positive. Subjects already used by the first three Figshare
-pairs are excluded and the two candidates must be subject/location-disjoint.
-Previously unused locations are preferred when available, but are not required:
-the first live archive probe proved that extra condition was too restrictive.
+central-directory map and chooses a difficult forward-bending ADL negative plus
+a forward-fall positive. Subjects already used by the first four Figshare pairs
+are excluded and the two candidates must be subject/location-disjoint.
+Previously unused locations are preferred when available, but are not required.
 The result is candidate metadata for later exact admission, not accuracy evidence
 and not authorization to train on the clips.
 """
@@ -23,20 +22,20 @@ _MEMBER_RE = re.compile(
     r"ACT(?P<activity>\d+)_R_(?P<repetition>\d+)/[^/]+\.mp4$"
 )
 
-# Measured pairs used Subjects 01/10, 06/03 and 02/09 across Locations 1/2/3/5.
-# The next pair must move to untouched subjects. Novel locations remain a useful
-# deterministic preference but are no longer a hard admission requirement.
-_EXCLUDED_SUBJECTS = frozenset({"01", "02", "03", "06", "09", "10"})
+# Measured pairs used Subjects 01/10, 06/03, 02/09 and 29/07 across
+# Locations 1/2/3/5. The next pair must move to untouched subjects. Novel
+# locations remain a useful deterministic preference but are not required.
+_EXCLUDED_SUBJECTS = frozenset({"01", "02", "03", "06", "07", "09", "10", "29"})
 _USED_LOCATIONS = frozenset({"1", "2", "3", "5"})
 
-# The published activity map identifies ACT20 as Standing up from laying and
-# ACT6 as Fall on knees. This is a deliberately difficult floor-transition
-# boundary chosen before inspecting any model output.
-_NEGATIVE_ACTIVITY = 20
-_POSITIVE_ACTIVITY = 6
+# The published activity map identifies ACT18 as Picking up and ACT3 as Fall on
+# the front. This creates a deliberately difficult forward-bending boundary
+# without changing any analytics threshold and before inspecting model output.
+_NEGATIVE_ACTIVITY = 18
+_POSITIVE_ACTIVITY = 3
 _ACTIVITY_NAMES = {
-    20: "Standing up from laying",
-    6: "Fall on knees",
+    18: "Picking up",
+    3: "Fall on the front",
 }
 
 
@@ -99,7 +98,7 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
 
 
 def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str, Any]:
-    """Return a small untouched ACT20/ACT6 subject/location-disjoint pair.
+    """Return a small untouched ACT18/ACT3 subject/location-disjoint pair.
 
     Selection is metadata-only. It prefers members from previously unused
     locations when available, then minimizes total uncompressed bytes, maximum
@@ -120,7 +119,7 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
     ]
     if not pairs:
         raise RuntimeError(
-            "no bounded subject/location-disjoint ACT20/ACT6 Figshare pair"
+            "no bounded subject/location-disjoint ACT18/ACT3 Figshare pair"
         )
 
     def sort_key(pair: tuple[GeneralizationMember, GeneralizationMember]) -> tuple[Any, ...]:
@@ -138,9 +137,9 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
         "selection_scope": "central-directory metadata only; no member payload fetched",
         "commercial_accuracy_claim": False,
         "selection_policy": {
-            "negative_activity_code": "ACT20",
+            "negative_activity_code": "ACT18",
             "negative_activity_name": _ACTIVITY_NAMES[_NEGATIVE_ACTIVITY],
-            "positive_activity_code": "ACT6",
+            "positive_activity_code": "ACT3",
             "positive_activity_name": _ACTIVITY_NAMES[_POSITIVE_ACTIVITY],
             "excluded_subject_ids": sorted(_EXCLUDED_SUBJECTS),
             "previously_used_location_ids": sorted(_USED_LOCATIONS),
