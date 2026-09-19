@@ -54,14 +54,13 @@ Figshare positives have only source clip/activity classes; without an independen
 Pair 5 was merged by PR #58 on `16509759ed24284bf7d2d11346886ab6dc2b2ad2`. Exact-head run #144 and post-merge main run #145 passed on attempt 1. No detector, pose, association, posture, persistence, unknown-gap threshold, training plan, paid resource, home/customer media or commercial-accuracy claim changed.
 
 ## Current acceptance-moving work — platform-neutral detection + tracking
-Live `main` `16509759ed24284bf7d2d11346886ab6dc2b2ad2` is green with zero open implementation PRs at the start of this work item. The highest-priority unmet boundary is a detector-neutral multi-object tracking contract. The existing `IoUTracker` remains a useful deterministic person/pose baseline, but it is not intended to become the North Star commodity tracker.
+Live `main` `e15a5895b8a1946d60af9e7f3a3bd2c0c1525275` is green at post-merge run #147 on attempt 1. At this work item's start there were zero open implementation PRs and zero active runs for the current main head. PR #59 already established the detector-neutral normalized detection/tracked-object boundary; the highest-priority unmet boundary is now useful donor tracking behavior behind that contract.
 
-Donor review is capped at three candidates and stops here:
-- `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT: selected as the first integration target because its two-stage high/low-confidence association directly matches the measured continuity need while keeping identity/ReID separate. Do not vendor or admit its implementation yet; first pin the exact donor slice, transitive dependency rights/notices, and Linux/Windows CPU compatibility.
-- `tryolabs/norfair@e517b4236f6b67a6ecf342f5df1fccb7788dbc54`, BSD-3-Clause: detector-agnostic, production-stable fallback; its `filterpy`/`rich`/`scipy`/`numpy` dependency surface is larger and still requires transitive rights/runtime review.
-- Open Model Zoo at `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0: its multi-camera multi-target tracking demo is retained as a reference and possible later appearance-search/ReID donor, but it is heavier and ReID/model-coupled, so it is not the first single-camera tracking integration.
+Donor review remains capped at the already-reviewed three candidates; do not shop another tracker. `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` remains the selected first path because its two-stage high/low-confidence association directly targets continuity without introducing identity/ReID semantics. Exact upstream review showed the full implementation also pulls in heavier detector/runtime and native-assignment surfaces. The first defensible integration is therefore a bounded portable association slice rather than the whole upstream stack.
 
-This implementation item adds only a platform-neutral normalized detection/tracked-object contract plus a bounded session wrapper. It adds no tracker algorithm, external runtime, model, weights, media, biometric identity, ReID, or accuracy claim. The immediate next step after this boundary is exact donor-slice/dependency review for ByteTrack and then a small adapter behind this contract, followed by measured comparison against the current IoU baseline on rights-cleared multi-person/crossing/occlusion evidence.
+Branch `feature/bytetrack-association-slice` adapts only ByteTrack's defining high-confidence first association, lower-confidence second association, new-track probation and bounded lost-track recovery behind `analytics_lab.tracking`. It uses the existing normalized boxes and standard-library control logic; no new runtime dependency, detector, model, weight, media, biometric identity or ReID component is admitted. The upstream detector/Torch path and Kalman/SciPy/LAP/`cython_bbox`/OpenCV/native-extension path remain excluded. The exact MIT notice is retained under `third_party/licenses/ByteTrack-MIT.txt` and the donor revision/modified scope is recorded in `THIRD_PARTY.md`.
+
+This is an engineering integration baseline, not a claim of full upstream ByteTrack parity and not tracking-accuracy evidence. The next acceptance evidence after exact-head CI is a rights-cleared real multi-object crossing/occlusion comparison against the retained simple IoU baseline, recording track fragmentation, ID switches, continuity, misses, throughput/latency and resource cost. Only if those measurements localize the largest error to motion prediction or global assignment should the heavier Kalman/LAP donor path be considered.
 
 ## Pose adaptation readiness — secondary and blocked pending prerequisites
 Five independent measured Figshare pairs plus the GMDCSA held-out failures localize the dominant person-down error source strongly enough to justify a tightly bounded pose adaptation decision package, but training remains blocked and is no longer on the North Star critical path.
@@ -77,6 +76,7 @@ GMDCSA Subjects 2-4 and all measured Figshare evidence subjects remain evaluatio
 - OpenVINO Runtime `2026.3.1`;
 - evidence decoder `opencv-python-headless==4.12.0.88`;
 - corrected OpenPose decoder pinned to the same OMZ revision with attribution preserved;
+- portable ByteTrack association donor revision `d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT, adapted code only with no donor model/weights/data or new runtime dependency;
 - trainer candidate `Daniil-Osokin/lightweight-human-pose-estimation.pytorch@d23c284b09acf27a163e1febd511e7482cac25ed`, candidate only, training not authorized.
 
 ## Evidence/data provenance
@@ -87,15 +87,22 @@ Repository `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`, pi
 Article `28596332`, version 2, reviewed license CC-BY-4.0, provenance `figshare:28596332:version-2`, activity mapping reference DOI `10.30970/eli.33.12` under CC-BY-4.0. Media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. This session began from live `main` `16509759ed24284bf7d2d11346886ab6dc2b2ad2`, zero open implementation PRs, zero active runs for main, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Post-merge main run #145 was green on attempt 1. The machine preflight allowed implementation.
+One worker, one acceptance-moving work item, at most one implementation PR. This session began from live `main` `e15a5895b8a1946d60af9e7f3a3bd2c0c1525275`, zero open implementation PRs, zero active runs for that head, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Post-merge main run #147 was green on attempt 1.
 
-Branch `feature/donor-tracker-boundary` was created from the exact live main. Donor research stopped after exactly three candidates. Focused local contract tests passed 5/5 before the branch update. Opening the implementation PR is the first CI-triggering action in this session; no unchanged retry has been consumed.
+The execution environment could not clone the repository because external DNS was unavailable, so the repository-local `tools/guardrails.py preflight` command was not falsely claimed as executed. Live state was verified through GitHub, the unchanged efficiency-policy ceilings were inspected, and the proposed action fit those limits before mutation. Branch `feature/bytetrack-association-slice` was then created from the exact live main. Donor candidate shopping remained stopped at the existing three reviewed candidates. Focused deterministic association tests passed 7/7 in an isolated contract-compatible local harness; one lost-track expiration ordering defect was found and corrected before the implementation PR. These tests are regression evidence only, not accuracy evidence.
+
+Opening this implementation PR is the first CI-triggering action in this session; no unchanged retry has been consumed.
 
 ## Reproduce
 ```sh
 python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
+```
+
+Focused tracker regression after checkout:
+```sh
+python -m unittest tests.test_bytetrack -v
 ```
 
 Pose adaptation readiness can still be inspected locally without training or network access:
@@ -107,9 +114,9 @@ PY
 ```
 
 ## Next executable decision
-Require the exact head of `feature/donor-tracker-boundary` to pass Linux, Windows and the Analytics quality gate on unchanged base `16509759ed24284bf7d2d11346886ab6dc2b2ad2`. Merge only if that exact head is green.
+Open exactly one implementation PR from `feature/bytetrack-association-slice`. Require that exact head to pass Linux, Windows and the Analytics quality gate on unchanged base `e15a5895b8a1946d60af9e7f3a3bd2c0c1525275`; merge only if that exact head is green.
 
-After the boundary lands, continue the same highest-priority detection/tracking item by pinning the smallest ByteTrack donor slice and its transitive dependency/license/notices/runtime compatibility before copying any donor implementation. Then implement the smallest adapter behind `analytics_lab.tracking` and measure it against the existing IoU baseline on rights-cleared multi-person/crossing/occlusion evidence. Reject the donor path if it cannot produce a measurable tracking improvement without unacceptable portability, rights, or resource regression.
+After the portable slice lands, continue the same highest-priority Detection + Tracking item with rights-cleared real multi-person/crossing/occlusion evidence comparing this backend to the simple IoU baseline. Record track fragmentation, ID switches, continuity, misses, throughput/latency and resource use. Retain the donor path only if it measurably improves tracking without unacceptable portability, rights or resource regression. Do not add the upstream Kalman/LAP/native-extension path unless evidence demonstrates that its missing capability is now the largest error source.
 
 ## Outstanding commercial-release gates
 For detection/tracking: substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible detection precision/recall where labels permit; track fragmentation and ID-switch measurements; throughput/latency/resource envelope; Linux/Windows portability; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
