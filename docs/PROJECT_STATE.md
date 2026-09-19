@@ -62,8 +62,13 @@ Measured unchanged-baseline pairs:
 
 Figshare positives have only source clip/activity classes; without an independent frame-level interval they are intentionally unscored for match/miss and alert delay. These three short pairs are stage-attribution/generalization evidence only, never commercial accuracy.
 
-## Current acceptance-moving work — pose adaptation readiness
-Three independent Figshare pairs plus the GMDCSA held-out failures now localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package.
+## Current acceptance-moving work — broader generalization pair 4
+The next evidence attack is selected before any member payload or model output: ACT20 `Standing up from laying` as a hard floor-transition ADL negative against ACT6 `Fall on knees` as the positive activity class. The selector excludes every already-measured Figshare subject (SBJ_01, SBJ_02, SBJ_03, SBJ_06, SBJ_09 and SBJ_10), requires subject/location disjointness, requires at least one location outside the already-exercised 1/2/3/5 set, maximizes novel-location coverage first, and only then minimizes member bytes.
+
+The exact archive member identities are intentionally not hard-coded before the bounded central-directory probe. A green `evidence/figshare-generalization-4` exact-head run must publish only metadata for the deterministic pair; no member payload is fetched in that selection step. If the pair is valid, admit only those exact members by bounded ranges, CRC and SHA-256 and run the unchanged retained baseline. The floor-transition negative is specifically intended to challenge false-alert behavior without relaxing any analytic threshold.
+
+## Pose adaptation readiness — blocked pending prerequisites
+Three independent Figshare pairs plus the GMDCSA held-out failures localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package, but training remains blocked.
 
 The selected first trainer lineage is `Daniil-Osokin/lightweight-human-pose-estimation.pytorch` at exact revision `d23c284b09acf27a163e1febd511e7482cac25ed`, Apache-2.0. Upstream directly documents the Lightweight OpenPose training path used by the retained model family and the ONNX/OpenVINO export chain.
 
@@ -105,9 +110,9 @@ See `docs/donor-review-lightweight-openpose-training.md` for the exact candidate
 - media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item and at most one implementation PR. Intake for this cycle verified live `main` at `62db3c9a89d54d51a0ef81f95fb21935bda37950`, zero open PRs, zero active runs for the head, and exact-head post-merge run #132 green on attempt 1. The local preflight snapshot allowed implementation with zero unchanged retries, zero CI dispatches this session and zero sessions without progress.
+One worker, one acceptance-moving work item and at most one implementation PR. Intake for this cycle verified live `main` at `492348a511c1ef92096719b4df000265cbfae38f`, zero open PRs, zero active runs for the head, and exact-head post-merge run #134 green on attempt 1. The local preflight snapshot allowed implementation with zero unchanged retries, zero CI dispatches this session and zero sessions without progress.
 
-This cycle adds one fail-closed readiness module, its focused tests, the upstream review and this state update. It downloads no model/media, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
+This cycle changes only the deterministic metadata-only selector, its focused tests and this state record to choose the fourth untouched Figshare pair. It downloads no member payload, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
 
 ## Reproduce
 ```sh
@@ -125,9 +130,9 @@ PY
 ```
 
 ## Next executable decision
-Do not train yet. First resolve the exact `checkpoint_iter_370000.pth` cryptographic identity and artifact-specific commercial/redistribution right from an authoritative upstream source, or reject that initialization path. In parallel, admit a rights-cleared adaptation corpus with explicit subject-separated train/validation/holdout identities. Then smoke-test the exact pinned trainer export through ONNX into OpenVINO Runtime 2026.3.1 CPU inside the bounded resource envelope. Only if every machine-enforced readiness blocker clears may one bounded adaptation trial run.
+Run the exact-head bounded archive-index evidence on `evidence/figshare-generalization-4`. If it deterministically produces a subject/location-disjoint ACT20/ACT6 pair with a novel location, pin those exact archive metadata identities and proceed to bounded member admission plus the unchanged retained CPU baseline in the same acceptance work item. Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold.
 
-Continue expanding untouched broader-source evidence while those rights/data prerequisites are resolved; do not tune around held-out Subjects 2-4 or any already-measured Figshare subject.
+Do not train yet. Pose adaptation remains blocked until checkpoint identity/artifact rights, dependency rights, a rights-cleared subject-separated adaptation corpus and OpenVINO 2026.3.1 export compatibility all clear.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and missed-event measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
