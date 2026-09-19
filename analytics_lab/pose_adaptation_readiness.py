@@ -102,6 +102,8 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
         "Figshare:SBJ_09",
         "Figshare:SBJ_29",
         "Figshare:SBJ_07",
+        "Figshare:SBJ_26",
+        "Figshare:SBJ_08",
     ),
     resource_ceiling=ResourceCeiling(
         cpu_only=True,

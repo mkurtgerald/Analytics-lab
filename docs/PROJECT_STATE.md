@@ -44,16 +44,22 @@ Figshare positives have only source clip/activity classes; without an independen
 Pair 4 sharpened the same architectural conclusion without just repeating the earlier association failure: detection and continuity remained complete, and pose association was nearly complete on the positive, yet usable down posture survived for only 367 ms. That points to pose representation/posture continuity over the event rather than the detector or a justification to weaken the 3000 ms persistence rule. The hard floor-transition negative staying clean reinforces the conservative temporal boundary.
 
 ## Current acceptance-moving work — broader generalization pair 5
-The next metadata-only evidence attack is ACT18 `Picking up` as a hard forward-bending ADL negative against ACT3 `Fall on the front` as the positive activity class. This boundary was chosen before member payloads or model output were inspected. The selector excludes every already-measured Figshare subject (SBJ_01, SBJ_02, SBJ_03, SBJ_06, SBJ_07, SBJ_09, SBJ_10 and SBJ_29), requires the pair itself to be subject- and location-disjoint, prefers previously unused locations, and then minimizes admitted byte volume with deterministic metadata tie-breaks.
+PR #57 selected this exact pair from reviewed archive metadata before either member payload or any model output was inspected:
+- negative ACT18 `Picking up`: SBJ_26 / LOC1, `VideoDataset/ADL/SBJ_26_LOC1/ACT18_R_1/20240921134706.mp4`, compressed 598,772 bytes, uncompressed 599,429 bytes, CRC32 `a199b8b5`, local-header offset 1,280,237,845;
+- positive ACT3 `Fall on the front`: SBJ_08 / LOC3, `VideoDataset/Fall/SBJ_08_LOC3/ACT3_R_1/20240914130429.mp4`, compressed 517,803 bytes, uncompressed 518,474 bytes, CRC32 `f9d06b88`, local-header offset 2,174,699,626.
 
-The immediate goal is selection only: fetch the already-reviewed archive central directory through the bounded index path, emit the smallest eligible exact member metadata, and stop before member payload admission. If selection succeeds, those exact identities become the only eligible pair for the next bounded measurement session. No threshold, model, or temporal behavior changes are part of this work item.
+Preserved PR #58 first-head run #143 passed its Linux admission stage on attempt 1, with 43 guardrails and 279 full regression tests, and discovered the exact uncompressed-media identities before any analytic execution: negative SHA-256 `350587303666161ad00b812f69f64397b071e3b4d98b246556736943ca9c93f3`; positive SHA-256 `8ec4976d74bdf4ac046eea4946d2fd65a4b65ad834c76d02d8488da7fa5406a1`. Windows and the Analytics quality gate also passed on attempt 1. Media remained ephemeral and outside public GitHub.
+
+The final evidence head pins both SHA-256 identities fail-closed before writing admitted media and runs the unchanged retained CPU baseline on only these exact bytes. SBJ_26 and SBJ_08 remain locked out of pose-adaptation train/validation. The positive remains unscored for match/miss and alert delay because the reviewed source has no independent frame-level interval for this clip; the ACT18 ADL clip is scored for false alerts.
+
+No detector, OpenPose model, association bound, posture threshold, 3000 ms persistence rule, 750 ms unknown-gap ceiling, training plan, paid resource, home/customer media or commercial-accuracy claim changes in this work item.
 
 ## Pose adaptation readiness — blocked pending prerequisites
 Four independent measured Figshare pairs plus the GMDCSA held-out failures localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package, but training remains blocked.
 
 The selected first trainer lineage is `Daniil-Osokin/lightweight-human-pose-estimation.pytorch` at exact revision `d23c284b09acf27a163e1febd511e7482cac25ed`, Apache-2.0. `analytics_lab.pose_adaptation_readiness` fails closed before any training. Current blockers are complete transitive dependency rights, authoritative cryptographic identity plus artifact-specific commercial/redistribution rights for `checkpoint_iter_370000.pth`, a rights-cleared subject-separated adaptation corpus, and an exact ONNX -> OpenVINO Runtime 2026.3.1 CPU export smoke test.
 
-GMDCSA Subjects 2-4 and all measured/selected Figshare evidence subjects are evaluation holdouts and must not leak into training or validation. If every gate clears, the first adaptation smoke is capped at CPU only, 2 threads, 20 wall-clock minutes, 4096 MiB RAM, 2048 MiB temporary storage, one trial and no paid compute. This is a compatibility/learning-signal ceiling, not an accuracy or production claim.
+GMDCSA Subjects 2-4 and all measured/selected Figshare evidence subjects, now including SBJ_26 and SBJ_08, are evaluation holdouts and must not leak into training or validation. If every gate clears, the first adaptation smoke is capped at CPU only, 2 threads, 20 wall-clock minutes, 4096 MiB RAM, 2048 MiB temporary storage, one trial and no paid compute. This is a compatibility/learning-signal ceiling, not an accuracy or production claim.
 
 ## Runtime/model provenance
 - Open Model Zoo commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0;
@@ -72,9 +78,9 @@ Repository `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`, pi
 Article `28596332`, version 2, reviewed license CC-BY-4.0, provenance `figshare:28596332:version-2`, activity mapping reference DOI `10.30970/eli.33.12` under CC-BY-4.0. Media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. This bounded session began from live `main` `6c8fdc8b1fef6a6668cfa00bfbab24d08c395668`, zero open implementation PRs, zero active runs for main, zero unchanged retries, zero CI dispatches in this session and zero consecutive stalled sessions. Exact-head post-merge run #140 was green on attempt 1. The machine preflight snapshot allowed implementation before the branch was created.
+One worker, one acceptance-moving work item, one implementation PR. This bounded session began from live `main` `cee431683163a8c73d0c04615dee935477c163ea`, zero open implementation PRs before PR #58, zero active runs for main, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Exact-head post-merge run #142 was green on attempt 1. The machine preflight allowed implementation and the first CI-triggering action.
 
-This work item changes only the metadata selector, focused regressions and this state record. It downloads no member payload, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
+PR #58 first exact head `86a9873290b0ab5007030404cd313d9fcf7e0200` run #143 passed on attempt 1 across Linux, Windows and the Analytics quality gate, discovered both media hashes, and consumed the first CI-triggering action. The final branch update is the second and last CI-triggering action permitted in this session. There are no unchanged retries.
 
 ## Reproduce
 ```sh
@@ -92,9 +98,9 @@ PY
 ```
 
 ## Next executable decision
-Open the sole implementation PR from `evidence/figshare-generalization-5` and let exact-head CI run the bounded archive-index probe. If the unchanged reviewed index path deterministically selects an untouched subject/location-disjoint ACT18/ACT3 pair, preserve that exact metadata result and merge only after Linux, Windows and the Analytics quality gate are green on the unchanged tested base. Do not fetch member payloads in this selection session.
+Require the final PR #58 exact head to reproduce both pre-pinned SHA-256 identities and run the unchanged retained baseline on the same exact pair. Preserve its first-attempt Linux, Windows and Analytics quality-gate result and the complete bounded diagnostic. Merge only if the exact head is green against unchanged base `cee431683163a8c73d0c04615dee935477c163ea`.
 
-If the selector fails deterministically, preserve the first failure and correct only the demonstrated selection error; do not retry unchanged. Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold. Do not train yet.
+After measurement, attack only the largest demonstrated error source. If another independent positive shows pose/posture fragmentation while the hard negative remains clean, continue the bounded pose-representation/adaptation prerequisite path rather than weakening persistence, widening association or shopping another detector. Do not train yet.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and missed-event measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
