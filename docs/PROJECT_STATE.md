@@ -62,8 +62,15 @@ Measured unchanged-baseline pairs:
 
 Figshare positives have only source clip/activity classes; without an independent frame-level interval they are intentionally unscored for match/miss and alert delay. These three short pairs are stage-attribution/generalization evidence only, never commercial accuracy.
 
-## Current acceptance-moving work — pose adaptation readiness
-Three independent Figshare pairs plus the GMDCSA held-out failures now localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package.
+## Current acceptance-moving work — broader generalization pair 4
+The next evidence attack was selected before any member payload or model output: ACT20 `Standing up from laying` as a hard floor-transition ADL negative against ACT6 `Fall on knees` as the positive activity class. The selector excludes every already-measured Figshare subject (SBJ_01, SBJ_02, SBJ_03, SBJ_06, SBJ_09 and SBJ_10) and requires the pair itself to be subject- and location-disjoint.
+
+Exact-head run #135 preserved a deterministic first-attempt failure: all 43 guardrail tests and the 266-test regression suite passed, but the live bounded central-directory probe found no ACT20/ACT6 pair that also satisfied the additional globally novel-location requirement. This was a data-shape failure, not transient infrastructure, so it was not retried unchanged. The correction removes only that extra requirement. Novel locations remain the first deterministic preference, but a valid untouched-subject pair may reuse previously exercised locations. No member payload or model output influenced this correction.
+
+The exact archive member identities remain unpinned until the corrected bounded probe succeeds. If it produces a pair, admit only those exact members by bounded ranges, CRC and SHA-256, keep media ephemeral, and run the unchanged retained baseline. The floor-transition negative is specifically intended to challenge false-alert behavior without relaxing any analytic threshold.
+
+## Pose adaptation readiness — blocked pending prerequisites
+Three independent Figshare pairs plus the GMDCSA held-out failures localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package, but training remains blocked.
 
 The selected first trainer lineage is `Daniil-Osokin/lightweight-human-pose-estimation.pytorch` at exact revision `d23c284b09acf27a163e1febd511e7482cac25ed`, Apache-2.0. Upstream directly documents the Lightweight OpenPose training path used by the retained model family and the ONNX/OpenVINO export chain.
 
@@ -105,9 +112,9 @@ See `docs/donor-review-lightweight-openpose-training.md` for the exact candidate
 - media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item and at most one implementation PR. Intake for this cycle verified live `main` at `62db3c9a89d54d51a0ef81f95fb21935bda37950`, zero open PRs, zero active runs for the head, and exact-head post-merge run #132 green on attempt 1. The local preflight snapshot allowed implementation with zero unchanged retries, zero CI dispatches this session and zero sessions without progress.
+One worker, one acceptance-moving work item and one open implementation PR (#55). Live `main` remains `492348a511c1ef92096719b4df000265cbfae38f`; post-merge run #134 is green. PR exact-head run #135 preserved its deterministic first-attempt failure after 43/43 guardrails, 266/266 runnable tests and synthetic replay passed; Windows was correctly skipped because the bounded live-index evidence failed. No unchanged retry was used.
 
-This cycle adds one fail-closed readiness module, its focused tests, the upstream review and this state update. It downloads no model/media, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
+After run #135 completed, live state showed one open implementation PR, zero active runs for the head, zero unchanged retries, one CI-triggering run used this session and zero consecutive sessions without tested progress. The preflight allowed one corrected implementation. This correction changes only the metadata selector, focused regressions and this state record; it downloads no member payload, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
 
 ## Reproduce
 ```sh
@@ -125,9 +132,9 @@ PY
 ```
 
 ## Next executable decision
-Do not train yet. First resolve the exact `checkpoint_iter_370000.pth` cryptographic identity and artifact-specific commercial/redistribution right from an authoritative upstream source, or reject that initialization path. In parallel, admit a rights-cleared adaptation corpus with explicit subject-separated train/validation/holdout identities. Then smoke-test the exact pinned trainer export through ONNX into OpenVINO Runtime 2026.3.1 CPU inside the bounded resource envelope. Only if every machine-enforced readiness blocker clears may one bounded adaptation trial run.
+Run the corrected exact-head bounded archive-index evidence on PR #55. If it deterministically produces a subject/location-disjoint ACT20/ACT6 pair from untouched subjects, pin those exact archive metadata identities. This consumes the second and final CI-triggering implementation run for this session; exact member admission and unchanged-baseline measurement must therefore remain the same work item for a later bounded session rather than forcing another push now.
 
-Continue expanding untouched broader-source evidence while those rights/data prerequisites are resolved; do not tune around held-out Subjects 2-4 or any already-measured Figshare subject.
+Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold. Do not train yet. Pose adaptation remains blocked until checkpoint identity/artifact rights, dependency rights, a rights-cleared subject-separated adaptation corpus and OpenVINO 2026.3.1 export compatibility all clear.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and missed-event measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.

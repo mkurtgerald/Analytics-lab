@@ -1,10 +1,11 @@
 """Select the next bounded Figshare generalization pair from archive metadata only.
 
 This selector never downloads member payloads. It operates only on the reviewed
-central-directory map and chooses a difficult sitting ADL negative plus a
-sit-attempt fall-class positive. Subjects already used by the first two Figshare
-pairs are excluded, the two candidates must be subject/location-disjoint, and at
-least one candidate must come from a location not exercised by those pairs.
+central-directory map and chooses a difficult floor-transition ADL negative plus
+a kneeling-fall positive. Subjects already used by the first three Figshare
+pairs are excluded and the two candidates must be subject/location-disjoint.
+Previously unused locations are preferred when available, but are not required:
+the first live archive probe proved that extra condition was too restrictive.
 The result is candidate metadata for later exact admission, not accuracy evidence
 and not authorization to train on the clips.
 """
@@ -22,22 +23,20 @@ _MEMBER_RE = re.compile(
     r"ACT(?P<activity>\d+)_R_(?P<repetition>\d+)/[^/]+\.mp4$"
 )
 
-# First pair: Subject 01 / Location 3 and Subject 10 / Location 3.
-# Second pair: Subject 06 / Location 1 and Subject 03 / Location 2.
-# The next pair must move to untouched subjects and include a location outside
-# the already exercised 1/2/3 set before any member payload or model output is
-# inspected.
-_EXCLUDED_SUBJECTS = frozenset({"01", "03", "06", "10"})
-_USED_LOCATIONS = frozenset({"1", "2", "3"})
+# Measured pairs used Subjects 01/10, 06/03 and 02/09 across Locations 1/2/3/5.
+# The next pair must move to untouched subjects. Novel locations remain a useful
+# deterministic preference but are no longer a hard admission requirement.
+_EXCLUDED_SUBJECTS = frozenset({"01", "02", "03", "06", "09", "10"})
+_USED_LOCATIONS = frozenset({"1", "2", "3", "5"})
 
-# The published activity map identifies ACT16 as Sitting and ACT11 as
-# Try to sit on chair, fall. This creates a deliberately difficult behavior
-# boundary without changing any analytics threshold.
-_NEGATIVE_ACTIVITY = 16
-_POSITIVE_ACTIVITY = 11
+# The published activity map identifies ACT20 as Standing up from laying and
+# ACT6 as Fall on knees. This is a deliberately difficult floor-transition
+# boundary chosen before inspecting any model output.
+_NEGATIVE_ACTIVITY = 20
+_POSITIVE_ACTIVITY = 6
 _ACTIVITY_NAMES = {
-    16: "Sitting",
-    11: "Try to sit on chair, fall",
+    20: "Standing up from laying",
+    6: "Fall on knees",
 }
 
 
@@ -100,12 +99,11 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
 
 
 def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str, Any]:
-    """Return a small untouched ACT16/ACT11 pair with new-location coverage.
+    """Return a small untouched ACT20/ACT6 subject/location-disjoint pair.
 
-    Selection is metadata-only. It first maximizes the count of members from
-    previously unused locations, then minimizes total uncompressed bytes,
-    maximum member size, and stable path order. No model output can influence
-    the choice.
+    Selection is metadata-only. It prefers members from previously unused
+    locations when available, then minimizes total uncompressed bytes, maximum
+    member size, and stable path order. No model output can influence the choice.
     """
     if not isinstance(members, tuple) or not all(isinstance(item, ZipMember) for item in members):
         raise TypeError("members must be a tuple of ZipMember")
@@ -119,14 +117,10 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
         for positive in positives
         if negative.subject_id != positive.subject_id
         and negative.location_id != positive.location_id
-        and (
-            negative.location_id not in _USED_LOCATIONS
-            or positive.location_id not in _USED_LOCATIONS
-        )
     ]
     if not pairs:
         raise RuntimeError(
-            "no bounded subject/location-disjoint ACT16/ACT11 Figshare pair with a novel location"
+            "no bounded subject/location-disjoint ACT20/ACT6 Figshare pair"
         )
 
     def sort_key(pair: tuple[GeneralizationMember, GeneralizationMember]) -> tuple[Any, ...]:
@@ -144,17 +138,17 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
         "selection_scope": "central-directory metadata only; no member payload fetched",
         "commercial_accuracy_claim": False,
         "selection_policy": {
-            "negative_activity_code": "ACT16",
+            "negative_activity_code": "ACT20",
             "negative_activity_name": _ACTIVITY_NAMES[_NEGATIVE_ACTIVITY],
-            "positive_activity_code": "ACT11",
+            "positive_activity_code": "ACT6",
             "positive_activity_name": _ACTIVITY_NAMES[_POSITIVE_ACTIVITY],
             "excluded_subject_ids": sorted(_EXCLUDED_SUBJECTS),
             "previously_used_location_ids": sorted(_USED_LOCATIONS),
             "require_subject_disjoint_pair": True,
             "require_location_disjoint_pair": True,
-            "require_at_least_one_novel_location": True,
+            "require_at_least_one_novel_location": False,
             "optimization": (
-                "maximize novel-location members, then minimum total uncompressed bytes; "
+                "prefer novel-location members when available, then minimum total uncompressed bytes; "
                 "deterministic metadata tie-breaks"
             ),
         },
