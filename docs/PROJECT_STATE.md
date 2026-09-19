@@ -13,7 +13,7 @@ Analytics Lab develops platform-independent video analytics for paid integration
 Person-down and slip/fall remain required deliverables. They are secondary only in sequencing; preserve their working path, regressions and evidence, and continue them when shared perception/tracking/evaluation work advances them without displacing the higher-priority acceptance item.
 
 ## Detection + tracking — current North Star work
-Live `main` at this work item's start is `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8`, the merge of PR #66. Post-merge Analytics quality run #162 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
+Live `main` at this work item's start is `d58dbec786fa77bf1f55f7bf63a608f428f1c3f5`, the merge of PR #67. Post-merge Analytics quality run #164 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
 
 Landed boundaries:
 - PR #59: detector-neutral normalized detection/tracked-object contract.
@@ -24,21 +24,25 @@ Landed boundaries:
 - PR #64: evidence-byte rights admission requiring an authoritative rights source and explicit commercial-evaluation authorization. BDD100K was rejected from the current commercial path because its dataset terms do not establish general commercial rights for Analytics Lab.
 - PR #65: exact CC0 Wikimedia pedestrian source admitted fail-closed on byte size, published SHA-1 and pinned SHA-256; no media retained, no tracker/model run and no accuracy claim.
 - PR #66: first real-video smoke comparison window pre-registered before benchmark-output inspection: source frames 150-174 inclusive, 25 frames, bound to benchmark-plan SHA-256 `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
+- PR #67: canonical exhaustive ground-truth binding for the full fixed window. It requires every frame exactly once, measured-class-only labels, unique per-frame dataset-local IDs and deterministic normalized-coordinate hashing.
 
-## Current acceptance item — bind independently authored exhaustive ground truth
-The fixed real-video window now needs independently authored labels before tracker output is inspected. The current item adds a deterministic fail-closed binding format for that label set so no frame can be silently omitted, reordered, relabeled to another class, or re-bound to another benchmark plan after measurement.
+## Current acceptance item — make independently authored labels safely ingestible
+The remaining blocker before the first real tracker head-to-head is the exchange boundary between an external human-authored label file and the repository's canonical evidence bindings. This item adds `analytics_lab.tracking_ground_truth_package` so a completed annotation package can be validated without committing media or label files to GitHub and without inspecting tracker output.
 
-`analytics_lab.tracking_annotations`:
-- requires every pre-registered frame exactly once, including explicit zero-object frames;
-- requires `GroundTruthObject` values and unique dataset-local object IDs within each frame;
-- requires every annotation category to match the benchmark plan's measured class;
-- canonicalizes semantically irrelevant object ordering by object ID;
-- encodes normalized coordinates with deterministic `float.hex()` values;
-- binds the source SHA-256 and canonical benchmark-plan SHA-256 into the annotation payload;
-- applies explicit object-count and canonical-byte bounds;
-- returns a SHA-256 suitable for the existing `TrackingEvidenceManifest.annotation_sha256` field.
+The package boundary:
+- requires exact schema fields and rejects duplicate JSON keys or unknown fields;
+- requires explicit `complete_exhaustive` status, so an authoring template cannot accidentally be accepted as ground truth;
+- requires the exact pre-registered benchmark-plan SHA-256 and admitted source SHA-256;
+- requires every benchmark frame in exact order, including explicit zero-object frames;
+- requires one lowercase SHA-256 for every frame and produces the existing ordered frame-manifest SHA-256;
+- requires `normalized_xyxy` boxes, measured-class-only objects and bounded object counts;
+- produces the existing canonical annotation SHA-256 through `tracking_annotations`;
+- defines a canonical RGB24 per-frame digest bound to frame index and image dimensions so evidence identity does not depend on PNG/JPEG encoder details;
+- returns only evidence bindings/counts and does not claim accuracy.
 
-This is evidence-integrity infrastructure only. Synthetic regression fixtures validate the binding contract and are not real-video accuracy evidence.
+A deterministic authoring template is pre-bound to the exact plan but marked `incomplete` and therefore fails validation until an independent annotator supplies exhaustive labels, frame digests and explicitly marks the package complete.
+
+Focused local regression before repository mutation: 7/7 package tests passed. The synthetic bytes/labels in these tests validate only the exchange contract; they are not real-video evidence.
 
 ## Pre-registered first tracker-comparison window
 Selected source: Wikimedia Commons `Video Codec Test pedestrian area 1080p25.y4m.webm`.
@@ -62,10 +66,10 @@ Pre-registered smoke window:
 - canonical benchmark-plan SHA-256: `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
 
 ### Next measured comparison
-After this ground-truth-binding item is exact-head green and merged:
+After this package-ingestion item is exact-head green and merged:
 1. extract only frames 150-174 ephemerally from the already-admitted source under an authorized bounded evidence path;
 2. independently and exhaustively label every person and dataset-local track ID without using benchmarked detector/tracker outputs as truth;
-3. canonicalize/hash those labels with `analytics_lab.tracking_annotations` and bind the ordered per-frame SHA-256 manifest through `TrackingEvidenceManifest`;
+3. compute canonical RGB24 frame SHA-256 values, validate the completed package, and retain only the resulting annotation/frame-manifest hashes plus provenance;
 4. run the unchanged simple-IoU control and portable ByteTrack slice on identical detector observations;
 5. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
 6. attack only the largest demonstrated error source;
@@ -97,7 +101,7 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 - **Wikimedia CC0 pedestrian source**: exact rights page/upload URL above; exact byte size, SHA-1 and SHA-256 pinned above.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item. This session began from `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8` with zero open implementation PRs, zero queued/running runs for that exact head, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh machine preflight against the current policy returned `{"allowed": true, "reasons": []}` before mutation. Branch-only commits do not trigger CI; opening the implementation PR will be CI-triggering action 1/2. No media/model download, paid resource, self-hosted runner, training, threshold change, identity behavior or accuracy claim is introduced by this item.
+One worker, one acceptance-moving work item. This session began from `d58dbec786fa77bf1f55f7bf63a608f428f1c3f5` with zero open implementation PRs, zero queued/running runs for that exact head, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh machine preflight against the current policy returned `{"allowed": true, "reasons": []}` before mutation. The implementation was locally exercised with 7/7 focused package tests before opening a PR. Branch-only construction does not trigger CI; opening the implementation PR is CI-triggering action 1/2. No media/model download, paid resource, self-hosted runner, training, detector threshold change, identity behavior or accuracy claim is introduced by this item.
 
 ## Reproduce
 ```sh
@@ -108,11 +112,11 @@ python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic
 
 Focused Detection + Tracking regressions:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan tests.test_tracking_annotations -v
+python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan tests.test_tracking_annotations tests.test_tracking_ground_truth_package -v
 ```
 
 ## Merge rule
-Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
+Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `d58dbec786fa77bf1f55f7bf63a608f428f1c3f5`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
 
 ## Outstanding commercial-release gates
 Detection/tracking still requires substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible precision/recall where labels permit; track fragmentation/ID-switch measurements; throughput/latency/resource envelopes; Linux/Windows portability; privacy/security/provenance and notices review; versioned installable integration; packaging; and explicit owner commercial-release approval.
