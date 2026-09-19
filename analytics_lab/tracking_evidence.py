@@ -3,7 +3,8 @@
 The tracking evaluator can only report false tracks, ID switches, fragmentation,
 and continuity when the admitted labels are exhaustive for the measured object
 class. A crowded video with only one target box is not multi-object ground
-truth. This module encodes that boundary and cryptographically binds the exact
+truth. This module encodes that boundary, requires an explicit commercial-use
+rights review for the evidence bytes, and cryptographically binds the exact
 annotation and frame-manifest bytes without storing media in the repository.
 """
 from __future__ import annotations
@@ -74,13 +75,23 @@ def canonical_frame_manifest_sha256(frames: Iterable[FrameDigest], *, max_frames
 
 @dataclass(frozen=True)
 class TrackingEvidenceManifest:
-    """Metadata required before real multi-object tracking metrics are scored."""
+    """Metadata required before real multi-object tracking metrics are scored.
+
+    ``commercial_evaluation_authorized`` is intentionally explicit. A code
+    repository license, annotation license, or public download URL does not by
+    itself prove that the underlying image/video bytes may be used in
+    commercial product development. The caller must record the authoritative
+    rights source and affirm that the reviewed evidence bytes are authorized
+    for this commercial evaluation use.
+    """
 
     dataset: str
     provenance: str
     dataset_version: str
     license_expression: str
     attribution: str
+    rights_source: str
+    commercial_evaluation_authorized: bool
     sequence_id: str
     annotation_scope: str
     annotation_sha256: str
@@ -96,9 +107,16 @@ class TrackingEvidenceManifest:
             ("dataset_version", 160),
             ("license_expression", 160),
             ("attribution", 512),
+            ("rights_source", 512),
             ("sequence_id", 160),
         ):
             object.__setattr__(self, name, _text(getattr(self, name), name, maximum))
+        if type(self.commercial_evaluation_authorized) is not bool:
+            raise ValueError("commercial_evaluation_authorized must be a boolean")
+        if not self.commercial_evaluation_authorized:
+            raise ValueError(
+                "commercial_evaluation_authorized must be true after reviewing the authoritative rights source for the evidence bytes"
+            )
         if self.annotation_scope != EXHAUSTIVE_MULTI_OBJECT:
             raise ValueError(
                 "annotation_scope must be exhaustive_multi_object; single-target or partial labels cannot support multi-object metrics"
