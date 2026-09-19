@@ -35,10 +35,12 @@ from .validation_seed import _download_models
 _RUNTIME_PREFIX = "2026.3.1"
 _AUTHORIZATION_REF = "figshare:28596332:v2:CC-BY-4.0:evaluation"
 _ACTIVITY_REFERENCE = {"title": "Vision Transformer Based Fall Detection: A Spatial Temporal Attention Mechanism for Robust Video Analysis", "doi": "10.30970/eli.33.12", "license_id": "CC-BY-4.0"}
-# The first exact evidence head discovers these hashes from the already-pinned
-# archive identities. Both values must be replaced and the unchanged evidence
-# rerun before this work is eligible to merge.
-_EXPECTED_SHA256: dict[str, str | None] = {"negative": None, "positive": None}
+# Exact media identities discovered from the already-pinned archive members on
+# preserved first-head run #138. The final evidence head must reproduce them.
+_EXPECTED_SHA256 = {
+    "negative": "5fe01e92aa7705a9095b5b3b6906aeeea87d34d6f72c5493c2b606f53f14ea06",
+    "positive": "a88bed7d467a0129add7e1bf2ee5dc7de4a307bd646e8a100add52798660dd63",
+}
 _ACTIVITY = {
     "negative": {"activity_code": "ACT20", "activity_name": "Standing up from laying", "source_clip_class": "ADL", "subject_id": "29", "location_id": "1", "frame_level_interval_available": False},
     "positive": {"activity_code": "ACT6", "activity_name": "Fall on knees", "source_clip_class": "Fall", "subject_id": "07", "location_id": "3", "frame_level_interval_available": False},
@@ -55,7 +57,7 @@ def _sample_spec(item) -> ValidationSampleSpec:
     if not _valid_sha256(item.sha256):
         raise RuntimeError("admitted Figshare SHA-256 is malformed")
     expected = _EXPECTED_SHA256[item.role]
-    if expected is not None and item.sha256 != expected:
+    if item.sha256 != expected:
         raise RuntimeError("admitted Figshare SHA-256 identity changed")
     activity = _ACTIVITY[item.role]
     return ValidationSampleSpec(sample_id=f"figshare-g4-{activity['activity_code'].lower()}-{item.role}", site_id=f"figshare-28596332-location-{activity['location_id']}", camera_id=f"figshare-g4-{activity['activity_code'].lower()}-clip", authorization_ref=_AUTHORIZATION_REF, video_path=item.local_path, media_sha256=item.sha256, start_timestamp_ms=0, end_timestamp_ms=1, labels=())
