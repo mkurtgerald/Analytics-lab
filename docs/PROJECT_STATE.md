@@ -79,9 +79,12 @@ The unchanged second-pair measurement is another strong stage-attribution result
 
 This repeats the same downstream failure boundary across an independent source, different subjects and different locations while a difficult lying negative remains clean. It strengthens the evidence-based case for a bounded commercially clean pose representation/adaptation decision package. It does **not** justify weakening association bounds, keypoint-confidence floors, the 3000 ms persistence requirement, the 750 ms unknown-gap ceiling, or changing the retained detector. Two short Figshare pairs remain engineering evidence only, not commercial accuracy.
 
-PR #52 is the current single implementation PR and continues the same acceptance item: broader untouched Figshare evidence before pose surgery. Its metadata-only selector excludes already-used Figshare Subjects **01/03/06/10**, targets the published ACT16 **`Sitting`** hard negative against ACT11 **`Try to sit on chair, fall`** positive, requires subject/location disjointness, and requires at least one candidate from a location outside the already exercised **1/2/3** set. Selection occurs from central-directory metadata only before member payload or model output inspection.
+PR #52 merged the metadata-only selection of the third pair into `main` at `0f2f50d60fdecc8b20f3afff080724aca3c7ac12`. Exact-head run #128 passed all required Linux/Windows/regression/quality-gate checks after one preserved deterministic fixture-only failure on the first head. The selected pair was fixed before any member payload or model output was inspected:
+- negative ACT16 `Sitting`: `VideoDataset/ADL/SBJ_02_LOC5/ACT16_R_1/20240923151305.mp4`, Subject 02 / Location 5, compressed **949,755**, uncompressed **950,297**, CRC32 `39c30723`, local-header offset **1,232,209,160**;
+- positive ACT11 `Try to sit on chair, fall`: `VideoDataset/Fall/SBJ_09_LOC3/ACT11_R_1/20240915181458.mp4`, Subject 09 / Location 3, compressed **386,050**, uncompressed **386,799**, CRC32 `7033abe3`, local-header offset **2,371,833,171**.
+The pair is subject- and location-disjoint, uses untouched Subjects 02/09 relative to the first two Figshare pairs, and adds Location 5.
 
-Exact-head run #127 on initial PR #52 head `0bb4d3641b5ef7ae0de13204b805f59ec11c3c59` preserved a deterministic first-attempt failure: control validation and guardrail regressions passed, but the full synthetic suite failed before replay or the live Figshare index probe. Windows was skipped and no real-video evidence was emitted. Local reproduction showed that the synthetic selector fixture unintentionally allowed a cheaper valid cross-pair under the intended global optimization rule. The selector behavior itself was correct. The only correction in the next head is fixture-only, retaining the same selection policy and adding no analytics or media change. There is no unchanged retry.
+PR #53 is the current single implementation PR and continues the same acceptance item. Its first head adds only exact third-pair admission through the existing bounded range/CRC path, keeps output ephemeral, and emits SHA-256 identities before any diagnostic model work. The branch-specific evidence lane deliberately performs admission only on this first head; the second and final CI-triggering change may pin those measured hashes and add the unchanged retained baseline diagnostic. No analytics threshold, detector, pose representation, association bound, 3000 ms persistence rule or 750 ms unknown-gap ceiling changes in this cycle.
 
 ## Evidence/data provenance
 ### GMDCSA-24
@@ -98,6 +101,7 @@ Exact-head run #127 on initial PR #52 head `0bb4d3641b5ef7ae0de13204b805f59ec11c
 - activity mapping reference: `Vision Transformer Based Fall Detection: A Spatial Temporal Attention Mechanism for Robust Video Analysis`, DOI `10.30970/eli.33.12`, CC-BY-4.0;
 - first-pair exact ephemeral identities: negative SHA-256 `7e6f026e68c280234ac34764a26b7f073e6f1367a259ed756a30a663542d3c92`, positive SHA-256 `8c7c13e1a9a5321e25b4203d35e65e072e2e6fcfd21ed806d7fd17b58b4438fd`;
 - second-pair exact ephemeral identities: ACT19 negative SHA-256 `1f9b3f44b67576c93a61921311830286b4a9eebe45277b90d0c9eb2625fa2a24`, ACT4 positive SHA-256 `a54f715f3ad7d8fc2fe64390842f2c5c16ee03ace2e70f6a785cbeef6ff5f54c`;
+- third-pair archive identities are pinned above; uncompressed media SHA-256 values are intentionally pending the first bounded admission run;
 - media remains outside public GitHub; Fall clips have only source clip/activity classes unless an independent frame-level interval is established.
 
 ### Runtime/model provenance
@@ -111,7 +115,7 @@ Exact-head run #127 on initial PR #52 head `0bb4d3641b5ef7ae0de13204b805f59ec11c
 ## Efficiency ledger
 One worker, one acceptance-moving work item, one implementation PR. No new model family, training job, paid resource, self-hosted runner, home/customer media, second framework or duplicate agent is introduced.
 
-Live base for PR #52 is `main` at `4c9a85486356d34e40dd6c602171efdb1fa44237`; post-merge run #126 was green on attempt 1. Intake had **0 open implementation PRs** and **0 active runs for main**. PR #52 is now the sole implementation PR. Initial exact-head run #127 failed deterministically in the synthetic suite after controls and guardrail regressions passed and before any live Figshare probe. That failure is preserved, **0 unchanged retries** were used, and the diagnosed fixture-only correction is the **second and final CI-triggering branch update for this session**. No third dispatch/push/retry is permitted in this session.
+Live base for PR #53 is `main` at `0f2f50d60fdecc8b20f3afff080724aca3c7ac12`; post-merge Analytics quality run #129 was green on attempt 1. Intake had **0 open implementation PRs** and **0 active runs for main**. Local policy preflight for implementation was allowed with **0 unchanged retries**, **0 CI dispatches this session**, and **0 sessions without tested progress**. PR #53 is the sole implementation PR. Its first exact-head run is the first of at most two CI-triggering branch updates in this session.
 
 ## Reproduce
 Repository checks:
@@ -138,10 +142,11 @@ python -m analytics_lab.figshare_member_admission --output-dir /path/to/ephemera
 python -m analytics_lab.figshare_person_down_diagnostic --output-dir /path/to/ephemeral-diagnostic --candidate-dir /path/to/private-detector-cache
 python -m analytics_lab.figshare_generalization2_admission --output-dir /path/to/ephemeral-output-2
 python -m analytics_lab.figshare_generalization2_person_down_diagnostic --output-dir /path/to/ephemeral-diagnostic-2 --candidate-dir /path/to/private-detector-cache
+python -m analytics_lab.figshare_generalization3_admission --output-dir /path/to/ephemeral-output-3
 ```
 
 ## Next executable decision
-Run the exact corrected PR #52 head once through Linux, Windows, the Analytics quality gate and the bounded metadata-only Figshare index probe. If the exact head is green, retain the selected untouched ACT16/ACT11 pair metadata and merge only on the unchanged tested base, then verify main. The following acceptance cycle may admit only those exact selected members through the existing bounded path, compute exact SHA-256 identities, and run the unchanged retained baseline before any algorithm change. No training may begin until exact trainer revision/dependencies, pretrained weights and transitive commercial rights, export/runtime compatibility, subject-separated train/validation/holdout splits and CPU/resource ceilings are pinned; Subjects 2-4 remain held out and must not be trained on merely to make prior misses pass.
+Run the exact first PR #53 head once through Linux, Windows, the Analytics quality gate, bounded Figshare archive-index probe and exact third-pair admission. If green, record the two emitted SHA-256 identities, make one coherent second/final branch update that pins those hashes and adds the unchanged retained baseline diagnostic, and run the same evidence lane once more. Only a measurable unchanged-baseline result may justify the next algorithm decision. No training may begin until exact trainer revision/dependencies, pretrained weights and transitive commercial rights, export/runtime compatibility, subject-separated train/validation/holdout splits and CPU/resource ceilings are pinned; Subjects 2-4 remain held out and must not be trained on merely to make prior misses pass.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across genuinely different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and miss measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
