@@ -17,7 +17,7 @@ This is not a commercial-accuracy dataset and it does not arrive with exhaustive
 
 Engineering rights decision for this evidence-only path: **commercial product-development evaluation of these evidence bytes is authorized by the reviewed CC0 dedication**. This is an engineering provenance conclusion, not a legal opinion or commercial-release approval.
 
-## Published asset identity
+## Exact admitted asset identity
 
 The reviewed Wikimedia file page records:
 
@@ -27,7 +27,9 @@ The reviewed Wikimedia file page records:
 - SHA-1: `51e89a672896e45cca17aa46cd223630a6266e26`;
 - description: static shot of a pedestrian area, with people passing close to the camera and high depth of field.
 
-The first evidence run intentionally does **digest discovery only**: stream the exact canonical media bytes once on the GitHub-hosted Linux evidence runner, enforce the published byte count and SHA-1, compute SHA-256, retain no media, emit no frames, run no detector, and make no tracking-accuracy claim. The discovered SHA-256 must be pinned before any later frame extraction or annotation work.
+Exact-head PR #65 run #158 streamed the canonical media once on the GitHub-hosted Linux runner, retained no media, and verified the published byte count and SHA-1. That run discovered SHA-256 `bfadaa62cccb42db875d50bb842aa0964fbf72040432e4097c1df59e043e0c26`. The second head pins that SHA-256 in repository code and requires byte count, SHA-1 and SHA-256 to match before the asset is admitted.
+
+No frames were emitted, no detector/model/runtime was installed for this probe, and no tracking-accuracy claim was made from digest discovery.
 
 ## Why this source
 
@@ -37,9 +39,8 @@ It is **not** sufficient for production accuracy claims, broad robustness, vehic
 
 ## Required next steps
 
-1. Verify exact bytes and discover SHA-256 on `evidence/tracking-cc0-*`; no media retention.
-2. Pin SHA-256 fail-closed in repository code.
-3. Select a small fixed frame window before model inspection and extract only that bounded window ephemerally.
-4. Create independent exhaustive person boxes/track labels for every measured frame; do not use the benchmarked detector/tracker outputs as ground truth.
-5. Bind annotation SHA-256 and ordered frame-manifest SHA-256 through `TrackingEvidenceManifest`.
-6. Run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations and report raw association metrics plus wall/CPU cost. Treat the result only as bounded engineering evidence.
+1. Require the exact pinned SHA-256 on the second PR head and keep media non-retained.
+2. Select a small fixed frame window before benchmark-model inspection and extract only that bounded window ephemerally.
+3. Create independent exhaustive person boxes/track labels for every measured frame; do not use the benchmarked detector/tracker outputs as ground truth.
+4. Bind annotation SHA-256 and ordered frame-manifest SHA-256 through `TrackingEvidenceManifest`.
+5. Run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations and report raw association metrics plus wall/CPU cost. Treat the result only as bounded engineering evidence.

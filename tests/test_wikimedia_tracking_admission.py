@@ -35,18 +35,23 @@ class WikimediaTrackingAdmissionTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             w._hash_stream(io.BytesIO(payload), max_bytes=len(payload) - 1)
 
-    def test_admit_source_requires_exact_published_bytes(self):
+    def test_admit_source_requires_all_exact_published_digests(self):
         payload = b"reviewed-evidence-bytes"
         sha1 = hashlib.sha1(payload).hexdigest()
+        sha256 = hashlib.sha256(payload).hexdigest()
 
         def opener(request, timeout):
             self.assertEqual(request.full_url, w.SOURCE_URL)
             self.assertEqual(timeout, 30)
             return _Response(payload, content_length=str(len(payload)))
 
-        with patch.object(w, "PUBLISHED_SIZE", len(payload)), patch.object(w, "PUBLISHED_SHA1", sha1):
+        with (
+            patch.object(w, "PUBLISHED_SIZE", len(payload)),
+            patch.object(w, "PUBLISHED_SHA1", sha1),
+            patch.object(w, "PUBLISHED_SHA256", sha256),
+        ):
             digest = w.admit_source(opener=opener)
-        self.assertEqual(digest.sha256, hashlib.sha256(payload).hexdigest())
+        self.assertEqual(digest.sha256, sha256)
 
     def test_admit_source_rejects_redirect_outside_reviewed_asset(self):
         payload = b"bytes"
@@ -66,13 +71,24 @@ class WikimediaTrackingAdmissionTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             w.admit_source(opener=opener)
 
-    def test_admit_source_rejects_checksum_change(self):
+    def test_admit_source_rejects_sha1_change(self):
         payload = b"changed-evidence"
 
         def opener(request, timeout):
             return _Response(payload, content_length=str(len(payload)))
 
         with patch.object(w, "PUBLISHED_SIZE", len(payload)):
+            with self.assertRaises(RuntimeError):
+                w.admit_source(opener=opener)
+
+    def test_admit_source_rejects_sha256_change_after_sha1_matches(self):
+        payload = b"reviewed-but-changed-sha256"
+        sha1 = hashlib.sha1(payload).hexdigest()
+
+        def opener(request, timeout):
+            return _Response(payload, content_length=str(len(payload)))
+
+        with patch.object(w, "PUBLISHED_SIZE", len(payload)), patch.object(w, "PUBLISHED_SHA1", sha1):
             with self.assertRaises(RuntimeError):
                 w.admit_source(opener=opener)
 

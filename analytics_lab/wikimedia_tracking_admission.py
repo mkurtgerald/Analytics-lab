@@ -1,10 +1,10 @@
 """Bounded admission probe for one reviewed CC0 pedestrian tracking clip.
 
 This evidence helper is intentionally narrow: it streams the exact Wikimedia
-Commons source once on an ``evidence/tracking-cc0-*`` hosted-runner PR, verifies
-its published byte length and SHA-1, computes SHA-256 for exact future pinning,
-and emits metadata only. It does not retain or upload media, run a detector, or
-produce any tracking-accuracy claim.
+Commons source on an ``evidence/tracking-cc0-*`` hosted-runner PR, verifies the
+published byte length/SHA-1 and the previously discovered SHA-256, and emits
+metadata only. It does not retain or upload media, run a detector, or produce
+any tracking-accuracy claim.
 """
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ LICENSE_EXPRESSION = "CC0-1.0"
 AUTHOR = "Taurus Media Technik"
 PUBLISHED_SIZE = 11_215_394
 PUBLISHED_SHA1 = "51e89a672896e45cca17aa46cd223630a6266e26"
+PUBLISHED_SHA256 = "bfadaa62cccb42db875d50bb842aa0964fbf72040432e4097c1df59e043e0c26"
 MAX_BYTES = 12_000_000
 CHUNK_BYTES = 64 * 1024
 
@@ -72,10 +73,7 @@ def _hash_stream(stream: BinaryIO, *, max_bytes: int = MAX_BYTES) -> AdmissionDi
     return AdmissionDigest(total, sha1.hexdigest(), sha256.hexdigest())
 
 
-def admit_source(
-    *,
-    opener: Callable[..., BinaryIO] = urlopen,
-) -> AdmissionDigest:
+def admit_source(*, opener: Callable[..., BinaryIO] = urlopen) -> AdmissionDigest:
     """Stream and verify the one reviewed source without retaining its bytes."""
     request = Request(
         SOURCE_URL,
@@ -102,6 +100,8 @@ def admit_source(
         raise RuntimeError("evidence byte length does not match the published asset")
     if digest.sha1 != PUBLISHED_SHA1:
         raise RuntimeError("evidence SHA-1 does not match the published Wikimedia checksum")
+    if digest.sha256 != PUBLISHED_SHA256:
+        raise RuntimeError("evidence SHA-256 does not match the pinned admitted asset")
     return digest
 
 
@@ -116,7 +116,7 @@ def main() -> int:
         "commercial_evaluation_authorized": True,
         "size_bytes": digest.size_bytes,
         "published_sha1": digest.sha1,
-        "discovered_sha256": digest.sha256,
+        "pinned_sha256": digest.sha256,
         "media_retained": False,
         "accuracy_claim": False,
     }, sort_keys=True))
