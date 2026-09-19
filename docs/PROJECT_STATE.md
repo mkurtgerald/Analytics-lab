@@ -13,37 +13,70 @@ Analytics Lab develops platform-independent video analytics for paid integration
 Person-down and slip/fall remain required deliverables. They are secondary only in sequencing; preserve their working path, regressions and evidence, and continue them when shared perception/tracking/evaluation work advances them without displacing the higher-priority acceptance item.
 
 ## Detection + tracking — current North Star work
-Live `main` at this work item's start is `b5f05f57b7a2677be1d9c7c5bed547784187db3b`, the merge of PR #63. Post-merge Analytics quality run #155 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
+Live `main` at this work item's start is `04b8c491432fb2850291d2d4ecf06470ce842ce1`, the merge of PR #64. Post-merge Analytics quality run #157 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
 
 Landed boundaries:
 - PR #59: detector-neutral normalized detection/tracked-object contract.
-- PR #60: portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT. It keeps the defining high-confidence then low-confidence association, new-track probation and bounded lost-track recovery while excluding donor detector/Torch, Kalman/SciPy/LAP/`cython_bbox`, OpenCV/native extensions, models, weights, ReID and biometric identity behavior.
+- PR #60: portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT. It keeps high-confidence then low-confidence association, new-track probation and bounded lost-track recovery while excluding donor detector/Torch, Kalman/SciPy/LAP/`cython_bbox`, OpenCV/native extensions, models, weights, ReID and biometric identity behavior.
 - PR #61: bounded platform-neutral tracking evaluator for matched observations, misses, false-track observations, session-local ID switches, fragmentations, mean matched IoU and continuity. Synthetic fixtures are regression evidence only.
 - PR #62: fail-closed UVify/NCSOFT 12-column tracking annotation parser pinned to `uvify-public/human_tracking_dataset@eb3af0cfe49de018a0c4736581daadd8eb860883`. Only source tracking IDs are mapped into evaluation identifiers; source person identity fields are not propagated.
 - PR #63: cryptographic tracking-evidence admission boundary requiring exhaustive multi-object annotation scope, annotation SHA-256, ordered frame-manifest SHA-256, frame count and image dimensions before multi-object metrics are accepted.
+- PR #64: evidence-byte rights admission requiring an authoritative rights source and explicit confirmation that commercial product-development evaluation is authorized. BDD100K was rejected for this path because its dataset terms do not establish general commercial rights for Analytics Lab.
 
-### Current acceptance item — bind evidence rights as well as bytes
-The evaluator's false-track, ID-switch, fragmentation and continuity outputs are only defensible when labels are exhaustive for all measured objects and the exact evidence bytes are authorized for commercial product-development evaluation.
+## Current acceptance item — admit one exact rights-clear real sequence
+The prior path was blocked by inaccessible UVify payload bytes and unsuitable fallbacks. The approach has therefore changed, as required by the efficiency policy, from scanning more prepackaged MOT datasets to admitting one tiny authoritative real sequence with clear commercial-evaluation rights and creating independent exhaustive labels for a fixed window.
 
-`analytics_lab.tracking_evidence` therefore fails closed unless one exact sequence records dataset/provenance/version/license/attribution, an authoritative rights source, explicit confirmation that commercial evaluation of the evidence bytes is authorized, `annotation_scope=exhaustive_multi_object`, annotation SHA-256, a deterministic SHA-256 over the ordered per-frame digest manifest, positive frame count, and bounded image dimensions. Media stays ephemeral/outside GitHub. Synthetic manifest tests validate only this contract.
+Selected source: Wikimedia Commons `Video Codec Test pedestrian area 1080p25.y4m.webm`.
 
-This closes a demonstrated provenance gap: a permissive code-repository license or public download URL does not necessarily grant commercial rights to the underlying dataset media.
+Reviewed authoritative facts from the pinned Commons file page:
+- author: Taurus Media Technik;
+- license: CC0 1.0 Universal Public Domain Dedication (`CC0-1.0`);
+- commercial copying/modification/distribution/use is permitted under the reviewed dedication;
+- canonical asset size: 11,215,394 bytes;
+- published SHA-1: `51e89a672896e45cca17aa46cd223630a6266e26`;
+- duration: 15.125 seconds;
+- dimensions: 1920 x 1080;
+- static pedestrian-area view with people passing close to the camera and high depth of field.
 
-The primary evidence source remains UVify/NCSOFT. Its pinned README describes 500 drone videos, 18,000 extracted images, multi-object human tracking annotations and 49,258 occluded object annotations. The repository license is CC-BY-4.0 at blob `fab36c2f10dc9d2602bef9c9570df9c978598f03`. The publisher's actual dataset payload is SharePoint-hosted and remains unavailable through the current bounded execution path, so no sequence payload, media hash or real tracking metric is claimed yet.
+Rights/provenance review is recorded in `docs/dataset-review-wikimedia-cc0-tracking.md`. The exact rights source is pinned to the Commons file-page revision `oldid=1196486240`; the canonical media URL is pinned in `analytics_lab.wikimedia_tracking_admission`.
 
-### Additional source review — BDD100K rejected for this commercial path
-Per the bounded fallback rule, exactly one additional technically relevant source was reviewed: `bdd100k/bdd100k@9ac17c6c7c51d2fc83065fccd707cd5b1882a293`.
+### First evidence head — digest discovery only
+Branch `evidence/tracking-cc0-admission` adds a narrowly bounded hosted-runner probe that:
+- streams only the exact canonical Wikimedia media URL;
+- requires HTTPS and rejects a redirect outside the reviewed host/path;
+- enforces the published `Content-Length` when present;
+- caps the stream at 12,000,000 bytes;
+- requires exact final size 11,215,394 bytes;
+- requires exact published SHA-1 `51e89a672896e45cca17aa46cd223630a6266e26`;
+- computes SHA-256 for the next fail-closed pin;
+- retains/uploads no media, emits no frames, installs no detector/runtime, and makes no accuracy claim.
 
-BDD100K supports multi-object detection tracking, but its authoritative `doc/source/license.rst` separates the BSD-3-Clause code/resources license from the downloaded data/label terms. The data/label grant permits educational, research and not-for-profit use generally, while commercial use is granted to BDD and BAIR Commons members and their affiliates and otherwise points users to UC Berkeley for commercial licensing opportunities. No qualifying membership or separate commercial license is established for Analytics Lab, so BDD100K is rejected for the current commercial acceptance path. No BDD100K media or bulk archive was downloaded. See `docs/dataset-review-bdd100k-tracking.md`.
+The evidence workflow is adjusted only for `evidence/tracking-cc0-*`; that branch runs this digest probe instead of the older generic GMDCSA/OMZ real-video lane. Normal branches and main do not acquire the asset. `AGENTS.md` is tightened to authorize exactly this one CC0 asset and exactly this digest-discovery behavior.
 
-The previously identified D-PTUAC Figshare fallback remains rejected for this acceptance item. Its paper describes 138 sequences / more than 121k frames under CC-BY-4.0, but the dataset is visual-object tracking of a selected target: each sequence's `groundtruth.txt` is an N x 4 target box `[xmin, ymin, width, height]`. Crowds in the video therefore do not make its annotation scope exhaustive multi-object ground truth. Pulling its roughly 15.01 GB package would not support the evaluator's false-track or multi-ID metrics and is intentionally avoided.
+Focused local regression for the new admission code passed 5/5 before PR creation. The network evidence itself is deliberately unrun until the exact PR head executes on the GitHub-hosted Linux runner.
 
 ### Next measured comparison
-Because UVify remains inaccessible and the one permitted additional prepackaged source review did not clear commercial rights, change approach rather than scanning more MOT datasets.
+If the first exact head verifies the published bytes and discovers SHA-256, use at most one remaining CI-triggering update in this session to pin that SHA-256 fail-closed and prepare a small fixed frame window selected before benchmark-model inspection. Do not claim tracking accuracy from digest discovery.
 
-Use the smallest rights-cleared real video sequence from an authoritative permissive source (for example, CC0/CC-BY source media with terms covering commercial analysis) and create a tiny in-house exhaustive multi-object annotation set for that sequence, independent of model output. Record the exact source revision/URL, license/attribution, authoritative rights source, annotation digest, ordered frame-manifest digest, frame count and dimensions; keep media bytes ephemeral. Then run the unchanged simple-IoU association baseline and portable ByteTrack slice on identical evidence and compare fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and resource cost.
+After the exact asset identity is pinned:
+1. extract only the bounded fixed window ephemerally;
+2. create independent exhaustive person boxes/session-local ground-truth IDs for every measured frame without using the benchmarked detector/tracker outputs as ground truth;
+3. bind annotation SHA-256 and the ordered per-frame digest manifest through `TrackingEvidenceManifest`;
+4. run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations;
+5. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
+6. attack only the largest demonstrated error source.
 
-Do not search another prepackaged MOT dataset in this path unless the approach changes again after measured failure. Do not admit heavier Kalman/LAP/native-extension machinery unless the measured comparison localizes the largest remaining error to motion prediction/global assignment.
+Do not admit Kalman/LAP/native extensions, another tracker donor, training, or parameter tuning until this comparison demonstrates a concrete need.
+
+## Rejected/blocked tracking evidence sources retained for provenance
+### UVify/NCSOFT
+Repository `uvify-public/human_tracking_dataset`, pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, repository license blob `fab36c2f10dc9d2602bef9c9570df9c978598f03`, published CC-BY-4.0. The README describes 500 drone videos, 18,000 extracted images and multi-object/occlusion annotations, but the publisher's actual SharePoint payload remains unavailable through the bounded path. No sequence bytes or real tracking metric were admitted.
+
+### D-PTUAC
+Figshare DOI `10.6084/m9.figshare.24590568.v2`, CC-BY-4.0, is single-target visual-object tracking rather than exhaustive multi-object labeling. Its roughly 15 GB package is intentionally not downloaded because its N x 4 selected-target trajectories cannot support all-person false-track, ID-switch or fragmentation scoring.
+
+### BDD100K
+Repository `bdd100k/bdd100k` reviewed at `9ac17c6c7c51d2fc83065fccd707cd5b1882a293`. It is technically suitable for MOT, but its data/label terms do not establish general commercial product-development use for Analytics Lab outside qualifying BDD/BAIR Commons affiliation or a separate commercial license. No dataset media was downloaded.
 
 ## Retained person-down path — required secondary analytic
 `authorized local video -> person-detection-0200 -> bounded spatial continuity/orientation recovery -> OMZ human-pose-estimation-0001 -> corrected OpenPose decode -> bounded pose association -> conservative posture classification -> 3000 ms temporal persistence with at most 750 ms bounded unknown-gap tolerance -> evidence-linked candidate -> labeled evaluation`
@@ -63,26 +96,20 @@ Selected trainer lineage remains `Daniil-Osokin/lightweight-human-pose-estimatio
 - Evidence decoder `opencv-python-headless==4.12.0.88`.
 - Portable ByteTrack association donor revision `d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT, adapted code only with no donor model/weights/data or new runtime dependency.
 
-## Evidence/data provenance
+## Evidence/data provenance retained
 ### GMDCSA-24
 Repository `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`, pinned revision `5abac7693229900cf80f722e878fbb119211fc1c`, reviewed repository license MIT, Zenodo DOI `10.5281/zenodo.13354453`, paper DOI `10.1016/j.dib.2024.110892`.
 
 ### Figshare 2017-activity source
 Article `28596332`, version 2, reviewed license CC-BY-4.0, provenance `figshare:28596332:version-2`, activity mapping reference DOI `10.30970/eli.33.12` under CC-BY-4.0. Media remains outside public GitHub.
 
-### UVify/NCSOFT human tracking source candidate
-Repository `uvify-public/human_tracking_dataset`, pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, repository license blob `fab36c2f10dc9d2602bef9c9570df9c978598f03`, published CC-BY-4.0. Exact data payload is not admitted or hashed.
-
-### Rejected tracking evidence sources for the current metric/commercial protocol
-- D-PTUAC, Figshare DOI `10.6084/m9.figshare.24590568.v2`, published CC-BY-4.0, is single-target visual-object tracking rather than exhaustive multi-object labeling. Do not use it to score false tracks, multi-object ID switches or fragmentation in this evaluator.
-- BDD100K repository `bdd100k/bdd100k`, reviewed at `9ac17c6c7c51d2fc83065fccd707cd5b1882a293`, is technically suitable for MOT but its downloaded data/label terms do not establish general commercial product-development rights. Do not use it for this commercial acceptance path without separately established rights.
+### Wikimedia CC0 pedestrian source
+Pinned rights page `https://commons.wikimedia.org/w/index.php?title=File:Video_Codec_Test_pedestrian_area_1080p25.y4m.webm&oldid=1196486240`; canonical upload URL and published size/SHA-1 are pinned in repository code. SHA-256 is intentionally unknown until the first exact evidence run verifies the source bytes.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. This work item began from live `main` `b5f05f57b7a2677be1d9c7c5bed547784187db3b`, zero open implementation PRs, zero active runs for that head, zero unchanged retries, zero CI dispatches in this session and zero consecutive stalled sessions. Main run #155 was green on attempt 1.
+One worker, one acceptance-moving work item, at most one implementation PR. This session started from live `main` `04b8c491432fb2850291d2d4ecf06470ce842ce1`, zero open implementation PRs, zero active runs for that head, zero unchanged retries, zero CI dispatches in this session and zero consecutive stalled sessions. Main run #157 was green on attempt 1.
 
-Repository/head/open-PR/CI state and the unchanged efficiency-policy ceilings were verified before mutation. The preflight snapshot reproduced locally from the pinned guardrail/policy returned `{"allowed": true, "reasons": []}`. The change adds no donor runtime, dependency, model, weight, media, identity behavior, threshold change, paid resource or training.
-
-Focused local regression for the changed tracking-evidence boundary passed 7/7 before push. Full Linux/Windows/quality-gate verification remains required on the exact PR head before merge.
+Repository/head/open-PR/CI state and the unchanged efficiency-policy ceilings were verified before mutation. A local preflight reproduction using the pinned policy and current guardrail logic returned `{"allowed": true, "reasons": []}` for implementation. Focused local new-module regressions passed 5/5. Opening the PR below counts as CI-triggering action 1/2; no unchanged retry has been consumed.
 
 ## Reproduce
 ```sh
@@ -93,13 +120,13 @@ python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic
 
 Focused Detection + Tracking regressions:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence -v
+python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission -v
 ```
 
 ## Next executable decision
-Open exactly one implementation PR from `feature/tracking-rights-admission` on unchanged base `b5f05f57b7a2677be1d9c7c5bed547784187db3b`. Require the exact head to pass Linux, Windows and the Analytics quality gate; merge only if the tested head/base remain unchanged and all required checks are green.
+Open exactly one implementation PR from `evidence/tracking-cc0-admission` on unchanged base `04b8c491432fb2850291d2d4ecf06470ce842ce1`. Preserve the first-attempt outcome. Require the exact current head to pass Linux, Windows and the Analytics quality gate on the unchanged tested base before merge.
 
-After merge, move directly to the changed evidence-acquisition approach: one tiny authoritative CC0/CC-BY real sequence plus independent exhaustive in-house annotations, cryptographically bound before measurement. Do not start another tracker implementation or scan another prepackaged MOT dataset first.
+This first head is **digest discovery only**. It is not merge-eligible until the discovered SHA-256 is pinned in a changed second head and the same evidence probe passes fail-closed against that SHA-256, using at most the one remaining CI-triggering update this session. If the first run fails deterministically, diagnose/fix rather than rerunning unchanged.
 
 ## Outstanding commercial-release gates
 For detection/tracking: substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible detection precision/recall where labels permit; track fragmentation and ID-switch measurements; throughput/latency/resource envelope; Linux/Windows portability; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
