@@ -13,55 +13,56 @@ Analytics Lab develops platform-independent video analytics for paid integration
 Person-down and slip/fall remain required deliverables. They are secondary only in sequencing; preserve their working path, regressions and evidence, and continue them when shared perception/tracking/evaluation work advances them without displacing the higher-priority acceptance item.
 
 ## Detection + tracking — current North Star work
-Live `main` at this work item's start is `04b8c491432fb2850291d2d4ecf06470ce842ce1`, the merge of PR #64. Post-merge Analytics quality run #157 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
+Live `main` at this work item's start is `a79fdb15a7d9eaf189c662b0d46cd0b027066803`, the merge of PR #65. Post-merge Analytics quality run #160 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
 
 Landed boundaries:
 - PR #59: detector-neutral normalized detection/tracked-object contract.
-- PR #60: portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT. It preserves the donor's high-confidence then low-confidence association behavior while excluding the heavier Torch/Kalman/SciPy/LAP/native-extension/model stack from this portable slice.
-- PR #61: bounded platform-neutral tracking evaluator for matched observations, misses, false-track observations, session-local ID switches, fragmentations, mean matched IoU and continuity. Synthetic fixtures are regression evidence only.
-- PR #62: fail-closed UVify/NCSOFT 12-column tracking annotation parser pinned to `uvify-public/human_tracking_dataset@eb3af0cfe49de018a0c4736581daadd8eb860883`; source tracking IDs are evaluation identifiers, not identities.
+- PR #60: portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT. It preserves high-confidence then low-confidence association while excluding the heavier Torch/Kalman/SciPy/LAP/native-extension/model stack pending measured need.
+- PR #61: bounded platform-neutral tracking evaluator for matches, misses, false-track observations, session-local ID switches, fragmentations, matched IoU and continuity. Synthetic fixtures are regression evidence only.
+- PR #62: fail-closed UVify/NCSOFT tracking-annotation parser pinned to `uvify-public/human_tracking_dataset@eb3af0cfe49de018a0c4736581daadd8eb860883`; source tracking IDs are evaluation identifiers, not identities.
 - PR #63: tracking-evidence admission requiring exhaustive multi-object annotation scope, annotation SHA-256, ordered frame-manifest SHA-256, frame count and dimensions before multi-object metrics are accepted.
 - PR #64: evidence-byte rights admission requiring an authoritative rights source and explicit commercial-evaluation authorization. BDD100K was rejected from the current commercial path because its dataset terms do not establish general commercial rights for Analytics Lab.
+- PR #65: exact CC0 Wikimedia pedestrian source admitted fail-closed on byte size, published SHA-1 and pinned SHA-256; no media retained, no tracker/model run and no accuracy claim.
 
-## Current acceptance item — one exact rights-clear real sequence
-The blocked UVify payload and unsuitable large fallbacks triggered a bounded replan: stop scanning giant MOT packages and first admit one small authoritative real sequence with clear commercial-evaluation rights, then create an independent exhaustive label window.
+## Current acceptance item — pre-register the first real tracker-comparison window
+The next comparison must not cherry-pick an easy interval after seeing detector/tracker output. The first measured window is therefore fixed in code before benchmark output inspection.
 
 Selected source: Wikimedia Commons `Video Codec Test pedestrian area 1080p25.y4m.webm`.
 
-Pinned rights/source record:
+Pinned source/rights record:
 - author: Taurus Media Technik;
 - license: CC0-1.0;
 - rights page: `https://commons.wikimedia.org/w/index.php?title=File:Video_Codec_Test_pedestrian_area_1080p25.y4m.webm&oldid=1196486240`;
 - canonical upload URL: `https://upload.wikimedia.org/wikipedia/commons/a/ae/Video_Codec_Test_pedestrian_area_1080p25.y4m.webm`;
 - published size: 11,215,394 bytes;
 - published SHA-1: `51e89a672896e45cca17aa46cd223630a6266e26`;
-- duration/dimensions: 15.125 seconds, 1920x1080.
+- pinned SHA-256: `bfadaa62cccb42db875d50bb842aa0964fbf72040432e4097c1df59e043e0c26`;
+- duration/dimensions: 15.125 seconds, 1920x1080, nominal 25 fps.
 
-PR #65 first exact head `3ef909d36b662d4e20e017790d8accd46bd281bd` ran Analytics quality #158 on attempt 1. Its Linux hosted-runner evidence step verified the canonical asset's published size and SHA-1, retained no media, installed no detector/runtime, emitted no frames, and discovered exact SHA-256:
+Pre-registered smoke window:
+- source frames: **150-174 inclusive**;
+- frame count: **25**;
+- time span at 25 fps: **6.00s through 6.96s**;
+- measured class: **person**;
+- purpose: first real-video simple-IoU-vs-portable-ByteTrack smoke comparison;
+- canonical benchmark-plan SHA-256: `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
 
-`bfadaa62cccb42db875d50bb842aa0964fbf72040432e4097c1df59e043e0c26`
-
-The first head's full synthetic suite passed 320 tests with one optional OpenCV test skipped; Linux evidence admission succeeded, Windows regression succeeded, and the aggregate quality gate completed successfully. No unchanged retry was consumed.
-
-### Second head — fail-closed SHA-256 pin
-The one remaining CI-triggering update in this session pins the discovered SHA-256 in `analytics_lab.wikimedia_tracking_admission` and requires exact byte length, SHA-1 and SHA-256 before admission. Focused local admission regressions pass 6/6, including explicit rejection when SHA-1 matches but SHA-256 does not.
-
-This work does not retain media, run tracking inference, change detector/tracker thresholds, add a model/dependency, train anything, or claim real-world tracking accuracy. Its purpose is to close the evidence-identity boundary so the next session can select a fixed frame window before benchmark-model inspection.
+`analytics_lab.tracking_benchmark_plan` validates and hashes the source identity, exact frame window, frame rate, dimensions, class, purpose and selection basis. The fixed helper intentionally describes this as acceptance/smoke evidence, not commercial accuracy. Focused local regressions pass 3/3: exact frame selection/digest, deterministic hash binding, and fail-closed invalid/unbounded plan inputs.
 
 ### Next measured comparison
-After the second exact PR head is green and merged:
-1. select a small fixed frame window before benchmark-model inspection;
-2. extract only that bounded window ephemerally;
-3. create independent exhaustive person boxes/session-local ground-truth IDs for every measured frame without using benchmarked detector/tracker outputs as truth;
-4. bind annotation SHA-256 and ordered per-frame SHA-256 manifest through `TrackingEvidenceManifest`;
-5. run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations;
-6. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
-7. attack only the largest demonstrated error source.
+After this exact pre-registration head is green and merged:
+1. extract only frames 150-174 ephemerally from the already-admitted source;
+2. create independent exhaustive person boxes/session-local ground-truth IDs for every measured frame without using benchmarked detector/tracker outputs as truth;
+3. bind annotation SHA-256 and ordered per-frame SHA-256 manifest through `TrackingEvidenceManifest`;
+4. run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations;
+5. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
+6. attack only the largest demonstrated error source;
+7. expand to a larger/crowded/occlusion window only after the smoke comparison is measured and recorded.
 
 Do not admit Kalman/LAP/native extensions, another tracker donor, training, or parameter tuning until this comparison demonstrates a concrete need.
 
 ## Rejected/blocked tracking evidence sources retained for provenance
-- **UVify/NCSOFT**: pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, published CC-BY-4.0, useful exhaustive-style tracking annotations, but the actual publisher-hosted payload remains unavailable through the bounded path; no sequence bytes or metrics admitted.
+- **UVify/NCSOFT**: pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, published CC-BY-4.0, useful exhaustive-style tracking annotations, but the publisher-hosted payload remains unavailable through the bounded path; no sequence bytes or metrics admitted.
 - **D-PTUAC**: CC-BY-4.0 but single-target visual-object tracking, not exhaustive multi-object ground truth; roughly 15 GB package intentionally not downloaded.
 - **BDD100K**: technically suitable for MOT, but its data/label terms do not establish general commercial product-development rights for this project without qualifying affiliation or separate licensing; no dataset media downloaded.
 
@@ -81,10 +82,10 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 ## Evidence/data provenance retained
 - **GMDCSA-24**: `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos@5abac7693229900cf80f722e878fbb119211fc1c`, reviewed repository license MIT, Zenodo DOI `10.5281/zenodo.13354453`, paper DOI `10.1016/j.dib.2024.110892`.
 - **Figshare 2017 activity source**: article `28596332`, version 2, CC-BY-4.0, provenance `figshare:28596332:version-2`; media remains outside public GitHub.
-- **Wikimedia CC0 pedestrian source**: exact rights page/upload URL above; pinned byte size, SHA-1 and now SHA-256 `bfadaa62cccb42db875d50bb842aa0964fbf72040432e4097c1df59e043e0c26`.
+- **Wikimedia CC0 pedestrian source**: exact rights page/upload URL above; exact byte size, SHA-1 and SHA-256 pinned above.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, one implementation PR (#65). This session began with zero open PRs/active runs, zero retries, zero CI-triggering actions and zero stalled sessions. Local preflight permitted the work. Opening PR #65 triggered action 1/2. Exact-head run #158 passed on attempt 1 and produced the SHA-256 above. The second changed head is action 2/2; no unchanged retry has been consumed. No third CI-triggering change is allowed this session.
+One worker, one acceptance-moving work item. This session began with zero open implementation PRs, zero queued/running runs for live `main`, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh local guardrail preflight returned `{"allowed": true, "reasons": []}`. Branch-only commits do not trigger CI; opening the implementation PR will be CI-triggering action 1/2. No media/model download, paid resource, self-hosted runner, training, threshold change, identity behavior or accuracy claim is introduced by this item.
 
 ## Reproduce
 ```sh
@@ -95,11 +96,11 @@ python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic
 
 Focused Detection + Tracking regressions:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission -v
+python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan -v
 ```
 
 ## Merge rule
-Merge PR #65 only if its exact second head passes Linux, Windows and the Analytics quality gate on unchanged base `04b8c491432fb2850291d2d4ecf06470ce842ce1`. Verify base/head immediately before merge. A deterministic second-head failure must be diagnosed and left unmerged because the session CI-trigger budget is exhausted; do not rerun or push a third head merely to obtain green.
+Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `a79fdb15a7d9eaf189c662b0d46cd0b027066803`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
 
 ## Outstanding commercial-release gates
 Detection/tracking still requires substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible precision/recall where labels permit; track fragmentation/ID-switch measurements; throughput/latency/resource envelopes; Linux/Windows portability; privacy/security/provenance and notices review; versioned installable integration; packaging; and explicit owner commercial-release approval.
