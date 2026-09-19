@@ -3,8 +3,9 @@
 This selector never downloads member payloads. It operates only on the reviewed
 central-directory map and chooses a difficult floor-transition ADL negative plus
 a kneeling-fall positive. Subjects already used by the first three Figshare
-pairs are excluded, the two candidates must be subject/location-disjoint, and at
-least one candidate must come from a location not exercised by those pairs.
+pairs are excluded and the two candidates must be subject/location-disjoint.
+Previously unused locations are preferred when available, but are not required:
+the first live archive probe proved that extra condition was too restrictive.
 The result is candidate metadata for later exact admission, not accuracy evidence
 and not authorization to train on the clips.
 """
@@ -23,8 +24,8 @@ _MEMBER_RE = re.compile(
 )
 
 # Measured pairs used Subjects 01/10, 06/03 and 02/09 across Locations 1/2/3/5.
-# The next pair must move to untouched subjects and include a location outside
-# that exercised set before any member payload or model output is inspected.
+# The next pair must move to untouched subjects. Novel locations remain a useful
+# deterministic preference but are no longer a hard admission requirement.
 _EXCLUDED_SUBJECTS = frozenset({"01", "02", "03", "06", "09", "10"})
 _USED_LOCATIONS = frozenset({"1", "2", "3", "5"})
 
@@ -98,12 +99,11 @@ def _candidate(member: ZipMember) -> GeneralizationMember | None:
 
 
 def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str, Any]:
-    """Return a small untouched ACT20/ACT6 pair with new-location coverage.
+    """Return a small untouched ACT20/ACT6 subject/location-disjoint pair.
 
-    Selection is metadata-only. It first maximizes the count of members from
-    previously unused locations, then minimizes total uncompressed bytes,
-    maximum member size, and stable path order. No model output can influence
-    the choice.
+    Selection is metadata-only. It prefers members from previously unused
+    locations when available, then minimizes total uncompressed bytes, maximum
+    member size, and stable path order. No model output can influence the choice.
     """
     if not isinstance(members, tuple) or not all(isinstance(item, ZipMember) for item in members):
         raise TypeError("members must be a tuple of ZipMember")
@@ -117,14 +117,10 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
         for positive in positives
         if negative.subject_id != positive.subject_id
         and negative.location_id != positive.location_id
-        and (
-            negative.location_id not in _USED_LOCATIONS
-            or positive.location_id not in _USED_LOCATIONS
-        )
     ]
     if not pairs:
         raise RuntimeError(
-            "no bounded subject/location-disjoint ACT20/ACT6 Figshare pair with a novel location"
+            "no bounded subject/location-disjoint ACT20/ACT6 Figshare pair"
         )
 
     def sort_key(pair: tuple[GeneralizationMember, GeneralizationMember]) -> tuple[Any, ...]:
@@ -150,9 +146,9 @@ def select_next_generalization_pair(members: tuple[ZipMember, ...]) -> dict[str,
             "previously_used_location_ids": sorted(_USED_LOCATIONS),
             "require_subject_disjoint_pair": True,
             "require_location_disjoint_pair": True,
-            "require_at_least_one_novel_location": True,
+            "require_at_least_one_novel_location": False,
             "optimization": (
-                "maximize novel-location members, then minimum total uncompressed bytes; "
+                "prefer novel-location members when available, then minimum total uncompressed bytes; "
                 "deterministic metadata tie-breaks"
             ),
         },

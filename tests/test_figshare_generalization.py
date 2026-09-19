@@ -11,7 +11,7 @@ class FigshareGeneralizationTests(unittest.TestCase):
     def member(name: str, size: int, offset: int) -> ZipMember:
         return ZipMember(name, size - 10, size, 8, offset & 0xFFFFFFFF, offset)
 
-    def test_selects_floor_transition_boundary_with_untouched_subject_and_novel_location(self):
+    def test_selects_floor_transition_boundary_with_untouched_subject(self):
         members = (
             # Excluded because Subject 02 was used by the third admitted pair.
             self.member(
@@ -72,7 +72,7 @@ class FigshareGeneralizationTests(unittest.TestCase):
         self.assertFalse(selected["commercial_accuracy_claim"])
         self.assertIn("no member payload", selected["selection_scope"])
         policy = selected["selection_policy"]
-        self.assertTrue(policy["require_at_least_one_novel_location"])
+        self.assertFalse(policy["require_at_least_one_novel_location"])
         self.assertEqual(policy["excluded_subject_ids"], ["01", "02", "03", "06", "09", "10"])
         self.assertEqual(policy["previously_used_location_ids"], ["1", "2", "3", "5"])
         negative, positive = selected["members"]
@@ -114,7 +114,7 @@ class FigshareGeneralizationTests(unittest.TestCase):
         negative, positive = selected["members"]
         self.assertEqual({negative["location_id"], positive["location_id"]}, {"4", "6"})
 
-    def test_fails_closed_without_novel_location_pair(self):
+    def test_accepts_subject_location_disjoint_pair_when_no_novel_location_exists(self):
         members = (
             self.member(
                 "VideoDataset/ADL/SBJ_04_LOC1/ACT20_R_1/negative.mp4",
@@ -127,7 +127,30 @@ class FigshareGeneralizationTests(unittest.TestCase):
                 30,
             ),
         )
-        with self.assertRaisesRegex(RuntimeError, "novel location"):
+        selected = select_next_generalization_pair(members)
+        negative, positive = selected["members"]
+        self.assertEqual((negative["location_id"], positive["location_id"]), ("1", "2"))
+        self.assertFalse(selected["selection_policy"]["require_at_least_one_novel_location"])
+
+    def test_fails_closed_without_subject_location_disjoint_pair(self):
+        members = (
+            self.member(
+                "VideoDataset/ADL/SBJ_04_LOC1/ACT20_R_1/negative.mp4",
+                100,
+                20,
+            ),
+            self.member(
+                "VideoDataset/Fall/SBJ_04_LOC2/ACT6_R_1/same-subject.mp4",
+                60,
+                30,
+            ),
+            self.member(
+                "VideoDataset/Fall/SBJ_05_LOC1/ACT6_R_1/same-location.mp4",
+                70,
+                40,
+            ),
+        )
+        with self.assertRaisesRegex(RuntimeError, "subject/location-disjoint"):
             select_next_generalization_pair(members)
 
     def test_rejects_non_tuple_input(self):

@@ -63,9 +63,11 @@ Measured unchanged-baseline pairs:
 Figshare positives have only source clip/activity classes; without an independent frame-level interval they are intentionally unscored for match/miss and alert delay. These three short pairs are stage-attribution/generalization evidence only, never commercial accuracy.
 
 ## Current acceptance-moving work — broader generalization pair 4
-The next evidence attack is selected before any member payload or model output: ACT20 `Standing up from laying` as a hard floor-transition ADL negative against ACT6 `Fall on knees` as the positive activity class. The selector excludes every already-measured Figshare subject (SBJ_01, SBJ_02, SBJ_03, SBJ_06, SBJ_09 and SBJ_10), requires subject/location disjointness, requires at least one location outside the already-exercised 1/2/3/5 set, maximizes novel-location coverage first, and only then minimizes member bytes.
+The next evidence attack was selected before any member payload or model output: ACT20 `Standing up from laying` as a hard floor-transition ADL negative against ACT6 `Fall on knees` as the positive activity class. The selector excludes every already-measured Figshare subject (SBJ_01, SBJ_02, SBJ_03, SBJ_06, SBJ_09 and SBJ_10) and requires the pair itself to be subject- and location-disjoint.
 
-The exact archive member identities are intentionally not hard-coded before the bounded central-directory probe. A green `evidence/figshare-generalization-4` exact-head run must publish only metadata for the deterministic pair; no member payload is fetched in that selection step. If the pair is valid, admit only those exact members by bounded ranges, CRC and SHA-256 and run the unchanged retained baseline. The floor-transition negative is specifically intended to challenge false-alert behavior without relaxing any analytic threshold.
+Exact-head run #135 preserved a deterministic first-attempt failure: all 43 guardrail tests and the 266-test regression suite passed, but the live bounded central-directory probe found no ACT20/ACT6 pair that also satisfied the additional globally novel-location requirement. This was a data-shape failure, not transient infrastructure, so it was not retried unchanged. The correction removes only that extra requirement. Novel locations remain the first deterministic preference, but a valid untouched-subject pair may reuse previously exercised locations. No member payload or model output influenced this correction.
+
+The exact archive member identities remain unpinned until the corrected bounded probe succeeds. If it produces a pair, admit only those exact members by bounded ranges, CRC and SHA-256, keep media ephemeral, and run the unchanged retained baseline. The floor-transition negative is specifically intended to challenge false-alert behavior without relaxing any analytic threshold.
 
 ## Pose adaptation readiness — blocked pending prerequisites
 Three independent Figshare pairs plus the GMDCSA held-out failures localize the dominant error source strongly enough to justify a tightly bounded pose adaptation decision package, but training remains blocked.
@@ -110,9 +112,9 @@ See `docs/donor-review-lightweight-openpose-training.md` for the exact candidate
 - media remains outside public GitHub.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item and at most one implementation PR. Intake for this cycle verified live `main` at `492348a511c1ef92096719b4df000265cbfae38f`, zero open PRs, zero active runs for the head, and exact-head post-merge run #134 green on attempt 1. The local preflight snapshot allowed implementation with zero unchanged retries, zero CI dispatches this session and zero sessions without progress.
+One worker, one acceptance-moving work item and one open implementation PR (#55). Live `main` remains `492348a511c1ef92096719b4df000265cbfae38f`; post-merge run #134 is green. PR exact-head run #135 preserved its deterministic first-attempt failure after 43/43 guardrails, 266/266 runnable tests and synthetic replay passed; Windows was correctly skipped because the bounded live-index evidence failed. No unchanged retry was used.
 
-This cycle changes only the deterministic metadata-only selector, its focused tests and this state record to choose the fourth untouched Figshare pair. It downloads no member payload, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
+After run #135 completed, live state showed one open implementation PR, zero active runs for the head, zero unchanged retries, one CI-triggering run used this session and zero consecutive sessions without tested progress. The preflight allowed one corrected implementation. This correction changes only the metadata selector, focused regressions and this state record; it downloads no member payload, trains nothing, changes no detector/pose/posture/association/temporal threshold, uses no paid resource and makes no commercial-accuracy claim.
 
 ## Reproduce
 ```sh
@@ -130,9 +132,9 @@ PY
 ```
 
 ## Next executable decision
-Run the exact-head bounded archive-index evidence on `evidence/figshare-generalization-4`. If it deterministically produces a subject/location-disjoint ACT20/ACT6 pair with a novel location, pin those exact archive metadata identities and proceed to bounded member admission plus the unchanged retained CPU baseline in the same acceptance work item. Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold.
+Run the corrected exact-head bounded archive-index evidence on PR #55. If it deterministically produces a subject/location-disjoint ACT20/ACT6 pair from untouched subjects, pin those exact archive metadata identities. This consumes the second and final CI-triggering implementation run for this session; exact member admission and unchanged-baseline measurement must therefore remain the same work item for a later bounded session rather than forcing another push now.
 
-Do not train yet. Pose adaptation remains blocked until checkpoint identity/artifact rights, dependency rights, a rights-cleared subject-separated adaptation corpus and OpenVINO 2026.3.1 export compatibility all clear.
+Preserve the 3000 ms persistence rule, 750 ms unknown-gap ceiling and every existing detector/pose/association/posture threshold. Do not train yet. Pose adaptation remains blocked until checkpoint identity/artifact rights, dependency rights, a rights-cleared subject-separated adaptation corpus and OpenVINO 2026.3.1 export compatibility all clear.
 
 ## Outstanding commercial-release gates
 Substantially broader held-out positive/negative real-video evidence across different subjects, cameras, sites, resolutions, viewpoints, lighting and multi-person scenes; meaningful false-alert/camera-hour and missed-event measurements; alert-latency distribution; latency/resource envelope; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
