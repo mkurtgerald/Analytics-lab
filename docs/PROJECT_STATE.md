@@ -38,18 +38,38 @@ Measured unchanged-baseline pairs:
 Figshare positives have clip/activity labels but no independent frame-level event interval, so they remain intentionally unscored for match/miss and alert latency. They are stage-attribution/generalization evidence only, never commercial accuracy.
 
 ## Current acceptance-moving work — platform-neutral detection + tracking
-Live `main` is `5a3497b95e56180d2b7f9087ed046fb20bbb845f`, the merge of PR #60. Post-merge Analytics quality run #149 passed on attempt 1. At this session's start there were zero open implementation PRs and zero active runs for the current main head.
+Live `main` at this session start is `e56f97ffd93d2bb7a6a162aa9dc3038ee6d3733d`, the merge of PR #61. Post-merge Analytics quality run #151 passed on attempt 1 with Linux, Windows and the Analytics quality gate all green. At this session's start there were zero open implementation PRs and zero queued/running runs for the current main head.
 
-PR #59 established the detector-neutral normalized detection/tracked-object contract. PR #60 then landed the first portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` under MIT. It preserves the donor's high-confidence first association, low-confidence continuity association, new-track probation and bounded lost-track recovery while deliberately excluding the donor's detector/Torch path and Kalman/SciPy/LAP/`cython_bbox`/OpenCV/native-extension path. No model, weight, media, ReID or biometric identity behavior was admitted.
+PR #59 established the detector-neutral normalized detection/tracked-object contract. PR #60 landed the first portable ByteTrack-derived association slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` under MIT. It preserves high-confidence first association, low-confidence continuity association, new-track probation and bounded lost-track recovery while excluding the donor detector/Torch path and Kalman/SciPy/LAP/`cython_bbox`/OpenCV/native-extension path. No model, weight, media, ReID or biometric identity behavior was admitted.
 
-The current implementation branch is `feature/tracking-evaluation-metrics`. It adds a bounded platform-neutral evaluator for labeled multi-object tracking outputs. The evaluator records ground-truth observations, matched observations, misses, false-track observations, session-local ID switches, fragmentations, mean matched IoU and continuity using deterministic maximum-cardinality IoU-gated frame matching. It explicitly does not claim MOTA/HOTA benchmark parity, biometric identity, or real-world accuracy from synthetic fixtures. Focused deterministic regression tests passed 7/7 in an isolated snapshot-compatible local harness before the PR.
+PR #61 landed the bounded platform-neutral tracking evaluator. It records ground-truth observations, matched observations, misses, false-track observations, session-local ID switches, fragmentations, mean matched IoU and continuity using deterministic maximum-cardinality IoU-gated frame matching. It explicitly does not claim MOTA/HOTA benchmark parity, biometric identity, or real-world accuracy from synthetic fixtures.
+
+### Current implementation branch — UVify/NCSOFT evidence adapter
+The current branch is `feature/uvify-ground-truth-adapter`, created from exact live main `e56f97ffd93d2bb7a6a162aa9dc3038ee6d3733d` after repository/head, open PRs, active CI and `ops/efficiency-policy.json` were re-verified. The local preflight snapshot reported `allowed: true` for one implementation action with zero open implementation PRs, zero active runs for head, zero unchanged retries, zero CI dispatches and zero stalled sessions.
+
+The branch adds `analytics_lab.uvify_tracking`, a fail-closed parser for the reviewed UVify/NCSOFT 12-column comma-separated tracking annotation format. It:
+- validates frame, tracking, box, validity, pose, occlusion, truncation and visibility fields;
+- admits only `is_valid == 1` rows;
+- rejects malformed or out-of-frame boxes instead of clamping/repairing them;
+- normalizes boxes to the platform-neutral `NormalizedBox` contract;
+- maps only source `tracking_id` to `uvify-track:<id>` ground-truth identifiers;
+- intentionally does not propagate source `person_id` into Analytics Lab identity semantics;
+- enforces bounded rows and objects per frame; and
+- performs no media acquisition, inference, ReID, face recognition or accuracy scoring.
+
+Synthetic parser tests are contract/regression evidence only. The change does not create real-world accuracy evidence until an exact rights-cleared sequence is admitted and measured.
 
 ### First rights-cleared real tracking evidence source review
-The first real multi-object/occlusion evidence candidate is `uvify-public/human_tracking_dataset` pinned to repository main commit `eb3af0cfe49de018a0c4736581daadd8eb860883`. The repository states that NCSOFT and UVify captured 500 drone videos for multi-object human tracking and provides human annotations with frame number, person ID, tracking ID, box coordinates, validity, pose, occlusion, truncation and visibility. Its published distribution reports 18,000 extracted images and 49,258 occluded object annotations. The repository license file is Creative Commons Attribution 4.0 International, copyright NCSOFT Corporation & UVify Co., Ltd.
+The primary source remains `uvify-public/human_tracking_dataset` pinned to repository main commit `eb3af0cfe49de018a0c4736581daadd8eb860883`. The pinned repository states that NCSOFT and UVify captured 500 drone videos for multi-object human tracking and provides human annotations with frame number, person ID, tracking ID, box coordinates, validity, pose, occlusion, truncation and visibility. Its published distribution reports 18,000 extracted images and 49,258 occluded object annotations.
 
-This source is reviewed as a candidate, not yet admitted evidence. The actual dataset payload is hosted through the publisher's SharePoint link and was not accessible through the current bounded execution path, so no media/annotation hash is invented and no accuracy measurement is claimed. Before use, admit the smallest exact test sequence, record exact file/version/provenance/attribution and cryptographic hashes, keep payloads ephemeral/outside public GitHub, and map evaluation `object_id` to the dataset's tracking ID rather than person identity semantics.
+The repository license file at blob `fab36c2f10dc9d2602bef9c9570df9c978598f03` publishes Creative Commons Attribution 4.0 International and carries the notice `(c) 2022 NCSOFT Corporation & UVify Co., Ltd. All Rights Reserved.` The engineering review is recorded in `docs/dataset-review-uvify-tracking.md`; it is not legal advice or commercial-release approval.
 
-The next measured comparison remains unchanged: run the retained simple-IoU association baseline and the portable ByteTrack slice on the same rights-cleared labeled multi-person sequence, then compare track fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and resource cost. Only if that evidence localizes the largest remaining error to motion prediction or global assignment should the heavier Kalman/LAP donor path be considered.
+The actual dataset payload is hosted through the publisher's SharePoint link and remains unavailable through the current bounded execution path. No media/annotation payload has been admitted or hashed and no accuracy measurement is claimed. Before use, admit the smallest exact test sequence, record exact file/version/provenance/attribution and cryptographic hashes, keep payloads ephemeral/outside public GitHub, record image dimensions, and map evaluation `object_id` to the dataset tracking ID rather than person identity semantics.
+
+A read-only fallback search identified the D-PTUAC dataset on Figshare, version 2, as a separate CC-BY-4.0 tracking dataset with 138 sequences and more than 121k annotated frames. Its public package is about 15.01 GB, so it is not admitted through an unbounded full-dataset download. It remains a fallback research lead only; no payload, hash or result is asserted.
+
+### Next measured comparison
+After this adapter lands exact-head green, obtain the smallest exact rights-cleared labeled sequence from the reviewed UVify/NCSOFT source if a bounded payload path becomes available. Bind exact payload hashes/provenance, keep data ephemeral, then run the unchanged simple-IoU association baseline and portable ByteTrack slice on the same sequence. Compare track fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and resource cost. Only if evidence localizes the largest remaining error to motion prediction or global assignment should the heavier Kalman/LAP donor path be considered.
 
 ## Pose adaptation readiness — secondary and blocked
 Five measured Figshare pairs plus the GMDCSA held-out failures justify a tightly bounded pose-adaptation decision package, but training is no longer on the North Star critical path and remains blocked.
@@ -76,12 +96,12 @@ Repository `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos`, pi
 Article `28596332`, version 2, reviewed license CC-BY-4.0, provenance `figshare:28596332:version-2`, activity mapping reference DOI `10.30970/eli.33.12` under CC-BY-4.0. Media remains outside public GitHub.
 
 ### UVify/NCSOFT human tracking source candidate
-Repository `uvify-public/human_tracking_dataset`, pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, published license CC-BY-4.0. Exact data payload not yet admitted or hashed; do not treat the repository metadata review as dataset accuracy evidence.
+Repository `uvify-public/human_tracking_dataset`, pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, repository license blob `fab36c2f10dc9d2602bef9c9570df9c978598f03`, published CC-BY-4.0. Exact data payload not yet admitted or hashed; do not treat repository metadata review or parser regressions as dataset accuracy evidence.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item, at most one implementation PR. This session began from live `main` `5a3497b95e56180d2b7f9087ed046fb20bbb845f`, zero open implementation PRs, zero active runs for that head, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Post-merge main run #149 was green on attempt 1.
+One worker, one acceptance-moving work item, at most one implementation PR. This session began from live `main` `e56f97ffd93d2bb7a6a162aa9dc3038ee6d3733d`, zero open implementation PRs, zero queued/running runs for that head, zero unchanged retries, zero CI dispatches and zero consecutive stalled sessions. Post-merge main run #151 was green on attempt 1.
 
-Live repository/head/open-PR/CI state and the unchanged efficiency-policy ceilings were verified before mutation. No additional tracker candidates were shopped. Branch `feature/tracking-evaluation-metrics` was created from the exact live main. Focused tracking-evaluator regression tests passed 7/7 locally; these are code-regression evidence only, not tracking-accuracy evidence. Opening the implementation PR is the first CI-triggering action in this session; no retry has been consumed.
+Live repository/head/open-PR/CI state and the unchanged efficiency-policy ceilings were verified before mutation. `python tools/guardrails.py preflight --snapshot ...` was reproduced locally from the exact main guardrail/policy content using the verified counts and returned `{"allowed": true, "reasons": []}`. No additional tracker donor was introduced. The only implementation branch is `feature/uvify-ground-truth-adapter`. Opening its PR will be the first CI-triggering action in this session; no retry has been consumed.
 
 ## Reproduce
 ```sh
@@ -90,9 +110,9 @@ python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
 
-Focused tracker/evaluator regressions after checkout:
+Focused tracker/evaluator/parser regressions after checkout:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation -v
+python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking -v
 ```
 
 Pose adaptation readiness can still be inspected locally without training or network access:
@@ -104,9 +124,9 @@ PY
 ```
 
 ## Next executable decision
-Open exactly one implementation PR from `feature/tracking-evaluation-metrics` on unchanged base `5a3497b95e56180d2b7f9087ed046fb20bbb845f`. Require that exact head to pass Linux, Windows and the Analytics quality gate. Merge only if the tested head/base are unchanged and all required checks are green.
+Open exactly one implementation PR from `feature/uvify-ground-truth-adapter` on unchanged base `e56f97ffd93d2bb7a6a162aa9dc3038ee6d3733d`. Require that exact head to pass Linux, Windows and the Analytics quality gate. Merge only if the tested head/base are unchanged and all required checks are green.
 
-After the evaluator lands, obtain the smallest exact rights-cleared labeled tracking sequence from the reviewed UVify/NCSOFT source or another already-approved source without expanding donor shopping. Bind exact payload hashes/provenance, keep data ephemeral, and run the unchanged simple-IoU versus portable ByteTrack comparison. Do not add Kalman/LAP/native extensions unless measured evidence demonstrates their missing capability is the largest error source.
+After merge, the next acceptance-moving step is real labeled tracking evidence, not another donor implementation. Obtain one bounded rights-cleared sequence, cryptographically bind it, keep it ephemeral, and compare the unchanged simple-IoU and portable ByteTrack paths before any Kalman/LAP/native-extension expansion.
 
 ## Outstanding commercial-release gates
 For detection/tracking: substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible detection precision/recall where labels permit; track fragmentation and ID-switch measurements; throughput/latency/resource envelope; Linux/Windows portability; privacy/security/provenance review; dependency/notices review; versioned installable integration adapter; packaging; and explicit owner commercial-release approval.
