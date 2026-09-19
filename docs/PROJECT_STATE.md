@@ -13,7 +13,7 @@ Analytics Lab develops platform-independent video analytics for paid integration
 Person-down and slip/fall remain required deliverables. They are secondary only in sequencing; preserve their working path, regressions and evidence, and continue them when shared perception/tracking/evaluation work advances them without displacing the higher-priority acceptance item.
 
 ## Detection + tracking — current North Star work
-Live `main` at this work item's start is `a79fdb15a7d9eaf189c662b0d46cd0b027066803`, the merge of PR #65. Post-merge Analytics quality run #160 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
+Live `main` at this work item's start is `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8`, the merge of PR #66. Post-merge Analytics quality run #162 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
 
 Landed boundaries:
 - PR #59: detector-neutral normalized detection/tracked-object contract.
@@ -23,10 +23,24 @@ Landed boundaries:
 - PR #63: tracking-evidence admission requiring exhaustive multi-object annotation scope, annotation SHA-256, ordered frame-manifest SHA-256, frame count and dimensions before multi-object metrics are accepted.
 - PR #64: evidence-byte rights admission requiring an authoritative rights source and explicit commercial-evaluation authorization. BDD100K was rejected from the current commercial path because its dataset terms do not establish general commercial rights for Analytics Lab.
 - PR #65: exact CC0 Wikimedia pedestrian source admitted fail-closed on byte size, published SHA-1 and pinned SHA-256; no media retained, no tracker/model run and no accuracy claim.
+- PR #66: first real-video smoke comparison window pre-registered before benchmark-output inspection: source frames 150-174 inclusive, 25 frames, bound to benchmark-plan SHA-256 `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
 
-## Current acceptance item — pre-register the first real tracker-comparison window
-The next comparison must not cherry-pick an easy interval after seeing detector/tracker output. The first measured window is therefore fixed in code before benchmark output inspection.
+## Current acceptance item — bind independently authored exhaustive ground truth
+The fixed real-video window now needs independently authored labels before tracker output is inspected. The current item adds a deterministic fail-closed binding format for that label set so no frame can be silently omitted, reordered, relabeled to another class, or re-bound to another benchmark plan after measurement.
 
+`analytics_lab.tracking_annotations`:
+- requires every pre-registered frame exactly once, including explicit zero-object frames;
+- requires `GroundTruthObject` values and unique dataset-local object IDs within each frame;
+- requires every annotation category to match the benchmark plan's measured class;
+- canonicalizes semantically irrelevant object ordering by object ID;
+- encodes normalized coordinates with deterministic `float.hex()` values;
+- binds the source SHA-256 and canonical benchmark-plan SHA-256 into the annotation payload;
+- applies explicit object-count and canonical-byte bounds;
+- returns a SHA-256 suitable for the existing `TrackingEvidenceManifest.annotation_sha256` field.
+
+This is evidence-integrity infrastructure only. Synthetic regression fixtures validate the binding contract and are not real-video accuracy evidence.
+
+## Pre-registered first tracker-comparison window
 Selected source: Wikimedia Commons `Video Codec Test pedestrian area 1080p25.y4m.webm`.
 
 Pinned source/rights record:
@@ -47,19 +61,17 @@ Pre-registered smoke window:
 - purpose: first real-video simple-IoU-vs-portable-ByteTrack smoke comparison;
 - canonical benchmark-plan SHA-256: `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
 
-`analytics_lab.tracking_benchmark_plan` validates and hashes the source identity, exact frame window, frame rate, dimensions, class, purpose and selection basis. The fixed helper intentionally describes this as acceptance/smoke evidence, not commercial accuracy. Focused local regressions pass 3/3: exact frame selection/digest, deterministic hash binding, and fail-closed invalid/unbounded plan inputs.
-
 ### Next measured comparison
-After this exact pre-registration head is green and merged:
-1. extract only frames 150-174 ephemerally from the already-admitted source;
-2. create independent exhaustive person boxes/session-local ground-truth IDs for every measured frame without using benchmarked detector/tracker outputs as truth;
-3. bind annotation SHA-256 and ordered per-frame SHA-256 manifest through `TrackingEvidenceManifest`;
-4. run the unchanged simple-IoU baseline and portable ByteTrack slice on identical detector observations;
+After this ground-truth-binding item is exact-head green and merged:
+1. extract only frames 150-174 ephemerally from the already-admitted source under an authorized bounded evidence path;
+2. independently and exhaustively label every person and dataset-local track ID without using benchmarked detector/tracker outputs as truth;
+3. canonicalize/hash those labels with `analytics_lab.tracking_annotations` and bind the ordered per-frame SHA-256 manifest through `TrackingEvidenceManifest`;
+4. run the unchanged simple-IoU control and portable ByteTrack slice on identical detector observations;
 5. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
 6. attack only the largest demonstrated error source;
 7. expand to a larger/crowded/occlusion window only after the smoke comparison is measured and recorded.
 
-Do not admit Kalman/LAP/native extensions, another tracker donor, training, or parameter tuning until this comparison demonstrates a concrete need.
+Do not admit Kalman/LAP/native extensions, another tracker donor, training, or parameter tuning until this comparison demonstrates a concrete need. Do not claim commercial accuracy from this 25-frame smoke window.
 
 ## Rejected/blocked tracking evidence sources retained for provenance
 - **UVify/NCSOFT**: pinned revision `eb3af0cfe49de018a0c4736581daadd8eb860883`, published CC-BY-4.0, useful exhaustive-style tracking annotations, but the publisher-hosted payload remains unavailable through the bounded path; no sequence bytes or metrics admitted.
@@ -85,7 +97,7 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 - **Wikimedia CC0 pedestrian source**: exact rights page/upload URL above; exact byte size, SHA-1 and SHA-256 pinned above.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item. This session began with zero open implementation PRs, zero queued/running runs for live `main`, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh local guardrail preflight returned `{"allowed": true, "reasons": []}`. Branch-only commits do not trigger CI; opening the implementation PR will be CI-triggering action 1/2. No media/model download, paid resource, self-hosted runner, training, threshold change, identity behavior or accuracy claim is introduced by this item.
+One worker, one acceptance-moving work item. This session began from `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8` with zero open implementation PRs, zero queued/running runs for that exact head, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh machine preflight against the current policy returned `{"allowed": true, "reasons": []}` before mutation. Branch-only commits do not trigger CI; opening the implementation PR will be CI-triggering action 1/2. No media/model download, paid resource, self-hosted runner, training, threshold change, identity behavior or accuracy claim is introduced by this item.
 
 ## Reproduce
 ```sh
@@ -96,11 +108,11 @@ python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic
 
 Focused Detection + Tracking regressions:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan -v
+python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan tests.test_tracking_annotations -v
 ```
 
 ## Merge rule
-Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `a79fdb15a7d9eaf189c662b0d46cd0b027066803`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
+Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `ecffbdeb60c9d7bc7ef311338ad0e2a581d94bd8`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
 
 ## Outstanding commercial-release gates
 Detection/tracking still requires substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible precision/recall where labels permit; track fragmentation/ID-switch measurements; throughput/latency/resource envelopes; Linux/Windows portability; privacy/security/provenance and notices review; versioned installable integration; packaging; and explicit owner commercial-release approval.
