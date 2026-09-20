@@ -13,7 +13,7 @@ Analytics Lab develops platform-independent video analytics for paid integration
 Person-down and slip/fall remain required deliverables. They are secondary only in sequencing; preserve their working path, regressions and evidence, and continue them when shared perception/tracking/evaluation work advances them without displacing the higher-priority acceptance item.
 
 ## Detection + tracking — current North Star work
-Live `main` at this recovery item's start is `e1d790274fe1288efb72cfa3a93676898c8c42fc`, the merge of PR #68. Post-merge Analytics quality run #166 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
+Live `main` at this work item's start is `4c2a889fc94f3df3b566b308716181332f822a1d`, the merge of PR #69. Post-merge Analytics quality run #168 passed on attempt 1. At start there were zero open implementation PRs and zero queued/running runs for that exact head.
 
 Landed boundaries:
 - PR #59: detector-neutral normalized detection/tracked-object contract.
@@ -26,27 +26,22 @@ Landed boundaries:
 - PR #66: first real-video smoke comparison window pre-registered before benchmark-output inspection: source frames 150-174 inclusive, 25 frames, bound to benchmark-plan SHA-256 `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
 - PR #67: canonical exhaustive ground-truth binding for the full fixed window. It requires every frame exactly once, measured-class-only labels, unique per-frame dataset-local IDs and deterministic normalized-coordinate hashing.
 - PR #68: fail-closed independent ground-truth exchange package. Completed packages must bind exact source/plan identity, every planned frame, canonical RGB24 frame hashes and exhaustive person/track labels; incomplete authoring templates cannot be admitted.
+- PR #69: bounded hosted frame-identity evidence for the exact pre-registered CC0 window. Run #167 passed on attempt 1 across Linux, Windows and the Analytics quality gate and produced frame-manifest SHA-256 `52f00a4fc1e013d9c0cae9647cb386369441f005a970d6d42c449cbd0269a031`. No media/frame artifact was retained or uploaded and no detector/tracker/model ran.
 
-## Current acceptance item — remove the deterministic frame-identity blocker
-The first tracker head-to-head still cannot run because independent exhaustive labels must be cryptographically bound to the exact pre-registered decoded frames, while the previous tracking-CC0 CI policy allowed only source-byte admission and explicitly prohibited decoded-frame evidence. The recovery item removes only that blocker without opening a general media-export or benchmark loop.
+## Current acceptance item — first real-video tracker head-to-head
+The deterministic frame-identity blocker is closed. The next indispensable evidence is an independently authored, exhaustive person/track package for frames 150-174, cryptographically bound to the canonical RGB24 hashes emitted by PR #69. Tracker or detector outputs must not be used as annotation truth.
 
-Dedicated branch `evidence/tracking-cc0-benchmark-*` is allowed to:
-- use exactly the already admitted CC0 source and verify its byte length, SHA-1 and SHA-256 before decoding;
-- install only the already-reviewed pinned `opencv-python-headless==4.12.0.88` decoder on GitHub-hosted Linux;
-- write the source only beneath `RUNNER_TEMP`, decode sequentially only through frame 174, and keep decoded pixels in memory only long enough to hash the pre-registered frames 150-174;
-- emit only source/plan identity, the 25 canonical RGB24 frame SHA-256 values, their ordered frame-manifest SHA-256 and decoder version;
-- delete the temporary source before exit and upload no media or frame artifact.
+Before any real-video result is inspected, this work item freezes the simple-IoU control that PR #60 already named as the ByteTrack comparison baseline. The control has one-frame memory only, raw same-category IoU association, no low-confidence recovery, no lost buffer, no motion model and no ReID/appearance behavior. Its pre-measurement defaults are fixed at existing-track threshold `0.5`, new-track threshold `0.6` and minimum raw IoU `0.3`. These parameters must not be tuned after the first comparison is seen.
 
-This lane runs no detector/tracker/model, authors no labels, tunes no parameters and makes no accuracy claim. It exists solely to let independently authored exhaustive labels be bound to the exact real-video window already selected before tracker output inspection.
+The dedicated `evidence/tracking-cc0-benchmark-*` lane remains frame-identity-only: it may verify and decode the admitted source only far enough to hash the pre-registered window, but it may not author labels, run a detector/tracker/model, export media/frames, tune parameters or make an accuracy claim. Any later benchmark execution must preserve the same fail-closed source/plan/annotation bindings and be separately justified rather than weakening that lane.
 
 ### Next measured comparison
-After this frame-identity item is exact-head green and merged:
 1. independently and exhaustively label every person and dataset-local track ID for the exact frames 150-174 without using benchmarked detector/tracker outputs as truth;
-2. validate the completed ground-truth package against the emitted canonical frame hashes and retain only its annotation/frame-manifest hashes plus provenance;
-3. run the unchanged simple-IoU control and portable ByteTrack slice on identical detector observations;
-4. compare raw fragmentation, ID switches, continuity, misses, false tracks, matched IoU, throughput/latency and CPU/resource cost;
-5. attack only the largest demonstrated error source;
-6. expand to a larger/crowded/occlusion or low-light window only after the smoke comparison is measured and recorded.
+2. validate the completed ground-truth package against the emitted canonical frame hashes and retain its annotation/frame-manifest hashes plus provenance;
+3. run the now-frozen simple-IoU control and portable ByteTrack slice on identical detector observations;
+4. compare raw fragmentation, ID switches, continuity, matched/missed observations, false-track observations, matched IoU, throughput/FPS, latency and CPU/resource cost;
+5. preserve the first-attempt result and attack only the largest demonstrated error source;
+6. expand to the smallest additional rights-cleared crossing/occlusion/crowded or low-light evidence set only after the smoke comparison is measured and recorded.
 
 Do not admit Kalman/LAP/native extensions, another tracker donor, training or parameter tuning until this comparison demonstrates a concrete need. Do not claim commercial accuracy from this 25-frame smoke window.
 
@@ -88,6 +83,7 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 - OpenVINO Runtime `2026.3.1`.
 - Evidence decoder `opencv-python-headless==4.12.0.88`.
 - Portable ByteTrack donor revision `d1bf0191adff59bc8fcfeaa0b33d3d1642552a99`, MIT; adapted association code only, no donor model/weights/data or new runtime dependency.
+- Simple-IoU comparison control: original dependency-free project code, frozen before real-video benchmark output; not a commercial accuracy claim or product tracker selection.
 
 ## Evidence/data provenance retained
 - **GMDCSA-24**: `ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos@5abac7693229900cf80f722e878fbb119211fc1c`, reviewed repository license MIT, Zenodo DOI `10.5281/zenodo.13354453`, paper DOI `10.1016/j.dib.2024.110892`.
@@ -95,7 +91,7 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 - **Wikimedia CC0 pedestrian source**: exact rights page/upload URL above; exact byte size, SHA-1 and SHA-256 pinned above.
 
 ## Efficiency ledger
-One worker, one acceptance-moving work item. This recovery session began from `e1d790274fe1288efb72cfa3a93676898c8c42fc` with zero open implementation PRs, zero queued/running runs for that exact head, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh preflight against the current policy returned `{"allowed": true, "reasons": []}` before mutation. Opening the implementation PR is CI-triggering action 1/2. No paid resource, self-hosted runner, training, detector threshold change, identity behavior or accuracy claim is introduced by this item.
+One worker, one acceptance-moving work item. This session began from `4c2a889fc94f3df3b566b308716181332f822a1d` with zero open implementation PRs, zero queued/running runs for that exact head, zero unchanged retries, zero CI-triggering actions and zero stalled sessions. Fresh preflight against the current policy returned `{"allowed": true, "reasons": []}` before mutation. Focused local simple-IoU regressions passed 7/7 before repository mutation. Opening the implementation PR is CI-triggering action 1/2. No paid resource, self-hosted runner, training, detector threshold change, identity/ReID behavior, media retention or accuracy claim is introduced by this item.
 
 ## Reproduce
 ```sh
@@ -106,11 +102,11 @@ python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic
 
 Focused Detection + Tracking regressions:
 ```sh
-python -m unittest tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan tests.test_tracking_annotations tests.test_tracking_ground_truth_package tests.test_wikimedia_tracking_frame_evidence -v
+python -m unittest tests.test_iou_tracker tests.test_bytetrack tests.test_tracking_evaluation tests.test_uvify_tracking tests.test_tracking_evidence tests.test_wikimedia_tracking_admission tests.test_tracking_benchmark_plan tests.test_tracking_annotations tests.test_tracking_ground_truth_package tests.test_wikimedia_tracking_frame_evidence -v
 ```
 
 ## Merge rule
-Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `e1d790274fe1288efb72cfa3a93676898c8c42fc`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
+Merge this acceptance item only if its exact current head passes Linux, Windows and the Analytics quality gate on unchanged base `4c2a889fc94f3df3b566b308716181332f822a1d`. Verify base/head immediately before merge. One unchanged retry is permitted only for a diagnosed transient infrastructure failure; deterministic failure requires a fix before another run.
 
 ## Outstanding commercial-release gates
 Detection/tracking still requires substantially broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible precision/recall where labels permit; track fragmentation/ID-switch measurements; throughput/latency/resource envelopes; Linux/Windows portability; privacy/security/provenance and notices review; versioned installable integration; packaging; and explicit owner commercial-release approval.
