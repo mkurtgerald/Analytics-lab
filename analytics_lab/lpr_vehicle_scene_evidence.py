@@ -30,8 +30,8 @@ _SOURCE_URL = (
     "PR_China_license_plate_Beijing_%E4%BA%ACB%E2%80%A2K0074_Taxi.jpg"
 )
 _SOURCE_SIZE = 26_397
-_SOURCE_SHA1: str | None = None
-_SOURCE_SHA256: str | None = None
+_SOURCE_SHA1: str | None = "84ac1c7c66b10345fff12e7ed6876c46b91abbd3"
+_SOURCE_SHA256: str | None = "f85e058f4526c43b34f97edf4349b8510b321db3fb98e5ce7a47b7f579e6f890"
 _WIDTH = 538
 _HEIGHT = 349
 _EXPECTED_TEXT_NORMALIZED = "BK0074"
