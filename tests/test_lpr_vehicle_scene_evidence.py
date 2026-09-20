@@ -55,14 +55,20 @@ class LPRVehicleSceneEvidenceTests(unittest.TestCase):
             "single_public_domain_vehicle_scene_smoke_not_commercial_accuracy",
         )
 
-    def test_rights_source_and_bounds_are_pinned(self) -> None:
+    def test_rights_source_bounds_and_source_hashes_are_pinned(self) -> None:
         self.assertIn("oldid=1109767728", evidence._RIGHTS_PAGE)
         self.assertEqual(evidence._SOURCE_SIZE, 26_397)
         self.assertEqual((evidence._WIDTH, evidence._HEIGHT), (538, 349))
         self.assertEqual(evidence._MAX_SOURCE_BYTES, 32_768)
         self.assertIn("upload.wikimedia.org", evidence._SOURCE_URL)
-        self.assertIsNone(evidence._SOURCE_SHA1)
-        self.assertIsNone(evidence._SOURCE_SHA256)
+        self.assertEqual(
+            evidence._SOURCE_SHA1,
+            "84ac1c7c66b10345fff12e7ed6876c46b91abbd3",
+        )
+        self.assertEqual(
+            evidence._SOURCE_SHA256,
+            "f85e058f4526c43b34f97edf4349b8510b321db3fb98e5ce7a47b7f579e6f890",
+        )
 
 
 if __name__ == "__main__":
