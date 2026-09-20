@@ -43,6 +43,13 @@ class ExactOCREvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evidence._selected_preprocess(None)
 
+    def test_preprocess_contract_is_frozen(self):
+        self.assertEqual(
+            evidence._PREPROCESS_PLAN,
+            "rgb24->grayscale->global-otsu-binary->rgb24;native-size;no-invert",
+        )
+        self.assertEqual(evidence._TESSERACT_PSM, 7)
+
     def test_official_windows_package_version_is_exact_and_canonicalized(self):
         def fake_runner(args, **kwargs):
             return subprocess.CompletedProcess(
