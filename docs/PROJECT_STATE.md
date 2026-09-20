@@ -22,7 +22,7 @@ The remaining indispensable tracking evidence is still an independently authored
 The deterministic blocker is unchanged: the approved hosted lane may hash but not export/label those decoded frames, while the current independent annotation environment cannot materialize the exact source pixels. No detector/tracker output may substitute for ground truth. Do not add tracker machinery until the exact independent-label path becomes executable.
 
 ## LPR/OCR — current critical path
-PR #72 merged the first replaceable runnable engineering baseline into `main` at `2244bd2eee1f99fdfbc32f1ba636c288b7bb38a0`. PR run #173 and post-merge run #174 both passed Linux, Windows and the Analytics quality gate on attempt 1.
+PR #72 merged the first replaceable runnable engineering baseline into `main` at `2244bd2eee1f99fdfbc32f1ba636c288b7bb38a0`. PR #74 later merged the first public-domain staged plate smoke into `main` at `e6d11cd3ea325b25c6fa9e5024d4936c6224ce5e`; its post-merge run #180 passed on attempt 1.
 
 Current baseline:
 - plate detector: Open Model Zoo `vehicle-license-plate-detection-barrier-0106` FP16 at exact OMZ commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0, exact size + SHA-384 verification before OpenVINO opens artifacts;
@@ -32,39 +32,37 @@ Current baseline:
 - data path: normalized plate box -> bounded in-memory BGR crop -> dependency-free RGB PPM -> Tesseract TSV -> normalized A-Z/0-9 observation;
 - no automatic model/media download, image retention, identity behavior, training, or accuracy claim in the library.
 
-### Current acceptance item — preserved first staged plate smoke
+### Preserved first staged plate smoke
+Wikimedia Commons `China license plate-Chongqing 渝A 92518.png` is pinned to its public-domain rights record, exact size/SHA-1 and source SHA-256 `47ea02127b3c22856ac548164c822b104c74f7afb711a0cb43458080a11d5433`. The independently declared normalized A-Z/0-9 text is `A92518`.
+
+The untouched OMZ detector returned zero plate detections on that staged plate-only graphic. Preserved first-attempt runtime was approximately 7.265 ms wall latency, 12.124 ms CPU and 137.64 one-image FPS. This is a demonstrated miss on a staged plate graphic only; it is not roadway evidence, a precision/recall estimate, OCR accuracy, or commercial performance evidence. No threshold or detector parameter was changed after inspection.
+
+### Current acceptance item — real vehicle-scene detector localization
+PR #75 reuses the single allowed implementation lane to test the same untouched detector against a rights-cleared real vehicle photograph before considering any donor replacement or tuning.
+
 Selected source:
-- Wikimedia Commons `China license plate-Chongqing 渝A 92518.png`;
-- rights page pinned to `oldid=856647637`;
-- author: Sdee at Chinese Wikipedia;
-- rights: author-released public domain / permission for use for any purpose;
-- canonical upload host: `upload.wikimedia.org`;
-- dimensions: 680x144;
-- byte size: 61,465;
-- published SHA-1: `d365a117631a8fa5a2a0fb7a8d2a03fe2e9b73bc`;
-- pinned source SHA-256 discovered on the admission-only first head: `47ea02127b3c22856ac548164c822b104c74f7afb711a0cb43458080a11d5433`;
-- independently declared normalized alphanumeric text: `A92518` (the Chinese province glyph is deliberately outside the current A-Z/0-9 baseline contract).
+- Wikimedia Commons `PR China license plate Beijing 京B•K0074 Taxi.jpg`;
+- rights page pinned to `oldid=1109767728`;
+- author: Love Krittaya; source: own work;
+- rights: copyright holder released the work to the public domain / grants use for any purpose where PD dedication is not legally possible;
+- dimensions: 538x349;
+- published size: 26,397 bytes;
+- predeclared visible normalized Latin/digit portion: `BK0074`;
+- pinned SHA-1: `84ac1c7c66b10345fff12e7ed6876c46b91abbd3`;
+- pinned SHA-256: `f85e058f4526c43b34f97edf4349b8510b321db3fb98e5ce7a47b7f579e6f890`.
 
-PR #74 adds the narrowly scoped hosted LPR evidence lane and excludes that branch from the unrelated person-down/real-video evidence step. Run #177 on first head `5a5a4a83cc49ff70beae47cecfeb501333b29584` passed Linux, Windows and the Analytics quality gate on attempt 1, verified the published byte size/SHA-1, discovered the SHA-256 above, and performed no inference. Run #178 on changed head `f46895d71f963d7460421dde8a08609658c31e6f` also passed Linux, Windows and the Analytics quality gate on attempt 1 and executed the untouched CPU plate-detector smoke with the SHA-256 pinned.
+Run #181 on admission-only head `ccd0cf340cabbd9c9a76183ba4500997455d5a84` passed Linux, Windows, the bounded vehicle-scene evidence step and the Analytics quality gate on attempt 1. It verified the exact source identity above and performed no inference, model install or runtime install.
 
-Preserved first-attempt detector smoke result:
-- plate detections: **0**;
-- best confidence: null;
-- full-frame IoU: `0.0`;
-- elapsed: `0.007265238 s`;
-- CPU: `0.012123617 s`;
-- latency: `7.265238 ms`;
-- one-image throughput observation: `137.64174 FPS`;
-- OpenVINO runtime: `2026.3.1-22476-759c5a6ab8c-releases/2026/3`.
+The next changed head pinned those hashes so the existing bounded evidence lane could execute the untouched detector. Run #182 failed deterministically before evidence execution because one regression still asserted that the source hashes must be `None`; guardrails passed and the failure occurred in `test_rights_source_and_bounds_are_pinned`. This is a stale admission-phase assertion, not a detector result and not an infrastructure failure. Do not rerun it unchanged. The smallest fix is to update that regression to require the exact pinned SHA-1/SHA-256, then let the same changed head execute the detector smoke.
 
-This is a demonstrated detector miss on a staged plate-only graphic. It is not roadway/camera evidence, not a precision/recall estimate, and not commercial accuracy/generalization evidence. No detector threshold or parameter was changed after inspection. Because the detector emitted no plate box, this smoke does not yet measure OCR behavior; the next smallest diagnostic is to exercise the already-reviewed OCR crop contract directly on the exact admitted plate image before considering any detector replacement or second OCR framework.
+A single vehicle photograph remains engineering-smoke evidence only. Even a successful detection cannot establish detector precision/recall, OCR accuracy, geography generalization or commercial performance.
 
 ### Next executable LPR/OCR steps
-1. Merge PR #74 only after the documentation-complete exact head again passes all applicable required checks on unchanged base `ac5cc1e61d3b7566fa78eecd14b0976cce22e709`.
-2. Localize detector-versus-OCR fitness without tuning: run the exact admitted plate graphic through the existing bounded plate-crop/OCR contract directly, preserving the declared `A92518` engineering-smoke target and recording raw OCR text plus latency/CPU/resource cost. Do not call this accuracy evidence.
-3. If the direct OCR path works but the detector still misses, move to the smallest rights-cleared vehicle-scene plate sample before changing detectors; if OCR itself fails, close the exact Tesseract/runtime portability or recognition gap first.
-4. Expand only after the smoke path is localized to the smallest rights-cleared, independently labeled real plate/text set with positives and negatives; measure plate misses/false positives, exact/character reads, latency/FPS and CPU/resource cost.
-5. Do not introduce a second detector/OCR framework, training, or tuning unless measured evidence identifies a concrete unmet requirement.
+1. Fix only the stale source-hash regression and run the exact changed PR #75 head through Linux, Windows, bounded vehicle-scene evidence and the Analytics quality gate; preserve the detector's first executed result without tuning.
+2. If the in-context plate is detected while the staged plate-only graphic remains missed, retain the detector provisionally and advance to the smallest rights-cleared independently labeled real plate/text set.
+3. If the same untouched detector also misses this in-context vehicle scene, treat that measured failure as justification to evaluate the smallest rights-clean detector alternative; do not tune blindly or add a second framework without the measurement.
+4. Once a plate crop is available, exercise the existing Tesseract OCR contract and record raw normalized text, exact/character agreement where independently labeled, latency/FPS and CPU/resource cost.
+5. Expand only to rights-cleared positives and negatives sufficient to measure plate misses/false positives and OCR exact/character reads. Tiny staged-real or single-image evidence must never be represented as commercial accuracy.
 
 ## Retained person-down / slip-fall path
 The required secondary path remains:
@@ -83,7 +81,7 @@ Candidate events never infer injury, cause, fault, intent, negligence or medical
 ## Outstanding commercial-release gates
 Detection/tracking still requires broader held-out real-video evidence across people/vehicles/objects, crowded scenes, crossings, occlusions, low light, viewpoints and resolutions; defensible precision/recall where labels permit; track fragmentation/ID-switch measurements; throughput/latency/resource envelopes; privacy/security/provenance; versioned integration; packaging; and explicit owner commercial-release approval.
 
-LPR/OCR has a runnable engineering baseline but still requires rights-cleared held-out real plate/text evidence, broader plate-style/geography validation, exact native-runtime/package dependency closure, notices/provenance review and release approval. The staged public-domain smoke source above does not reduce those commercial gates.
+LPR/OCR has a runnable engineering baseline but still requires rights-cleared held-out real plate/text evidence, broader plate-style/geography validation, exact native-runtime/package dependency closure, notices/provenance review and release approval. The staged and single-scene smoke sources above do not reduce those commercial gates.
 
 Face (including selectable face blurring), Weapons and Appearance Search each require their own rights-cleared donor/model/data review and held-out validation before any commercial claim.
 
@@ -92,5 +90,5 @@ Face (including selectable face blurring), Weapons and Appearance Search each re
 python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
-python -m unittest tests.test_lpr_ocr tests.test_lpr_wikimedia_evidence -v
+python -m unittest tests.test_lpr_ocr tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence -v
 ```
