@@ -29,9 +29,7 @@ _SOURCE_URL = (
 )
 _SOURCE_SIZE = 61_465
 _SOURCE_SHA1 = "d365a117631a8fa5a2a0fb7a8d2a03fe2e9b73bc"
-# First evidence head discovers and prints SHA-256. A changed second head must
-# pin it before inference is permitted.
-_SOURCE_SHA256: str | None = None
+_SOURCE_SHA256 = "47ea02127b3c22856ac548164c822b104c74f7afb711a0cb43458080a11d5433"
 _WIDTH = 680
 _HEIGHT = 144
 _EXPECTED_TEXT_NORMALIZED = "A92518"
