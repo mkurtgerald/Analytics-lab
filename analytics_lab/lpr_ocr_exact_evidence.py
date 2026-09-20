@@ -1,11 +1,11 @@
-"""Run one untouched OCR measurement on the pre-bound CC0 plate crop.
+"""Run one bounded OCR measurement on the pre-bound CC0 plate crop.
 
 The lane is intentionally narrow: it downloads only the already-reviewed source,
 the official Tesseract 5.5.3 Windows release installer, and the pinned Apache-2.0
 `tessdata_fast` English model. Every payload is fail-closed on immutable identity,
 all temporary files stay under RUNNER_TEMP, no image/crop/model artifact is
-uploaded, and the first OCR observation is reported without tuning or an accuracy
-claim.
+uploaded, and each explicitly pre-registered branch performs exactly one OCR
+observation without an accuracy claim.
 """
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ _SOURCE_HEIGHT = 3_024
 _PLATE_BOX_PX = (960, 2_020, 2_740, 2_470)
 _CROP_RGB24_SHA256 = "0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599"
 _EXPECTED_TEXT = "MPR318"
+_PREPROCESS_BRANCH_PREFIX = "evidence/lpr-ocr-exact-preprocess-"
 
 _TESSERACT_RELEASE = "5.5.3"
 _TESSERACT_WINDOWS_VERSION_LINE = "tesseract v5.5.3.20260724"
@@ -118,6 +119,15 @@ def _ppm(rgb: bytes, *, width: int, height: int) -> bytes:
     return f"P6\n{width} {height}\n255\n".encode("ascii") + rgb
 
 
+def _selected_preprocess(head_ref: str) -> str:
+    """Select the one preregistered comparison without exposing a tuning knob."""
+    if not isinstance(head_ref, str):
+        raise ValueError("head ref must be text")
+    if head_ref.startswith(_PREPROCESS_BRANCH_PREFIX):
+        return "gray-otsu"
+    return "raw"
+
+
 def _bounded_work_dir(path: Path) -> tuple[Path, Path]:
     root_value = os.environ.get("RUNNER_TEMP")
     if not root_value:
@@ -186,6 +196,7 @@ def run(work_dir: Path) -> dict[str, object]:
         shutil.rmtree(work_dir)
     work_dir.mkdir(parents=True)
 
+    preprocess = _selected_preprocess(os.environ.get("GITHUB_HEAD_REF", ""))
     started = time.perf_counter()
     cpu_started = time.process_time()
     try:
@@ -231,7 +242,22 @@ def run(work_dir: Path) -> dict[str, object]:
         crop_sha256 = hashlib.sha256(rgb).hexdigest()
         if crop_sha256 != _CROP_RGB24_SHA256:
             raise RuntimeError("fixed crop RGB24 identity mismatch")
-        ppm = _ppm(rgb, width=crop_width, height=crop_height)
+
+        ocr_rgb = rgb
+        otsu_threshold: float | None = None
+        if preprocess == "gray-otsu":
+            canonical = numpy.frombuffer(rgb, dtype=numpy.uint8).reshape((crop_height, crop_width, 3))
+            gray = cv2.cvtColor(canonical, cv2.COLOR_RGB2GRAY)
+            threshold, binary = cv2.threshold(
+                gray,
+                0,
+                255,
+                cv2.THRESH_BINARY | cv2.THRESH_OTSU,
+            )
+            otsu_threshold = float(threshold)
+            ocr_rgb = cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB).tobytes(order="C")
+        preprocessed_sha256 = hashlib.sha256(ocr_rgb).hexdigest()
+        ppm = _ppm(ocr_rgb, width=crop_width, height=crop_height)
 
         installer_path = work_dir / "tesseract-ocr-w64-setup-5.5.3.20260724.exe"
         installer_path.write_bytes(installer)
@@ -273,8 +299,13 @@ def run(work_dir: Path) -> dict[str, object]:
         if package_runner.reported_version is None:
             raise RuntimeError("Tesseract package version was not observed")
 
+        evidence_name = (
+            "lpr-ocr-exact-gray-otsu-first-attempt"
+            if preprocess == "gray-otsu"
+            else "lpr-ocr-exact-first-attempt"
+        )
         return {
-            "evidence": "lpr-ocr-exact-first-attempt",
+            "evidence": evidence_name,
             "rights_page": _RIGHTS_PAGE,
             "source_sha256": _SOURCE_SHA256,
             "crop_box_px": list(_PLATE_BOX_PX),
@@ -282,6 +313,9 @@ def run(work_dir: Path) -> dict[str, object]:
             "crop_width": crop_width,
             "crop_height": crop_height,
             "crop_rgb24_bytes": len(rgb),
+            "preprocess": preprocess,
+            "preprocessed_rgb24_sha256": preprocessed_sha256,
+            "otsu_threshold": otsu_threshold,
             "tesseract_version": _TESSERACT_RELEASE,
             "tesseract_reported_version": package_runner.reported_version,
             "tesseract_installer_bytes": len(installer),
