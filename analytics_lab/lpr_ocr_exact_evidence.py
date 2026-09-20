@@ -40,6 +40,8 @@ _PLATE_BOX_PX = (960, 2_020, 2_740, 2_470)
 _CROP_RGB24_SHA256 = "0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599"
 _EXPECTED_TEXT = "MPR318"
 _PREPROCESS_BRANCH_PREFIX = "evidence/lpr-ocr-exact-preprocess-"
+_PREPROCESS_PLAN = "rgb24->grayscale->global-otsu-binary->rgb24;native-size;no-invert"
+_TESSERACT_PSM = 7
 
 _TESSERACT_RELEASE = "5.5.3"
 _TESSERACT_WINDOWS_VERSION_LINE = "tesseract v5.5.3.20260724"
@@ -314,8 +316,10 @@ def run(work_dir: Path) -> dict[str, object]:
             "crop_height": crop_height,
             "crop_rgb24_bytes": len(rgb),
             "preprocess": preprocess,
+            "preprocess_plan": _PREPROCESS_PLAN if preprocess == "gray-otsu" else "raw-rgb24",
             "preprocessed_rgb24_sha256": preprocessed_sha256,
             "otsu_threshold": otsu_threshold,
+            "tesseract_psm": _TESSERACT_PSM,
             "tesseract_version": _TESSERACT_RELEASE,
             "tesseract_reported_version": package_runner.reported_version,
             "tesseract_installer_bytes": len(installer),
