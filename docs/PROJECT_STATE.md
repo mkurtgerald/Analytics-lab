@@ -22,7 +22,7 @@ The remaining indispensable evidence is an independently authored exhaustive per
 The deterministic blocker is unchanged: the approved hosted lane may hash but not export/label those decoded frames, while the current independent annotation environment cannot materialize the exact source pixels. No detector/tracker output may substitute for ground truth. Do not add tracker machinery until the exact independent-label path becomes executable.
 
 ## LPR/OCR — current critical path
-PR #72 merged the first replaceable runnable baseline. PR #74 preserved the staged public-domain plate smoke. PR #75 preserved the first untouched real vehicle-scene miss. PR #76 preserved the documented-envelope front-view miss. PR #77 merged the frozen model-free OpenCV proposal comparison into `main` at `59c04ea9af76641c25b567b68a2f38c853dacd5f`; post-merge Analytics quality run #189 passed on attempt 1.
+PR #72 merged the first replaceable runnable baseline. PR #74 preserved the staged public-domain plate smoke. PR #75 preserved the first untouched real vehicle-scene miss. PR #76 preserved the documented-envelope front-view miss. PR #77 merged the frozen model-free OpenCV proposal comparison into `main` at `59c04ea9af76641c25b567b68a2f38c853dacd5f`. PR #78 then bound the independently authored fixed crop to canonical RGB24 SHA-256 `0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599`; post-merge Analytics quality run #192 passed on attempt 1.
 
 Current retained baseline:
 - plate detector under replacement review: Open Model Zoo `vehicle-license-plate-detection-barrier-0106` FP16 at exact OMZ commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0, exact artifact size + SHA-384 verified before OpenVINO opens it;
@@ -42,24 +42,14 @@ The donor screen is now closed at the policy maximum of three candidates:
 
 Because all three donor candidates fail the current fail-closed commercial admission bar, the smallest safe alternative is a model-free OpenCV proposal baseline using the already-reviewed OpenCV 4.12.0 morphology/runtime family. This introduces no trained weights or training-data rights. OpenCV source tag `4.12.0` resolves to commit `49486f61fb25722cbcf586b7f4320921d46fb38e` under Apache-2.0; the `opencv-python` packaging tag `88` resolves to commit `fa742a47d3993e45502dff54d96af6a4efb65153` under MIT. Product wheel/native dependency notices remain a release gate.
 
-### Current acceptance item — independently bound plate crop before OCR
-PR #77's frozen model-free proposal stage produced a plausible bounded proposal on the exact CC0 front-envelope source and is retained only provisionally; no tuning against that single image is permitted.
+### Current acceptance item — untouched OCR on the independently bound crop
+The detector/proposal selection boundary is now removed from this measurement. Independent visual inspection predeclared normalized text `MPR318` and the fixed pixel rectangle `(960, 2020, 2740, 2470)` on the 4032x3024 CC0 source before any OCR. PR #78 froze that crop at 1780x450 pixels, 2,403,000 canonical RGB24 bytes and SHA-256 `0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599`.
 
-The next acceptance boundary removes detector/proposal selection from the OCR measurement entirely. Independent visual inspection of the already-pinned CC0 source was completed before OCR. The visible text remains predeclared as `MPR318`, and a deliberately loose fixed pixel rectangle `(960, 2020, 2740, 2470)` on the 4032x3024 source encloses the complete physical plate. No detector output, proposal score or OCR result was used to choose that rectangle.
+The bounded evidence step uses the official upstream Tesseract 5.5.3 Windows release installer `tesseract-ocr-w64-setup-5.5.3.20260724.exe`, 26,573,224 bytes, SHA-256 `bee9e3434bd94fd65387d9be28cd467a41f61b1275383b55b0f59a1331270ae4`. It runs only on the existing GitHub-hosted `windows-2022` job under a deliberately named `evidence/lpr-ocr-exact-*` PR branch. The lane also downloads only the pinned `tessdata_fast` English artifact and the same reviewed CC0 source, verifies all immutable identities, re-verifies the pre-bound crop hash, installs below `RUNNER_TEMP`, performs exactly one OCR attempt through the existing exact-version adapter, uploads no media/model/runtime artifact, and reports only normalized OCR output plus bounded timing/CPU evidence.
 
-The bounded hosted evidence lane now:
-- downloads only the already-reviewed 2,680,061-byte CC0 source and verifies SHA-1 `8cdb3acc024e67267dabf6d3ac793d0c54924e85` plus SHA-256 `32e5637e39b54c26192c011c1cc5516bd6d35573582b8e09d7bc9aae90ef1db4`;
-- decodes ephemerally with reviewed OpenCV 4.12.0;
-- extracts only the fixed manual crop in memory;
-- emits the exact crop dimensions, normalized rectangle, canonical RGB24 byte count and SHA-256;
-- uploads/retains no image or crop and performs no OCR on this head.
+This exact installer is admitted for ephemeral engineering execution only. Its bundled Leptonica/image-codec dependency notices and redistribution rights remain an explicit product-packaging gate; this lane does not approve redistributing the installer or native bundle.
 
-This is a direct measurement prerequisite, not another detector framework. Once the crop RGB24 identity is pinned from the first run, the next step is an untouched OCR run on that exact crop with expected text `MPR318`.
-
-### OCR runtime packaging blocker
-The product adapter remains pinned to Tesseract 5.5.3, but GitHub-hosted `ubuntu-24.04` does not list Tesseract and Ubuntu Noble publishes Tesseract 5.3.4, not 5.5.3. The official Tesseract 5.5.3 GitHub release currently publishes a Windows installer asset but no reviewed Linux binary asset. Do not silently substitute 5.3.4, use an unreviewed third-party binary, or weaken the adapter version check merely to get a result. The next OCR execution must either close an exact Linux 5.5.3 build/package dependency path or use another exact rights-reviewed execution route while preserving the 5.5.3 product baseline.
-
-The fixed crop remains single-image engineering evidence only; its OCR result will not be commercial accuracy or geographic generalization evidence.
+Analytics quality run #193 preserved the first deterministic execution failure before OCR: the official Windows package reported `tesseract v5.5.3.20260724`, while the platform-neutral adapter intentionally admits canonical semantic version line `tesseract 5.5.3`. No OCR process was invoked, so run #193 is not the first OCR measurement and no OCR result was lost or tuned. Upstream issue `tesseract-ocr/tesseract#4589` independently records the same exact package version string for this installer. The smallest fix is evidence-local and fail-closed: accept only that one exact reviewed Windows package line, record it, canonicalize it to semantic version `5.5.3` for the unchanged core adapter, and reject every other package build string before OCR. The corrected-head run is the designated first untouched OCR attempt; its observation must be preserved in PR #79/CI evidence whether it matches `MPR318` or not.
 
 ## Retained person-down / slip-fall path
 The required secondary path remains:
@@ -79,5 +69,5 @@ Face (including selectable face blurring), Weapons and Appearance Search each re
 python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
-python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence -v
+python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence tests.test_lpr_ocr_exact_evidence -v
 ```
