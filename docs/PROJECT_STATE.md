@@ -32,31 +32,39 @@ Current baseline:
 - data path: normalized plate box -> bounded in-memory BGR crop -> dependency-free RGB PPM -> Tesseract TSV -> normalized A-Z/0-9 observation;
 - no automatic model/media download, image retention, identity behavior, training, or accuracy claim in the library.
 
-### Current acceptance item — rights-cleared plate/text smoke evidence
-The next item is the smallest evidence package that can exercise the baseline without customer/home media or pretending a staged sample establishes product accuracy.
-
-Selected smoke source:
+### Current acceptance item — preserved first staged plate smoke
+Selected source:
 - Wikimedia Commons `China license plate-Chongqing 渝A 92518.png`;
 - rights page pinned to `oldid=856647637`;
 - author: Sdee at Chinese Wikipedia;
 - rights: author-released public domain / permission for use for any purpose;
 - canonical upload host: `upload.wikimedia.org`;
-- published dimensions: 680x144;
-- published byte size: 61,465;
+- dimensions: 680x144;
+- byte size: 61,465;
 - published SHA-1: `d365a117631a8fa5a2a0fb7a8d2a03fe2e9b73bc`;
-- independently declared normalized alphanumeric plate text for this engineering smoke: `A92518` (the Chinese province glyph is deliberately outside the current A-Z/0-9 baseline contract).
+- pinned source SHA-256 discovered on the admission-only first head: `47ea02127b3c22856ac548164c822b104c74f7afb711a0cb43458080a11d5433`;
+- independently declared normalized alphanumeric text: `A92518` (the Chinese province glyph is deliberately outside the current A-Z/0-9 baseline contract).
 
-`analytics_lab.lpr_wikimedia_evidence` adds a bounded fail-closed admission path for exactly this source. The first evidence head intentionally leaves SHA-256 unpinned: it may only verify the reviewed host, byte cap, published size/SHA-1 and emit the discovered SHA-256 if explicitly run. Inference is forbidden until a changed second head pins that SHA-256. The same module already contains the narrow post-pin CPU detector measurement path so no second framework is needed: exact OMZ artifacts are size/SHA-384 checked, pixels stay in memory, temporary model files are deleted, and aggregate detector confidence/IoU plus wall/CPU/FPS/latency are emitted.
+PR #74 adds the narrowly scoped hosted LPR evidence lane and excludes that branch from the unrelated person-down/real-video evidence step. Run #177 on first head `5a5a4a83cc49ff70beae47cecfeb501333b29584` passed Linux, Windows and the Analytics quality gate on attempt 1, verified the published byte size/SHA-1, discovered the SHA-256 above, and performed no inference. Run #178 on changed head `f46895d71f963d7460421dde8a08609658c31e6f` also passed Linux, Windows and the Analytics quality gate on attempt 1 and executed the untouched CPU plate-detector smoke with the SHA-256 pinned.
 
-This source is a staged/sample plate graphic, not a roadway/camera sample. It may prove only that the evidence and detector path execute deterministically. It must never be cited as commercial LPR accuracy or real-world generalization.
+Preserved first-attempt detector smoke result:
+- plate detections: **0**;
+- best confidence: null;
+- full-frame IoU: `0.0`;
+- elapsed: `0.007265238 s`;
+- CPU: `0.012123617 s`;
+- latency: `7.265238 ms`;
+- one-image throughput observation: `137.64174 FPS`;
+- OpenVINO runtime: `2026.3.1-22476-759c5a6ab8c-releases/2026/3`.
 
-Focused local pure-boundary regression for the new admission contract passed 3/3 before repository mutation. Repository CI must still run before merge; synthetic/unit fixtures are not accuracy evidence.
+This is a demonstrated detector miss on a staged plate-only graphic. It is not roadway/camera evidence, not a precision/recall estimate, and not commercial accuracy/generalization evidence. No detector threshold or parameter was changed after inspection. Because the detector emitted no plate box, this smoke does not yet measure OCR behavior; the next smallest diagnostic is to exercise the already-reviewed OCR crop contract directly on the exact admitted plate image before considering any detector replacement or second OCR framework.
 
 ### Next executable LPR/OCR steps
-1. Merge the evidence-admission boundary only after exact-head Linux, Windows and Analytics quality gate are green on unchanged base `2244bd2eee1f99fdfbc32f1ba636c288b7bb38a0`.
-2. Add/execute a narrowly scoped hosted LPR evidence lane only if it preserves AGENTS.md ceilings and existing five-minute/read-only/no-artifact-upload controls; use it to discover and pin the source SHA-256, then run the untouched detector smoke on the same source.
-3. Close the remaining OCR runtime portability gap without weakening the exact Tesseract/version/artifact contract. Do not introduce a second OCR framework unless a measured runtime or recognition requirement justifies it.
-4. Expand only after the smoke path works to the smallest additional rights-cleared, independently labeled real plate/text set with positives and negatives; measure plate misses/false positives, exact/character reads, latency/FPS and CPU/resource cost.
+1. Merge PR #74 only after the documentation-complete exact head again passes all applicable required checks on unchanged base `ac5cc1e61d3b7566fa78eecd14b0976cce22e709`.
+2. Localize detector-versus-OCR fitness without tuning: run the exact admitted plate graphic through the existing bounded plate-crop/OCR contract directly, preserving the declared `A92518` engineering-smoke target and recording raw OCR text plus latency/CPU/resource cost. Do not call this accuracy evidence.
+3. If the direct OCR path works but the detector still misses, move to the smallest rights-cleared vehicle-scene plate sample before changing detectors; if OCR itself fails, close the exact Tesseract/runtime portability or recognition gap first.
+4. Expand only after the smoke path is localized to the smallest rights-cleared, independently labeled real plate/text set with positives and negatives; measure plate misses/false positives, exact/character reads, latency/FPS and CPU/resource cost.
+5. Do not introduce a second detector/OCR framework, training, or tuning unless measured evidence identifies a concrete unmet requirement.
 
 ## Retained person-down / slip-fall path
 The required secondary path remains:
