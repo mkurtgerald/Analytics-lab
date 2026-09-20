@@ -32,6 +32,17 @@ class ExactOCREvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evidence._ppm(b"\x01\x02", width=1, height=1)
 
+    def test_preprocess_is_preregistered_by_exact_branch_family(self):
+        self.assertEqual(
+            evidence._selected_preprocess("evidence/lpr-ocr-exact-preprocess-1"),
+            "gray-otsu",
+        )
+        self.assertEqual(evidence._selected_preprocess("evidence/lpr-ocr-exact-1"), "raw")
+        self.assertEqual(evidence._selected_preprocess("feature/unrelated"), "raw")
+        self.assertEqual(evidence._selected_preprocess(""), "raw")
+        with self.assertRaises(ValueError):
+            evidence._selected_preprocess(None)
+
     def test_official_windows_package_version_is_exact_and_canonicalized(self):
         def fake_runner(args, **kwargs):
             return subprocess.CompletedProcess(
