@@ -128,7 +128,7 @@ def run() -> dict[str, object]:
         "source_sha1": identity["sha1"],
         "source_sha256": identity["sha256"],
         "expected_dimensions": [_WIDTH, _HEIGHT],
-        "expected_text_normalized": _EXPECTEDED_TEXT_NORMALIZED if False else _EXPECTED_TEXT_NORMALIZED,
+        "expected_text_normalized": _EXPECTED_TEXT_NORMALIZED,
     }
     if _SOURCE_SHA1 is None or _SOURCE_SHA256 is None:
         return {**common, "admission_only": True, "inference_run": False}
