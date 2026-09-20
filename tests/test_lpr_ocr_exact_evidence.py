@@ -1,4 +1,5 @@
 import hashlib
+import subprocess
 import unittest
 from unittest import mock
 
@@ -30,6 +31,48 @@ class ExactOCREvidenceTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             evidence._ppm(b"\x01\x02", width=1, height=1)
+
+    def test_official_windows_package_version_is_exact_and_canonicalized(self):
+        def fake_runner(args, **kwargs):
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout=b"tesseract v5.5.3.20260724\nleptonica-1.87.0\n",
+                stderr=b"",
+            )
+
+        runner = evidence._OfficialWindowsPackageRunner("tesseract.exe", runner=fake_runner)
+        result = runner(["tesseract.exe", "--version"], capture_output=True, check=False)
+        self.assertEqual(runner.reported_version, "tesseract v5.5.3.20260724")
+        self.assertEqual(result.stdout, b"tesseract 5.5.3\n")
+
+    def test_official_windows_package_version_fails_closed_on_other_build(self):
+        def fake_runner(args, **kwargs):
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout=b"tesseract v5.5.3.99999999\n",
+                stderr=b"",
+            )
+
+        runner = evidence._OfficialWindowsPackageRunner("tesseract.exe", runner=fake_runner)
+        with self.assertRaises(RuntimeError):
+            runner(["tesseract.exe", "--version"], capture_output=True, check=False)
+
+    def test_package_runner_leaves_ocr_process_untouched(self):
+        original = subprocess.CompletedProcess(
+            ["tesseract.exe", "stdin", "stdout"],
+            0,
+            stdout=b"tsv",
+            stderr=b"",
+        )
+
+        def fake_runner(args, **kwargs):
+            return original
+
+        runner = evidence._OfficialWindowsPackageRunner("tesseract.exe", runner=fake_runner)
+        self.assertIs(runner(["tesseract.exe", "stdin", "stdout"]), original)
+        self.assertIsNone(runner.reported_version)
 
     @mock.patch.dict("os.environ", {}, clear=True)
     def test_work_dir_requires_runner_temp(self):

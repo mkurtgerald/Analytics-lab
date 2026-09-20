@@ -17,6 +17,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+from typing import Any, Callable
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -40,6 +41,7 @@ _CROP_RGB24_SHA256 = "0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45
 _EXPECTED_TEXT = "MPR318"
 
 _TESSERACT_RELEASE = "5.5.3"
+_TESSERACT_WINDOWS_VERSION_LINE = "tesseract v5.5.3.20260724"
 _TESSERACT_INSTALLER_URL = (
     "https://github.com/tesseract-ocr/tesseract/releases/download/5.5.3/"
     "tesseract-ocr-w64-setup-5.5.3.20260724.exe"
@@ -127,6 +129,55 @@ def _bounded_work_dir(path: Path) -> tuple[Path, Path]:
     return root, candidate
 
 
+BaseRunner = Callable[..., subprocess.CompletedProcess[Any]]
+
+
+class _OfficialWindowsPackageRunner:
+    """Bridge one immutable Windows package version string to the core semver gate.
+
+    Tesseract's official 5.5.3 Windows package reports
+    ``tesseract v5.5.3.20260724`` while the platform-neutral adapter intentionally
+    admits only semantic version 5.5.3. This evidence-only runner accepts exactly
+    that one reviewed package string, records it, and presents the already-pinned
+    semantic version to the unchanged adapter. Any other package string fails
+    closed before OCR.
+    """
+
+    def __init__(
+        self,
+        binary: str,
+        *,
+        runner: BaseRunner = subprocess.run,
+    ) -> None:
+        self.binary = binary
+        self._runner = runner
+        self.reported_version: str | None = None
+
+    def __call__(self, args: Any, **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+        result = self._runner(args, **kwargs)
+        if list(args) != [self.binary, "--version"]:
+            return result
+        if getattr(result, "returncode", 1) != 0:
+            return result
+        stdout = getattr(result, "stdout", b"")
+        text = stdout.decode("utf-8", "strict") if isinstance(stdout, bytes) else str(stdout)
+        first = text.splitlines()[0].strip() if text.splitlines() else ""
+        if first != _TESSERACT_WINDOWS_VERSION_LINE:
+            raise RuntimeError("Tesseract Windows package version mismatch")
+        self.reported_version = first
+        normalized: bytes | str
+        if isinstance(stdout, bytes):
+            normalized = f"tesseract {_TESSERACT_RELEASE}\n".encode("ascii")
+        else:
+            normalized = f"tesseract {_TESSERACT_RELEASE}\n"
+        return subprocess.CompletedProcess(
+            result.args,
+            result.returncode,
+            stdout=normalized,
+            stderr=getattr(result, "stderr", None),
+        )
+
+
 def run(work_dir: Path) -> dict[str, object]:
     if os.name != "nt":
         raise RuntimeError("exact Tesseract evidence lane requires Windows")
@@ -207,16 +258,20 @@ def run(work_dir: Path) -> dict[str, object]:
         if artifact.sha256 != tessdata_sha256:
             raise RuntimeError("tessdata verification disagreement")
 
+        package_runner = _OfficialWindowsPackageRunner(str(binary))
         recognizer = TesseractPlateRecognizer(
             traineddata_path,
             binary=str(binary),
             config=LPROCRConfig(tesseract_timeout_seconds=15.0),
+            runner=package_runner,
         )
         ocr_started = time.perf_counter()
         ocr_cpu_started = time.process_time()
         observed = recognizer(ppm)
         ocr_elapsed = time.perf_counter() - ocr_started
         ocr_cpu = time.process_time() - ocr_cpu_started
+        if package_runner.reported_version is None:
+            raise RuntimeError("Tesseract package version was not observed")
 
         return {
             "evidence": "lpr-ocr-exact-first-attempt",
@@ -228,6 +283,7 @@ def run(work_dir: Path) -> dict[str, object]:
             "crop_height": crop_height,
             "crop_rgb24_bytes": len(rgb),
             "tesseract_version": _TESSERACT_RELEASE,
+            "tesseract_reported_version": package_runner.reported_version,
             "tesseract_installer_bytes": len(installer),
             "tesseract_installer_sha256": installer_sha256,
             "tessdata_commit": _TESSDATA_COMMIT,
