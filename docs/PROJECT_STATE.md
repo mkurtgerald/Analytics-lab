@@ -58,6 +58,8 @@ The raw miss now justifies one minimal comparison before considering a heavier O
 
 The comparison must bind and report the original crop SHA-256, transformed RGB24 SHA-256, measured Otsu threshold, normalized OCR result/confidence, exact-match flag, OCR elapsed/CPU time and total elapsed/CPU time. The first attempt is preserved whether it succeeds or misses. A useful result may retain this preprocessing slice and move to the smallest additional rights-cleared plate/text evidence set; a miss must not trigger iterative preprocessing polish and instead advances donor/runtime reassessment under the existing commercial-rights gates.
 
+Runs #196 and #197 both reached the exact Windows OCR evidence step after green Linux and synthetic regressions, then failed before an OCR observation could be recorded because `parse_tesseract_tsv` required the TSV header on stdout line 1. The exact Tesseract package emitted bounded informational preamble text before the TSV table on this transformed input. The parser fix is deliberately narrow: search only the first 32 stdout lines for a real tab-delimited header containing `level`, `conf`, and `text`; if no such header exists, fail closed exactly as before. The crop, Otsu transform, PSM 7, Tesseract/tessdata identities, expected text and single-attempt rule are unchanged.
+
 ## Retained person-down / slip-fall path
 The required secondary path remains:
 `authorized local video -> person-detection-0200 -> bounded spatial continuity/orientation recovery -> OMZ human-pose-estimation-0001 -> corrected OpenPose decode -> bounded pose association -> conservative posture classification -> 3000 ms temporal persistence with at most 750 ms bounded unknown-gap tolerance -> evidence-linked candidate -> labeled evaluation`.
