@@ -245,14 +245,25 @@ def parse_tesseract_tsv(tsv: str, *, min_confidence: float = 0.0) -> OCRText | N
     lines = tsv.splitlines()
     if not lines:
         return None
-    header = lines[0].split("\t")
     required = ("level", "conf", "text")
-    if any(name not in header for name in required):
+    header_index: int | None = None
+    header: list[str] | None = None
+    # Tesseract may emit bounded informational preamble lines before the TSV
+    # table. Accept only a real tab-delimited header containing the required
+    # columns, and search only a small prefix so malformed output still fails
+    # closed instead of being treated as arbitrary text.
+    for index, line in enumerate(lines[:32]):
+        columns = line.split("\t")
+        if all(name in columns for name in required):
+            header_index = index
+            header = columns
+            break
+    if header_index is None or header is None:
         raise ValueError("Tesseract TSV header is incomplete")
     indexes = {name: header.index(name) for name in required}
     words: list[str] = []
     confidences: list[float] = []
-    for line in lines[1:]:
+    for line in lines[header_index + 1:]:
         columns = line.split("\t")
         if len(columns) <= max(indexes.values()):
             continue
@@ -330,7 +341,7 @@ class TesseractPlateRecognizer:
         self._check_version()
         command = [
             self._binary, "stdin", "stdout", "--tessdata-dir", str(self._tessdata_dir),
-            "-l", "eng", "--psm", "7", "tsv",
+            "-l", "eng", "--psm", "7", "-c", "tessedit_create_tsv=1",
         ]
         result = self._runner(
             command,
