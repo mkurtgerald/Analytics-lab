@@ -22,7 +22,7 @@ The remaining indispensable evidence is an independently authored exhaustive per
 The deterministic blocker is unchanged: the approved hosted lane may hash but not export/label those decoded frames, while the current independent annotation environment cannot materialize the exact source pixels. No detector/tracker output may substitute for ground truth. Do not add tracker machinery until the exact independent-label path becomes executable.
 
 ## LPR/OCR — current critical path
-PR #72 merged the first replaceable runnable baseline. PR #74 preserved the staged public-domain plate smoke. PR #75 preserved the first untouched real vehicle-scene miss. PR #76 preserved the documented-envelope front-view miss. PR #77 merged the frozen model-free OpenCV proposal comparison into `main` at `59c04ea9af76641c25b567b68a2f38c853dacd5f`. PR #78 then bound the independently authored fixed crop to canonical RGB24 SHA-256 `0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599`; post-merge Analytics quality run #192 passed on attempt 1. PR #79 merged the exact official Tesseract Windows execution path after preserving the pre-OCR package-version failure; post-merge Analytics quality run #195 passed on the unchanged merged head.
+PR #72 merged the first replaceable runnable baseline. PR #74 preserved the staged public-domain plate smoke. PR #75 preserved the first untouched real vehicle-scene miss. PR #76 preserved the documented-envelope front-view miss. PR #77 merged the frozen model-free OpenCV proposal comparison into `main` at `59c04ea9af76641c25b567b68a2f38c853dacd5f`. PR #78 then bound the independently authored fixed crop to canonical RGB24 SHA-256 `0d89606f174889fdeab9fd969c3cfbe0a8e033c88eac6c0a4d0385fd45f56599`; post-merge Analytics quality run #192 passed on attempt 1. PR #79 merged the exact official Tesseract Windows execution path after preserving the pre-OCR package-version failure; post-merge Analytics quality run #195 passed on the unchanged merged head. PR #81 then merged the preregistered grayscale/Otsu comparison at `dd4b68974c61a6792ddd1a4873c7e4bc9ec27766`; exact-head run #202 and post-merge run #203 passed.
 
 Current retained baseline:
 - plate detector under replacement review: Open Model Zoo `vehicle-license-plate-detection-barrier-0106` FP16 at exact OMZ commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`, Apache-2.0, exact artifact size + SHA-384 verified before OpenVINO opens it;
@@ -60,6 +60,17 @@ The comparison must bind and report the original crop SHA-256, transformed RGB24
 
 Runs #196 and #197 both reached the exact Windows OCR evidence step after green Linux and synthetic regressions, then failed before an OCR observation could be recorded because `parse_tesseract_tsv` required the TSV header on stdout line 1. The exact Tesseract package emitted bounded informational preamble text before the TSV table on this transformed input. The parser fix is deliberately narrow: search only the first 32 stdout lines for a real tab-delimited header containing `level`, `conf`, and `text`; if no such header exists, fail closed exactly as before. The crop, Otsu transform, PSM 7, Tesseract/tessdata identities, expected text and single-attempt rule are unchanged.
 
+Run #202 identified the deeper deterministic issue and cleared it: the minimal `--tessdata-dir` intentionally contained only `eng.traineddata`, so naming the upstream `tsv` config file could not work. Pinned Tesseract 5.5.3 shows that config is exactly `tessedit_create_tsv 1`; the adapter now requests the equivalent output directly with `-c tessedit_create_tsv=1`. The frozen Otsu comparison then completed and returned `IFMPR318J` at confidence 0.4213968133 versus expected `MPR318` (`exact_match=false`), Otsu threshold 129, OCR elapsed 0.469441 s, CPU 0.015625 s. This proves the recognition core is present but with extra surrounding characters; do not tune against this one image.
+
+### Current acceptance item — second rights-cleared plate/text sample
+Move to the smallest additional rights-cleared sample instead of polishing the first crop. The next source is Wikimedia Commons `2023 South Carolina mail-out series passenger car rear license plate.png`, published by its copyright holder under CC0. Published identity: 1,046,799 bytes, 1286x634, SHA-1 `b3d301e18457b16e0729f89be1abd438f935aa55`. Independent visual inspection predeclares normalized plate text `354AVV` and crop `(45, 145, 1220, 455)` before OCR.
+
+The first head is admission-only: verify size/SHA-1, discover SHA-256, decode ephemerally and bind the canonical RGB24 crop hash. No OCR occurs until those identities are pinned. The second and final head reuses the retained native-size grayscale -> global Otsu -> RGB24 transform, exact Tesseract 5.5.3/tessdata identities and PSM 7 with no tuning. This remains engineering evidence only, not commercial accuracy.
+
+Admission run #204 passed Linux, Windows and the Analytics quality gate and bound source SHA-256 `ace70508c959f5c0e8f915d6cd07aa81ad6f7f92e12d8a72e01cc50a2d40750c` plus canonical 1175x310 RGB24 crop SHA-256 `c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b`. No OCR ran on that head. The final head pins both identities and performs the one retained OCR observation.
+
+
+
 ## Retained person-down / slip-fall path
 The required secondary path remains:
 `authorized local video -> person-detection-0200 -> bounded spatial continuity/orientation recovery -> OMZ human-pose-estimation-0001 -> corrected OpenPose decode -> bounded pose association -> conservative posture classification -> 3000 ms temporal persistence with at most 750 ms bounded unknown-gap tolerance -> evidence-linked candidate -> labeled evaluation`.
@@ -78,5 +89,5 @@ Face (including selectable face blurring), Weapons and Appearance Search each re
 python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
-python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence tests.test_lpr_ocr_exact_evidence -v
+python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence tests.test_lpr_ocr_exact_evidence tests.test_lpr_ocr_sc_evidence -v
 ```
