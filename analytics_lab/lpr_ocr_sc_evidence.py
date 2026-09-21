@@ -43,7 +43,7 @@ _SOURCE_URL = (
 )
 _SOURCE_SIZE = 1_046_799
 _SOURCE_SHA1 = "b3d301e18457b16e0729f89be1abd438f935aa55"
-_SOURCE_SHA256: str | None = None
+_SOURCE_SHA256: str | None = "ace70508c959f5c0e8f915d6cd07aa81ad6f7f92e12d8a72e01cc50a2d40750c"
 _SOURCE_WIDTH = 1_286
 _SOURCE_HEIGHT = 634
 
@@ -51,7 +51,7 @@ _SOURCE_HEIGHT = 634
 # Excludes the slogan/footer while preserving the complete serial and center mark.
 _PLATE_TEXT_BOX_PX = (45, 145, 1_220, 455)
 _EXPECTED_TEXT = "354AVV"
-_CROP_RGB24_SHA256: str | None = None
+_CROP_RGB24_SHA256: str | None = "c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b"
 
 _PREPROCESS_PLAN = "rgb24->grayscale->global-otsu-binary->rgb24;native-size;no-invert"
 _TESSERACT_PSM = 7

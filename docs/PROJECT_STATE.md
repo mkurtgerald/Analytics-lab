@@ -67,6 +67,9 @@ Move to the smallest additional rights-cleared sample instead of polishing the f
 
 The first head is admission-only: verify size/SHA-1, discover SHA-256, decode ephemerally and bind the canonical RGB24 crop hash. No OCR occurs until those identities are pinned. The second and final head reuses the retained native-size grayscale -> global Otsu -> RGB24 transform, exact Tesseract 5.5.3/tessdata identities and PSM 7 with no tuning. This remains engineering evidence only, not commercial accuracy.
 
+Admission run #204 passed Linux, Windows and the Analytics quality gate and bound source SHA-256 `ace70508c959f5c0e8f915d6cd07aa81ad6f7f92e12d8a72e01cc50a2d40750c` plus canonical 1175x310 RGB24 crop SHA-256 `c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b`. No OCR ran on that head. The final head pins both identities and performs the one retained OCR observation.
+
+
 
 ## Retained person-down / slip-fall path
 The required secondary path remains:
