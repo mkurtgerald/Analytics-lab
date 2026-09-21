@@ -70,6 +70,9 @@ Continue breadth before adding a normalization layer. The next source is Wikimed
 
 The first head is admission-only: verify size/SHA-1, discover source SHA-256, decode ephemerally and bind the canonical RGB24 crop hash. No OCR occurs until those identities are pinned. A later head may run the already-retained native-size grayscale -> global Otsu -> RGB24 transform, exact Tesseract 5.5.3/tessdata identities and PSM 7 unchanged. This remains engineering evidence only, not commercial accuracy.
 
+Admission run #208 passed Linux, Windows and the Analytics quality gate and bound source SHA-256 `265046b1e374d1a457658308e75f713aa3796c44092f3f8173930d3a7aa17a09` plus canonical 3200x910 RGB24 crop SHA-256 `0e4655be2fe57d47c890855cf22371ff2b7ab764cfc9c1084a692a9ee67d8bca`. No OCR ran on that head. The current head pins both identities and performs exactly one retained Otsu/Tesseract observation with no parameter changes.
+
+
 ## Retained person-down / slip-fall path
 The required secondary path remains:
 `authorized local video -> person-detection-0200 -> bounded spatial continuity/orientation recovery -> OMZ human-pose-estimation-0001 -> corrected OpenPose decode -> bounded pose association -> conservative posture classification -> 3000 ms temporal persistence with at most 750 ms bounded unknown-gap tolerance -> evidence-linked candidate -> labeled evaluation`.
