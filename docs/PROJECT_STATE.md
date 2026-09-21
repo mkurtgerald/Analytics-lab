@@ -62,13 +62,15 @@ Runs #196 and #197 both reached the exact Windows OCR evidence step after green 
 
 Run #202 identified the deeper deterministic issue and cleared it: the minimal `--tessdata-dir` intentionally contained only `eng.traineddata`, so naming the upstream `tsv` config file could not work. Pinned Tesseract 5.5.3 shows that config is exactly `tessedit_create_tsv 1`; the adapter now requests the equivalent output directly with `-c tessedit_create_tsv=1`. The frozen Otsu comparison then completed and returned `IFMPR318J` at confidence 0.4213968133 versus expected `MPR318` (`exact_match=false`), Otsu threshold 129, OCR elapsed 0.469441 s, CPU 0.015625 s. This proves the recognition core is present but with extra surrounding characters; do not tune against this one image.
 
-### Current acceptance item — second rights-cleared plate/text sample
-Move to the smallest additional rights-cleared sample instead of polishing the first crop. The next source is Wikimedia Commons `2023 South Carolina mail-out series passenger car rear license plate.png`, published by its copyright holder under CC0. Published identity: 1,046,799 bytes, 1286x634, SHA-1 `b3d301e18457b16e0729f89be1abd438f935aa55`. Independent visual inspection predeclares normalized plate text `354AVV` and crop `(45, 145, 1220, 455)` before OCR.
+### Preserved second rights-cleared plate/text sample
+The South Carolina sample is now measured without tuning. Admission run #204 bound source SHA-256 `ace70508c959f5c0e8f915d6cd07aa81ad6f7f92e12d8a72e01cc50a2d40750c` plus canonical 1175x310 RGB24 crop SHA-256 `c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b`. Exact-head run #206 passed Linux, Windows, bounded OCR evidence and the Analytics quality gate; post-merge run #207 also passed. The unchanged retained path returned `354AVIV` at confidence 0.403112795 versus expected `354AVV` (`exact_match=false`), Otsu threshold 115, OCR elapsed 0.299616 s. This is engineering evidence only and does not justify image-specific tuning.
 
-The first head is admission-only: verify size/SHA-1, discover SHA-256, decode ephemerally and bind the canonical RGB24 crop hash. No OCR occurs until those identities are pinned. The second and final head reuses the retained native-size grayscale -> global Otsu -> RGB24 transform, exact Tesseract 5.5.3/tessdata identities and PSM 7 with no tuning. This remains engineering evidence only, not commercial accuracy.
+### Current acceptance item — third rights-cleared plate/text sample
+Continue breadth before adding a normalization layer. The next source is Wikimedia Commons `CPU4704 Unembossed Washington License Plate.jpg`, copyright-holder CC0, permanent rights page oldid `1269104394`. Published identity: 5,532,415 bytes, 3549x1779, SHA-1 `39a9d530a1d40d960043d51f7f5c67c906f0450f`. Independent visual inspection predeclares normalized serial `CPU4704` and crop `(180, 600, 3380, 1510)`, which excludes the state name/top registration tabs and bottom motto while preserving the complete serial.
 
-Admission run #204 passed Linux, Windows and the Analytics quality gate and bound source SHA-256 `ace70508c959f5c0e8f915d6cd07aa81ad6f7f92e12d8a72e01cc50a2d40750c` plus canonical 1175x310 RGB24 crop SHA-256 `c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b`. No OCR ran on that head. The final head pins both identities and performs the one retained OCR observation.
+The first head is admission-only: verify size/SHA-1, discover source SHA-256, decode ephemerally and bind the canonical RGB24 crop hash. No OCR occurs until those identities are pinned. A later head may run the already-retained native-size grayscale -> global Otsu -> RGB24 transform, exact Tesseract 5.5.3/tessdata identities and PSM 7 unchanged. This remains engineering evidence only, not commercial accuracy.
 
+Admission run #208 passed Linux, Windows and the Analytics quality gate and bound source SHA-256 `265046b1e374d1a457658308e75f713aa3796c44092f3f8173930d3a7aa17a09` plus canonical 3200x910 RGB24 crop SHA-256 `0e4655be2fe57d47c890855cf22371ff2b7ab764cfc9c1084a692a9ee67d8bca`. No OCR ran on that head. The current head pins both identities and performs exactly one retained Otsu/Tesseract observation with no parameter changes.
 
 
 ## Retained person-down / slip-fall path
@@ -89,5 +91,5 @@ Face (including selectable face blurring), Weapons and Appearance Search each re
 python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
-python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence tests.test_lpr_ocr_exact_evidence tests.test_lpr_ocr_sc_evidence -v
+python -m unittest tests.test_lpr_ocr tests.test_lpr_plate_proposals tests.test_lpr_wikimedia_evidence tests.test_lpr_vehicle_scene_evidence tests.test_lpr_front_envelope_evidence tests.test_lpr_ocr_fixed_crop_evidence tests.test_lpr_ocr_exact_evidence tests.test_lpr_ocr_sc_evidence tests.test_lpr_ocr_wa_evidence -v
 ```
