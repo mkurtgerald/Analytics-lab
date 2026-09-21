@@ -88,6 +88,37 @@ class LPROCRTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "header is incomplete"):
             parse_tesseract_tsv("Estimating resolution as 300\nMPR318\n")
 
+    def test_tesseract_recognizer_requests_tsv_without_external_config_file(self) -> None:
+        from analytics_lab.lpr_ocr import LPROCRConfig, TesseractPlateRecognizer
+        import subprocess
+
+        seen = []
+
+        def fake_runner(args, **kwargs):
+            seen.append(list(args))
+            if args[-1] == "--version":
+                return subprocess.CompletedProcess(args, 0, stdout=b"tesseract 5.5.3\n", stderr=b"")
+            tsv = (
+                "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+                "5\t1\t1\t1\t1\t1\t0\t0\t1\t1\t90\tMPR318\n"
+            ).encode("utf-8")
+            return subprocess.CompletedProcess(args, 0, stdout=tsv, stderr=b"")
+
+        recognizer = object.__new__(TesseractPlateRecognizer)
+        recognizer.config = LPROCRConfig()
+        recognizer._tessdata_dir = Path("tessdata")
+        recognizer._binary = "tesseract"
+        recognizer._runner = fake_runner
+        recognizer._version_checked = False
+
+        result = recognizer(b"P6\n1 1\n255\n\x00\x00\x00")
+        self.assertEqual(result, OCRText("MPR318", 0.9))
+        self.assertEqual(
+            seen[1][-2:],
+            ["-c", "tessedit_create_tsv=1"],
+        )
+        self.assertNotIn("tsv", seen[1])
+
     def test_pipeline_runs_detector_then_ocr_without_retaining_image(self) -> None:
         image = [[(0, 0, 0), (0, 0, 0)]]
         plate = PlateDetection(0.8, 0.0, 0.0, 1.0, 1.0)
