@@ -341,7 +341,7 @@ class TesseractPlateRecognizer:
         self._check_version()
         command = [
             self._binary, "stdin", "stdout", "--tessdata-dir", str(self._tessdata_dir),
-            "-l", "eng", "--psm", "7", "tsv",
+            "-l", "eng", "--psm", "7", "-c", "tessedit_create_tsv=1",
         ]
         result = self._runner(
             command,
