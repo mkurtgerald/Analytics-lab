@@ -75,6 +75,19 @@ class LPROCRTests(unittest.TestCase):
         self.assertAlmostEqual(result.confidence, 0.85)
         self.assertEqual(normalize_plate_text(" a b-c 123 "), "ABC123")
 
+    def test_tesseract_tsv_accepts_bounded_preamble_before_header(self) -> None:
+        tsv = (
+            "Estimating resolution as 300\n"
+            "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+            "5\t1\t1\t1\t1\t1\t0\t0\t10\t10\t91\tMPR318\n"
+        )
+        result = parse_tesseract_tsv(tsv)
+        self.assertEqual(result, OCRText("MPR318", 0.91))
+
+    def test_tesseract_tsv_still_fails_closed_without_real_header(self) -> None:
+        with self.assertRaisesRegex(ValueError, "header is incomplete"):
+            parse_tesseract_tsv("Estimating resolution as 300\nMPR318\n")
+
     def test_pipeline_runs_detector_then_ocr_without_retaining_image(self) -> None:
         image = [[(0, 0, 0), (0, 0, 0)]]
         plate = PlateDetection(0.8, 0.0, 0.0, 1.0, 1.0)
