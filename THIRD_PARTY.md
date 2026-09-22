@@ -37,6 +37,8 @@ Preferred licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause. Copyleft, non-c
 
 | OpenCV TensorFlow SSD text-graph helpers | `opencv/opencv@49486f61fb25722cbcf586b7f4320921d46fb38e`; `tf_text_graph_ssd.py` 18,314 bytes Git blob `d27fd0d384f509789bf64f069203d3f9964db576`; `tf_text_graph_common.py` 10,055 bytes Git blob `c82053b4fb05aa2fd40c45b1cefa550431608847` | Apache-2.0 | Evidence-only FaceSSD graph rewrite/compatibility classification using the existing OpenCV family | Downloaded ephemerally and Git-blob verified; not vendored | Preserve OpenCV Apache-2.0 notices if later incorporated; current use is hosted engineering evidence only | Approved for one bounded no-inference compatibility classification; not production packaging approval |
 
+| Google LiteRT Converter 0.4.0 | source `google-ai-edge/LiteRT@7d683c3c1104c29a4777d7047cff2fbe92bacce3`; CPython 3.11 manylinux converter wheel SHA-256 `77827e51886bca2fea2e56ce98e1fcc66f7985260c9b6bb6786ede1374638b51` | Apache-2.0 | Candidate build-time conversion of admitted Google FaceSSD frozen graph to TFLite FlatBuffer after measured OpenCV incompatibility | Not yet incorporated; dependency closure admission active | Converter is build-time only; exact transitive wheel versions/hashes/licenses must be pinned before execution and no converter dependency is automatically a product runtime dependency | Dependency admission only pending exact wheel closure |
+
 ## Rules
 1. Never copy donor code without recording its source and license.
 2. Preserve required copyright and attribution notices.
