@@ -96,6 +96,14 @@ Detector donors are fail-closed:
 
 No face model is bundled or downloaded by this sprint. The detector adapter is ready for a separately admitted artifact without changing privacy architecture.
 
+### Selected pretrained face donor — Google FaceSSD MobileNetV2 Open Images V4
+The bounded donor screen found a materially stronger pretrained option in the official TensorFlow Object Detection model zoo: `facessd_mobilenet_v2_quantized_open_image_v4`, archive `facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz`. TensorFlow models source at `8b12ae202a3ccf8f965c730a4e7617204e32000b` is Apache-2.0. Google's model-zoo table reports ~20 ms reference speed and 73 mAP@0.5 for faces, and its footnote states non-face boxes were dropped during training and non-face ground truth ignored during evaluation. Training provenance is Open Images V4 face boxes, materially stronger than the previously rejected WIDER/undisclosed paths.
+
+Open Images annotations are CC BY 4.0 and source images are listed as CC BY 2.0, with Google's explicit caveat that consumers should verify source-image license status. Treat that caveat as a release/legal-review item rather than hiding it. The pretrained model itself is an official Google/TensorFlow artifact under the TensorFlow Apache-2.0 distribution.
+
+Current acceptance is artifact admission only: download the exact Google archive in bounded hosted CI, compute immutable archive size/SHA-256 and inspect model/config members in memory. No inference or media occurs until those hashes are pinned.
+
+
 CI for `evidence/face-privacy-*` installs only the already-reviewed pinned OpenCV wheel and runs synthetic detector-to-blur integration on Linux and Windows. It downloads no face model or real-person media and makes no detection-accuracy claim. The acceptance target is integration correctness: default blur changes bounded face regions, unauthorized unblur remains blurred, authorized unblur returns an unchanged copy, model artifacts fail closed on identity mismatch, and detector output is normalized consistently across platforms.
 
 Face (including selectable face blurring), Weapons and Appearance Search each require their own rights-cleared donor/model/data review and held-out validation before commercial claims.
