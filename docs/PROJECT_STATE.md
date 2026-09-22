@@ -84,6 +84,20 @@ Detection/tracking still needs broader held-out real-video evidence across peopl
 
 LPR/OCR still needs rights-cleared held-out real plate/text positives and negatives, broader plate-style/geography validation, exact native-runtime/package dependency closure, notices/provenance review, and explicit release approval. All current smoke sources remain non-commercial-accuracy evidence.
 
+## Face detection + automated/selectable blurring — owner-directed coordinated sprint
+On September 22, 2026 the owner explicitly redirected the active implementation lane to Face detection and automated blurring in tandem. LPR/OCR PR #84 is preserved closed/unmerged for later continuation; this face sprint owns the single implementation slot.
+
+The first acceptance unit deliberately separates detector integration from model admission. It adds normalized face boxes, immutable local face-model verification, a replaceable OpenCV FaceDetectorYN-compatible adapter with no built-in model URL/hash, default-on Gaussian face blurring with bounded box expansion, permission-gated unblur, unauthorized-unblur denial, input-frame immutability, bounded face counts, and privacy audit state that contains no biometric identity.
+
+Detector donors are fail-closed:
+1. OpenCV Zoo YuNet at `47534e27c9851bb1128ccc0102f1145e27f23f98`; `face_detection_yunet_2023mar.onnx` LFS SHA-256 `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`, 232,589 bytes, model-directory MIT. Upstream training repo `ShiqiYu/libfacedetection.train@a61a428929148171b488f024b5d6774f93cdbc13` explicitly trains on WIDER FACE, but commercial dataset/training-rights closure is not strong enough for the shippable path.
+2. Open Model Zoo `face-detection-retail-0004` at `6697dead54ed1cdd664b0313189c2cb52ee6335e`, FP16 XML SHA-384 `a7f8d1d41998503c4f3cdd8c12275f04f1736e5142127edcb4c76c3e17188499390574095a5b2a9dd78d3d0f77d02034`, FP16 BIN SHA-384 `394185d3e42c34d7f9d43229ec8f5755c07e19fd6469d23883e71707fdd8eb66d90ff3ba1c94adac599b`, Apache-2.0. Published model docs do not establish the training-data provenance required by this repository.
+3. MediaPipe BlazeFace short-range at `google-ai-edge/mediapipe@8ac5a39c659578c2595a54ef5277608173c217fe`, Apache-2.0 repository. Exact selected model training-data/weight provenance is not closed strongly enough for commercial shipping.
+
+No face model is bundled or downloaded by this sprint. The detector adapter is ready for a separately admitted artifact without changing privacy architecture.
+
+CI for `evidence/face-privacy-*` installs only the already-reviewed pinned OpenCV wheel and runs synthetic detector-to-blur integration on Linux and Windows. It downloads no face model or real-person media and makes no detection-accuracy claim. The acceptance target is integration correctness: default blur changes bounded face regions, unauthorized unblur remains blurred, authorized unblur returns an unchanged copy, model artifacts fail closed on identity mismatch, and detector output is normalized consistently across platforms.
+
 Face (including selectable face blurring), Weapons and Appearance Search each require their own rights-cleared donor/model/data review and held-out validation before commercial claims.
 
 ## Reproduce
