@@ -25,6 +25,32 @@ _EXPECTED_ARCHIVE_SIZE: int | None = None
 _EXPECTED_ARCHIVE_SHA256: str | None = None
 
 
+def _declared_size() -> int | None:
+    parsed = urllib.parse.urlparse(_ARCHIVE_URL)
+    if parsed.scheme != "https" or parsed.hostname != _ALLOWED_HOST:
+        raise RuntimeError("unapproved face donor URL")
+    request = urllib.request.Request(
+        _ARCHIVE_URL,
+        headers={"User-Agent": _USER_AGENT},
+        method="HEAD",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        final = urllib.parse.urlparse(response.geturl())
+        if final.scheme != "https" or final.hostname != _ALLOWED_HOST:
+            raise RuntimeError("face donor redirect escaped approved host")
+        declared = response.headers.get("Content-Length")
+    if declared is None:
+        return None
+    try:
+        value = int(declared)
+    except ValueError as exc:
+        raise RuntimeError("invalid Content-Length") from exc
+    if value < 1:
+        raise RuntimeError("invalid Content-Length")
+    return value
+
+
+
 def _download() -> bytes:
     parsed = urllib.parse.urlparse(_ARCHIVE_URL)
     if parsed.scheme != "https" or parsed.hostname != _ALLOWED_HOST:
@@ -78,6 +104,19 @@ def _safe_members(payload: bytes) -> list[dict[str, object]]:
 
 
 def run() -> dict[str, object]:
+    declared = _declared_size()
+    if declared is not None and declared > _MAX_ARCHIVE_BYTES:
+        return {
+            "evidence": "face-donor-facessd-metadata-v1",
+            "source_url": _ARCHIVE_URL,
+            "declared_archive_bytes": declared,
+            "current_archive_bound_bytes": _MAX_ARCHIVE_BYTES,
+            "payload_downloaded": False,
+            "inference_run": False,
+            "media_used": False,
+            "claim": "transport metadata only; no model bytes admitted",
+        }
+
     payload = _download()
     size = len(payload)
     sha256 = hashlib.sha256(payload).hexdigest()

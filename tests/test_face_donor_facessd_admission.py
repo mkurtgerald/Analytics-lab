@@ -31,8 +31,28 @@ class FaceSSDAdmissionTests(unittest.TestCase):
             "model/detect.tflite", "model/pipeline.config"
         ])
 
+    @mock.patch(
+        "analytics_lab.face_donor_facessd_admission._declared_size",
+        return_value=admission._MAX_ARCHIVE_BYTES + 123,
+    )
+    def test_run_reports_metadata_without_downloading_oversized_archive(self, _declared):
+        with mock.patch(
+            "analytics_lab.face_donor_facessd_admission._download"
+        ) as download:
+            result = admission.run()
+        download.assert_not_called()
+        self.assertEqual(
+            result["declared_archive_bytes"],
+            admission._MAX_ARCHIVE_BYTES + 123,
+        )
+        self.assertFalse(result["payload_downloaded"])
+
+    @mock.patch(
+        "analytics_lab.face_donor_facessd_admission._declared_size",
+        return_value=1,
+    )
     @mock.patch("analytics_lab.face_donor_facessd_admission._download", return_value=b"not-a-tar")
-    def test_run_fails_closed_on_invalid_archive(self, _download):
+    def test_run_fails_closed_on_invalid_archive(self, _download, _declared):
         with self.assertRaises((tarfile.ReadError, RuntimeError)):
             admission.run()
 
