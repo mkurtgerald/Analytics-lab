@@ -33,6 +33,8 @@ Preferred licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause. Copyleft, non-c
 | Open Model Zoo `face-detection-retail-0004` FP16 | `6697dead54ed1cdd664b0313189c2cb52ee6335e`; XML SHA-384 `a7f8d1d41998503c4f3cdd8c12275f04f1736e5142127edcb4c76c3e17188499390574095a5b2a9dd78d3d0f77d02034`; BIN SHA-384 `394185d3e42c34d7f9d43229ec8f5755c07e19fd6469d23883e71707fdd8eb66d90ff3ba1c94adac599b` | Apache-2.0 OMZ license | Compact front-facing face detector | Not admitted: artifact/license identity is clear, but training-data provenance is not disclosed strongly enough for required commercial code/weight/data separation. |
 | MediaPipe BlazeFace short-range | `google-ai-edge/mediapipe@8ac5a39c659578c2595a54ef5277608173c217fe` | Apache-2.0 repository | Cross-platform face detector candidate | Not admitted: selected pretrained model training-data and weight-provenance closure is insufficient for the commercial shipping gate. |
 
+| Google/TensorFlow FaceSSD MobileNetV2 quantized Open Images V4 | TensorFlow model zoo at `tensorflow/models@8b12ae202a3ccf8f965c730a4e7617204e32000b`; archive `facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz` | Apache-2.0 TensorFlow models distribution; Open Images annotations CC BY 4.0 and source images listed CC BY 2.0 | Selected pretrained face-detection donor; model-zoo table reports ~20 ms reference speed and 73 mAP@0.5 faces; non-face boxes dropped during training | Selected for bounded artifact admission. Archive/member hashes pending first admission run. Open Images per-image license verification caveat remains a release/legal-review item. |
+
 ## Rules
 1. Never copy donor code without recording its source and license.
 2. Preserve required copyright and attribution notices.
