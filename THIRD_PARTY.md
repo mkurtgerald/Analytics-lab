@@ -29,6 +29,10 @@ Preferred licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause. Copyleft, non-c
 | Open Model Zoo multi-camera multi-target tracking demo | `6697dead54ed1cdd664b0313189c2cb52ee6335e` | Apache-2.0 | Person/vehicle ReID tracking | Heavier and ReID-coupled; future appearance-search reference only. |
 | FoundationVision/ByteTrack full Kalman/LAP path | `d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` | MIT donor code; transitive review required | Motion/global assignment | Do not admit unless real tracking evidence demonstrates a specific need. |
 
+| OpenCV Zoo YuNet face detector | `opencv/opencv_zoo@47534e27c9851bb1128ccc0102f1145e27f23f98`; 2023mar ONNX LFS SHA-256 `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4`, 232,589 bytes | MIT model-directory license | Lightweight FaceDetectorYN-compatible detector | Not admitted to shippable path: upstream training repo `ShiqiYu/libfacedetection.train@a61a428929148171b488f024b5d6774f93cdbc13` explicitly trains on WIDER FACE; commercial dataset/training-rights closure is insufficient under fail-closed policy. |
+| Open Model Zoo `face-detection-retail-0004` FP16 | `6697dead54ed1cdd664b0313189c2cb52ee6335e`; XML SHA-384 `a7f8d1d41998503c4f3cdd8c12275f04f1736e5142127edcb4c76c3e17188499390574095a5b2a9dd78d3d0f77d02034`; BIN SHA-384 `394185d3e42c34d7f9d43229ec8f5755c07e19fd6469d23883e71707fdd8eb66d90ff3ba1c94adac599b` | Apache-2.0 OMZ license | Compact front-facing face detector | Not admitted: artifact/license identity is clear, but training-data provenance is not disclosed strongly enough for required commercial code/weight/data separation. |
+| MediaPipe BlazeFace short-range | `google-ai-edge/mediapipe@8ac5a39c659578c2595a54ef5277608173c217fe` | Apache-2.0 repository | Cross-platform face detector candidate | Not admitted: selected pretrained model training-data and weight-provenance closure is insufficient for the commercial shipping gate. |
+
 ## Rules
 1. Never copy donor code without recording its source and license.
 2. Preserve required copyright and attribution notices.
