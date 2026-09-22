@@ -15,10 +15,10 @@ import urllib.parse
 import urllib.request
 
 _ARCHIVE_URL = (
-    "https://download.tensorflow.org/models/object_detection/"
+    "https://storage.googleapis.com/download.tensorflow.org/models/object_detection/"
     "facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz"
 )
-_ALLOWED_HOST = "download.tensorflow.org"
+_ALLOWED_HOST = "storage.googleapis.com"
 _MAX_ARCHIVE_BYTES = 32 * 1024 * 1024
 _USER_AGENT = "Analytics-Lab-face-donor-admission/1"
 _EXPECTED_ARCHIVE_SIZE: int | None = None
