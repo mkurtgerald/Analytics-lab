@@ -1,7 +1,16 @@
 {
   "name": "Analytics quality",
-  "on": {"pull_request": {}, "push": {"branches": ["main"]}},
-  "permissions": {"contents": "read"},
+  "on": {
+    "pull_request": {},
+    "push": {
+      "branches": [
+        "main"
+      ]
+    }
+  },
+  "permissions": {
+    "contents": "read"
+  },
   "concurrency": {
     "group": "analytics-ci-${{ github.event.pull_request.number || github.ref }}",
     "cancel-in-progress": "${{ github.event_name == 'pull_request' }}"
@@ -11,29 +20,126 @@
       "name": "Linux preflight and regression",
       "runs-on": "ubuntu-24.04",
       "timeout-minutes": 5,
-      "outputs": {"run_full_tests": "${{ steps.scope.outputs.run_full_tests }}"},
+      "outputs": {
+        "run_full_tests": "${{ steps.scope.outputs.run_full_tests }}"
+      },
       "steps": [
-        {"uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262", "with": {"persist-credentials": false, "ref": "${{ github.event.pull_request.head.sha || github.sha }}", "fetch-depth": 0}},
-        {"uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065", "with": {"python-version": "3.11"}},
-        {"name": "Validate controls and classify the exact diff", "id": "scope", "env": {"BASE_SHA": "${{ github.event.pull_request.base.sha || github.event.before }}", "HEAD_SHA": "${{ github.event.pull_request.head.sha || github.sha }}"}, "run": "python tools/guardrails.py ci"},
-        {"name": "Guardrail regressions", "run": "python -m unittest discover -s tests -p test_guardrails.py -v"},
-        {"name": "Full synthetic regression suite", "if": "${{ steps.scope.outputs.run_full_tests == 'true' }}", "run": "python -m unittest discover -s tests -v"},
-        {"name": "Synthetic observation replay", "if": "${{ steps.scope.outputs.run_full_tests == 'true' }}", "run": "python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id ci-fixture"},
-        {"name": "Bounded CC0 tracking-source admission evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-benchmark-') }}", "run": "set -euo pipefail\npython -m analytics_lab.wikimedia_tracking_admission\n"},
-        {"name": "Bounded CC0 tracking frame-identity evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/tracking-cc0-benchmark-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.wikimedia_tracking_frame_evidence\n"},
-        {"name": "Bounded public-domain LPR smoke evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-wikimedia-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_wikimedia_evidence.py; then\n  python -m analytics_lab.lpr_wikimedia_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_wikimedia_evidence\nfi\n"},
-        {"name": "Bounded public-domain LPR vehicle-scene evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_vehicle_scene_evidence.py; then\n  python -m analytics_lab.lpr_vehicle_scene_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_vehicle_scene_evidence\nfi\n"},
-        {"name": "Bounded CC0 LPR documented-envelope evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-front-envelope-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_front_envelope_evidence.py; then\n  python -m analytics_lab.lpr_front_envelope_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_front_envelope_evidence\nfi\n"},
-        {"name": "Bounded CC0 LPR fixed-crop identity evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.lpr_ocr_fixed_crop_evidence\n"},
-        {"name": "Bounded Figshare archive-index evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-') }}", "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"},
-        {"name": "Bounded Figshare member-admission evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-member-') }}", "run": "set -euo pipefail\npython -m analytics_lab.figshare_member_admission --output-dir \"$RUNNER_TEMP/analytics-figshare\"\n"},
+        {
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false,
+            "ref": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "fetch-depth": 0
+          }
+        },
+        {
+          "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+          "with": {
+            "python-version": "3.11"
+          }
+        },
+        {
+          "name": "Validate controls and classify the exact diff",
+          "id": "scope",
+          "env": {
+            "BASE_SHA": "${{ github.event.pull_request.base.sha || github.event.before }}",
+            "HEAD_SHA": "${{ github.event.pull_request.head.sha || github.sha }}"
+          },
+          "run": "python tools/guardrails.py ci"
+        },
+        {
+          "name": "Guardrail regressions",
+          "run": "python -m unittest discover -s tests -p test_guardrails.py -v"
+        },
+        {
+          "name": "Full synthetic regression suite",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' }}",
+          "run": "python -m unittest discover -s tests -v"
+        },
+        {
+          "name": "Synthetic observation replay",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' }}",
+          "run": "python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id ci-fixture"
+        },
+        {
+          "name": "Bounded CC0 tracking-source admission evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-benchmark-') }}",
+          "run": "set -euo pipefail\npython -m analytics_lab.wikimedia_tracking_admission\n"
+        },
+        {
+          "name": "Bounded CC0 tracking frame-identity evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/tracking-cc0-benchmark-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.wikimedia_tracking_frame_evidence\n"
+        },
+        {
+          "name": "Bounded public-domain LPR smoke evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-wikimedia-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_wikimedia_evidence.py; then\n  python -m analytics_lab.lpr_wikimedia_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_wikimedia_evidence\nfi\n"
+        },
+        {
+          "name": "Bounded public-domain LPR vehicle-scene evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_vehicle_scene_evidence.py; then\n  python -m analytics_lab.lpr_vehicle_scene_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_vehicle_scene_evidence\nfi\n"
+        },
+        {
+          "name": "Bounded CC0 LPR documented-envelope evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-front-envelope-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\nif grep -q '^_SOURCE_SHA256: str | None = None$' analytics_lab/lpr_front_envelope_evidence.py; then\n  python -m analytics_lab.lpr_front_envelope_evidence\nelse\n  python -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\n  python -m analytics_lab.lpr_front_envelope_evidence\nfi\n"
+        },
+        {
+          "name": "Bounded CC0 LPR fixed-crop identity evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.lpr_ocr_fixed_crop_evidence\n"
+        },
+        {
+          "name": "Bounded Figshare archive-index evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-') }}",
+          "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"
+        },
+        {
+          "name": "Bounded Figshare member-admission evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-member-') }}",
+          "run": "set -euo pipefail\npython -m analytics_lab.figshare_member_admission --output-dir \"$RUNNER_TEMP/analytics-figshare\"\n"
+        },
         {
           "name": "Bounded Figshare person-down CPU evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-person-down-') }}",
-          "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"},
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
           "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\npython - <<'PY'\nimport cv2, numpy, openvino\nprint('runtime_versions=' + ','.join([openvino.__version__, cv2.__version__, numpy.__version__]))\nPY\nif [[ \"$GITHUB_HEAD_REF\" == \"evidence/figshare-person-down-generalization-5\" ]]; then\n  python -m analytics_lab.figshare_generalization5_person_down_diagnostic --output-dir \"$RUNNER_TEMP/analytics-figshare-person-down\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\nelif [[ \"$GITHUB_HEAD_REF\" == \"evidence/figshare-person-down-generalization-4\" ]]; then\n  python -m analytics_lab.figshare_generalization4_person_down_diagnostic --output-dir \"$RUNNER_TEMP/analytics-figshare-person-down\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\nelif [[ \"$GITHUB_HEAD_REF\" == \"evidence/figshare-person-down-generalization-3\" ]]; then\n  python -m analytics_lab.figshare_generalization3_person_down_diagnostic --output-dir \"$RUNNER_TEMP/analytics-figshare-person-down\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\nelif [[ \"$GITHUB_HEAD_REF\" == \"evidence/figshare-person-down-generalization-2\" ]]; then\n  python -m analytics_lab.figshare_generalization2_person_down_diagnostic --output-dir \"$RUNNER_TEMP/analytics-figshare-person-down\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\nelse\n  python -m analytics_lab.figshare_person_down_diagnostic --output-dir \"$RUNNER_TEMP/analytics-figshare-person-down\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\nfi\n"
         },
-        {"name": "Bounded real-video CPU evidence", "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\npython - <<'PY'\nimport cv2, numpy, openvino\nprint('runtime_versions=' + ','.join([openvino.__version__, cv2.__version__, numpy.__version__]))\nPY\npython -m analytics_lab.validation_seed --output-dir \"$RUNNER_TEMP/analytics-validation\"\npython -m analytics_lab.validation_cli --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\"\npython -m analytics_lab.detector_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\"\npython -m analytics_lab.detector_thresholds --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.pose_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.openpose_diagnostics_v2 --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.person_down_e2e_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.person_down_orientation_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\n"}
+        {
+          "name": "Face privacy OpenCV integration evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/face-privacy-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m unittest tests.test_face_privacy -v\npython -m analytics_lab.face_privacy_evidence\n"
+        },
+        {
+          "name": "Bounded real-video CPU evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/face-privacy-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\npython - <<'PY'\nimport cv2, numpy, openvino\nprint('runtime_versions=' + ','.join([openvino.__version__, cv2.__version__, numpy.__version__]))\nPY\npython -m analytics_lab.validation_seed --output-dir \"$RUNNER_TEMP/analytics-validation\"\npython -m analytics_lab.validation_cli --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\"\npython -m analytics_lab.detector_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\"\npython -m analytics_lab.detector_thresholds --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.pose_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.openpose_diagnostics_v2 --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.person_down_e2e_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\npython -m analytics_lab.person_down_orientation_diagnostics --manifest \"$RUNNER_TEMP/analytics-validation/validation-manifest.json\" --candidate-dir \"$RUNNER_TEMP/analytics-detectors\"\n"
+        }
       ]
     },
     "windows": {
@@ -43,21 +149,68 @@
       "runs-on": "windows-2022",
       "timeout-minutes": 5,
       "steps": [
-        {"uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262", "with": {"persist-credentials": false, "ref": "${{ github.event.pull_request.head.sha || github.sha }}", "fetch-depth": 0}},
-        {"uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065", "with": {"python-version": "3.11"}},
-        {"name": "Full synthetic regression suite", "run": "python -m unittest discover -s tests -v"},
-        {"name": "Synthetic observation replay", "run": "python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id ci-fixture"},
-        {"name": "Bounded exact Tesseract 5.5.3 LPR OCR evidence", "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') }}", "env": {"PIP_DISABLE_PIP_VERSION_CHECK": "1"}, "shell": "bash", "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"}
+        {
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false,
+            "ref": "${{ github.event.pull_request.head.sha || github.sha }}",
+            "fetch-depth": 0
+          }
+        },
+        {
+          "uses": "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065",
+          "with": {
+            "python-version": "3.11"
+          }
+        },
+        {
+          "name": "Full synthetic regression suite",
+          "run": "python -m unittest discover -s tests -v"
+        },
+        {
+          "name": "Synthetic observation replay",
+          "run": "python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id ci-fixture"
+        },
+        {
+          "name": "Face privacy OpenCV integration evidence",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/face-privacy-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "shell": "bash",
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m unittest tests.test_face_privacy -v\npython -m analytics_lab.face_privacy_evidence\n"
+        },
+        {
+          "name": "Bounded exact Tesseract 5.5.3 LPR OCR evidence",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "shell": "bash",
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"
+        }
       ]
     },
     "quality-gate": {
       "name": "Analytics quality gate",
-      "needs": ["linux", "windows"],
+      "needs": [
+        "linux",
+        "windows"
+      ],
       "if": "${{ always() }}",
       "runs-on": "ubuntu-24.04",
       "timeout-minutes": 1,
       "steps": [
-        {"name": "Require all applicable checks", "env": {"LINUX_RESULT": "${{ needs.linux.result }}", "WINDOWS_RESULT": "${{ needs.windows.result }}", "FULL_TESTS": "${{ needs.linux.outputs.run_full_tests }}"}, "shell": "bash", "run": "set -euo pipefail\n[[ \"$LINUX_RESULT\" == \"success\" ]]\ncase \"$FULL_TESTS\" in\n  true) [[ \"$WINDOWS_RESULT\" == \"success\" ]] ;;\n  false) [[ \"$WINDOWS_RESULT\" == \"skipped\" ]] ;;\n  *) exit 1 ;;\nesac\n"}
+        {
+          "name": "Require all applicable checks",
+          "env": {
+            "LINUX_RESULT": "${{ needs.linux.result }}",
+            "WINDOWS_RESULT": "${{ needs.windows.result }}",
+            "FULL_TESTS": "${{ needs.linux.outputs.run_full_tests }}"
+          },
+          "shell": "bash",
+          "run": "set -euo pipefail\n[[ \"$LINUX_RESULT\" == \"success\" ]]\ncase \"$FULL_TESTS\" in\n  true) [[ \"$WINDOWS_RESULT\" == \"success\" ]] ;;\n  false) [[ \"$WINDOWS_RESULT\" == \"skipped\" ]] ;;\n  *) exit 1 ;;\nesac\n"
+        }
       ]
     }
   }
