@@ -23,7 +23,15 @@ _MAX_ARCHIVE_BYTES = 130_655_026
 _USER_AGENT = "Analytics-Lab-face-donor-admission/1"
 _EXPECTED_ARCHIVE_SIZE = 130_655_026
 _EXPECTED_ARCHIVE_SHA256 = "9ae49a245caddbe7d7bbc82a35da0191a2f2e210161df19be357a1c7f49118d5"
-_EXPECTED_ARCHIVE_MEMBERS: tuple[tuple[str, int, str], ...] | None = None
+_EXPECTED_ARCHIVE_MEMBERS = (
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/face_label_map.pbtxt", 56, "87f1e97ff18442302ca7686276e59beac925126b91b14cb15dee710de2ee9c60"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/model.ckpt.data-00000-of-00001", 86_462_816, "693c0eb84b8d9349391d66c38d2ac03b3d628029eb9f9ad7417302f6ac355599"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/model.ckpt.index", 68_838, "e00ccd57873134cc9a8a24cf2f39a16ee59a6037012755564639e06197c15729"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/model.ckpt.meta", 21_373_388, "65346dc8d8f11297df102c6e134120d3a248dd3b7e38ec0fcf3799f49d137c28"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/pipeline.config", 4_829, "f51b55181cf8a614c75ffe716b5c5a6f253ca5037199f37440775a925482f224"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/tflite_graph.pb", 22_222_216, "dc8e2c9e21407b2f6d35f1eb655ba8a0c9c73094e5987231a1a8de2edae74978"),
+    ("facessd_mobilenet_v2_quantized_320x320_open_image_v4/tflite_graph.pbtxt", 62_525_550, "e1232ff66eedd5676bfa31e78aba28ee6244b0322a5646d1a1f89efa02cb781b"),
+)
 
 
 def _declared_size() -> int | None:
@@ -144,7 +152,7 @@ def run() -> dict[str, object]:
 
     members = _safe_members(payload)
     identity = _member_identity(members)
-    if _EXPECTED_ARCHIVE_MEMBERS is not None and identity != _EXPECTED_ARCHIVE_MEMBERS:
+    if identity != _EXPECTED_ARCHIVE_MEMBERS:
         raise RuntimeError("face donor archive member identity mismatch")
 
     interesting = [
@@ -157,12 +165,12 @@ def run() -> dict[str, object]:
     if not interesting:
         raise RuntimeError("face donor archive contains no recognized model/config member")
     return {
-        "evidence": "face-donor-facessd-admission-v2",
+        "evidence": "face-donor-facessd-admission-v3",
         "source_url": _ARCHIVE_URL,
         "archive_bytes": len(payload),
         "archive_sha256": sha256,
         "archive_pinned": True,
-        "members_pinned": _EXPECTED_ARCHIVE_MEMBERS is not None,
+        "members_pinned": True,
         "members": members,
         "interesting_members": interesting,
         "total_members": len(members),
