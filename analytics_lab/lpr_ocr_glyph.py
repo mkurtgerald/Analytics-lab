@@ -150,14 +150,15 @@ def _segment(binary_inv: Any, width: int, height: int) -> list[tuple[int, int, i
 def recognize_plate_glyphs(
     rgb_image: Any, *, min_match_score: float = _MIN_MATCH_SCORE
 ) -> GlyphOCRResult:
-    import cv2
-
     if not isinstance(min_match_score, (int, float)) or isinstance(min_match_score, bool):
         raise ValueError("min_match_score must be numeric")
     threshold = float(min_match_score)
     if not math.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
         raise ValueError("min_match_score must be in [0, 1]")
     width, height = _require_rgb(rgb_image)
+
+    import cv2
+
     gray = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
     _, binary_inv = cv2.threshold(
         gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU

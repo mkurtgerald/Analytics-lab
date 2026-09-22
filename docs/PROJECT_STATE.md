@@ -81,6 +81,9 @@ Change approach rather than spend a fourth session tuning Tesseract. The current
 
 The first real comparison is preregistered against the exact same three already-bound CC0 crops and preserved Tesseract observations. Acceptance is intentionally simple and frozen before measurement: sum Levenshtein edit distance across the three samples and retain this fallback only if its total edit distance is lower than the preserved Tesseract total. The evidence lane reports per-sample expected/observed text, component counts, mean template similarity, edit distance, character accuracy, elapsed time and CPU time. This is three-sample engineering evidence only, never a commercial-accuracy claim.
 
+Analytics quality run #211 failed before any real glyph OCR evidence executed. The fail-closed threshold-validation unit test runs in the normal Linux suite where OpenCV is intentionally absent; `recognize_plate_glyphs` imported `cv2` before validating the threshold, causing `ModuleNotFoundError` instead of the expected input error. The only repair moves the optional OpenCV import after argument/image validation. Recognition parameters, segmentation, template bank, acceptance threshold and real-evidence inputs are unchanged. No OCR measurement from #211 is counted.
+
+
 ## Retained person-down / slip-fall path
 The required secondary path remains:
 `authorized local video -> person-detection-0200 -> bounded spatial continuity/orientation recovery -> OMZ human-pose-estimation-0001 -> corrected OpenPose decode -> bounded pose association -> conservative posture classification -> 3000 ms temporal persistence with at most 750 ms bounded unknown-gap tolerance -> evidence-linked candidate -> labeled evaluation`.
