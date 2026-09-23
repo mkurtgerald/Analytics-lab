@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_litert_converter_graphdef_gate",
+    "review_base_main": "2bcfacdd08d2d60d11c9f2cf92289a49083df8cd",
+    "decision": "closed_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "The current stable official litert-converter 0.4.0 package is provenance-bound to the Google LiteRT v2.2.0 source release, but the exact stable wheel build manifest packages LiteRT MLIR/model-utils converter surfaces rather than the TensorFlow GraphDef conversion Python surface required for this admitted tflite_graph.pb. PyPI also publishes no Windows wheel for 0.4.0. The package therefore does not clear the required GraphDef-to-TFLite interface/platform gate and is stopped before installation or transitive redistribution closure."
+  },
+  "already_admitted_donor": {
+    "repository": "tensorflow/models",
+    "commit": "8b12ae202a3ccf8f965c730a4e7617204e32000b",
+    "archive": "facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz",
+    "archive_size_bytes": 130655026,
+    "archive_sha256": "9ae49a245caddbe7d7bbc82a35da0191a2f2e210161df19be357a1c7f49118d5",
+    "member": "tflite_graph.pb",
+    "member_size_bytes": 22222216,
+    "member_sha256": "dc8e2c9e21407b2f6d35f1eb655ba8a0c9c73094e5987231a1a8de2edae74978",
+    "member_format": "TensorFlow frozen GraphDef",
+    "admission_unchanged": true
+  },
+  "official_converter_package": {
+    "distribution": "litert-converter",
+    "version": "0.4.0",
+    "release_date": "2026-08-21",
+    "pypi_owner_organization": "google-ml",
+    "pypi_owner": "google-ai-edge",
+    "author": "Google AI Edge Authors",
+    "license": "Apache-2.0",
+    "source_repository": "google-ai-edge/LiteRT",
+    "source_release": "v2.2.0",
+    "source_commit": "145c7523ff08d5e57ab5c582141775eea47da9c7",
+    "source_version_binding": "litert/version.bzl at v2.2.0 declares LITERT_CONVERTER_VERSION = 0.4.0",
+    "python_311_linux_x86_64": {
+      "filename": "litert_converter-0.4.0-cp311-cp311-manylinux_2_27_x86_64.whl",
+      "size_bytes": 69765269,
+      "sha256": "77827e51886bca2fea2e56ce98e1fcc66f7985260c9b6bb6786ede1374638b51"
+    },
+    "published_platforms": [
+      "Linux x86-64",
+      "macOS arm64"
+    ],
+    "windows_wheel_published": false,
+    "direct_requirements": [
+      "backports.strenum",
+      "flatbuffers",
+      "numpy>=1.23.2",
+      "tqdm",
+      "typing-extensions",
+      "protobuf",
+      "lark",
+      "ml_dtypes",
+      "xdsl==0.28.0"
+    ]
+  },
+  "exact_source_manifest_evidence": {
+    "setup_path": "ci/tools/python/wheel/converter_setup_with_binary.py",
+    "build_path": "ci/tools/python/wheel/BUILD",
+    "wheel_target": "litert_converter_wheel",
+    "wheel_native_sources": [
+      "//litert/python:pywrap_litert_with_converter_binaries",
+      "//litert/python/mlir/_mlir_libs:libLiteRTCompilerMLIR.so",
+      "//tflite/python:schema_py"
+    ],
+    "wheel_python_sources": [
+      "//litert/python/mlir",
+      "//litert/python/tools/model_utils",
+      "//litert/python/tools/model_utils:testing"
+    ],
+    "classic_tensorflow_graphdef_python_converter_packaged": false,
+    "required_graphdef_surface": "tf.compat.v1.lite.TFLiteConverter.from_frozen_graph or an exact equivalent that consumes the admitted frozen GraphDef",
+    "source_tree_note": "The same LiteRT source tree still contains TensorFlow GraphDef conversion code under tflite/, but those classic GraphDef converter surfaces are not included by the reviewed litert_converter_wheel target. Source-tree existence is not treated as package capability."
+  },
+  "dependency_and_redistribution_gate": {
+    "direct_requirements_pinned_by_upstream": false,
+    "full_transitive_selection_completed": false,
+    "native_notice_closure_completed": false,
+    "reason_for_early_stop": "Interface and Windows package-platform requirements fail before execution. Resolving every ranged transitive dependency or redistribution notice would not make this exact stable wheel expose the missing GraphDef conversion surface."
+  },
+  "execution_guardrails": {
+    "converter_wheel_downloaded": false,
+    "converter_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "home_or_customer_media_used": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "licensing_requirements_weakened": false,
+    "paid_resources_used": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "candidate_status": "rejected_as_admitted_graphdef_conversion_runtime",
+    "do_not_retry_unchanged": true,
+    "next_smallest_testable_direction": "Dependency-review the current stable official TensorFlow package rather than this LiteRT converter wheel. TensorFlow 2.21.0 at tensorflow/tensorflow commit a481b10260dfdf833a1b16007eead49c1d7febf3 retains tf.compat.v1.lite.TFLiteConverter.from_frozen_graph in source and publishes CPython 3.11 Windows/Linux wheels, making it a distinct modern hypothesis from the already-closed TensorFlow 1.15/Bazel source-build route. Do not install or execute it until its exact package identities, direct and selected transitive dependencies, native components, platform support, licenses and redistribution notices clear the same fail-closed gate."
+  }
+}
