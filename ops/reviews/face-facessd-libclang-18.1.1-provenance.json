@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_libclang_18_1_1_provenance",
+    "review_base_main": "c883031431d655afd74935215e3dc01393660078",
+    "observed_on": "2026-09-23",
+    "decision": "source_release_lineage_closed_execution_still_fail_closed",
+    "runtime_execution_admitted": false,
+    "reason": "Correct the prior incomplete ref check: libclang 18.1.1 does have an exact upstream packaging release tag, llvm-18.1.1, at commit b7c2f3bcb9a525f10ab9577221106267a4f09a1c. That release explicitly points to the PyPI 18.1.1 wheels. The pinned Linux and Windows build recipes both set LLVM_VER=18.1.1 and build from LLVM's official llvmorg-18.1.1 source release; the LLVM annotated release tag is signature-verified and resolves to commit dba2a75e9c7ef81fe84774ba5eee5e67e01d801a. This closes the previously unresolved source/release lineage, but not the complete wheel-to-build attestation and redistribution-notice boundary, so TensorFlow/FaceSSD execution remains fail-closed."
+  },
+  "selected_package": {
+    "distribution": "libclang",
+    "version": "18.1.1",
+    "python_requirement": "not constrained by the selected wheel metadata",
+    "license_expression": "Apache-2.0 WITH LLVM-exception",
+    "pypi_trusted_publishing": false,
+    "windows_x86_64_wheel": {
+      "filename": "libclang-18.1.1-py2.py3-none-win_amd64.whl",
+      "sha256": "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb"
+    },
+    "linux_x86_64_wheel": {
+      "filename": "libclang-18.1.1-py2.py3-none-manylinux2010_x86_64.whl",
+      "sha256": "c533091d8a3bbf7460a00cb6c1a71da93bffe148f172c7d03b1c31fbf8aa2a0b"
+    }
+  },
+  "packaging_release": {
+    "repository": "sighingnow/libclang",
+    "release_tag": "llvm-18.1.1",
+    "release_commit": "b7c2f3bcb9a525f10ab9577221106267a4f09a1c",
+    "release_commit_signature_verified": false,
+    "release_published_at": "2024-03-18T03:13:39Z",
+    "release_body_links_exact_pypi_version": true,
+    "setup_ext_blob": "8831a0ff149d0e5b5ffece70367f33d2f567a6b7",
+    "license_blob": "24806ab4c9eb291db4d28e159901f7a0901b9fd1",
+    "package_recipe": "setup_ext.py sets version 18.1.1 and copies exactly one platform libclang native library into the clang.native package together with the LLVM Python bindings; it declares no additional Python runtime dependencies."
+  },
+  "upstream_llvm_source": {
+    "repository": "llvm/llvm-project",
+    "tag": "llvmorg-18.1.1",
+    "tag_object_sha": "5d9d7927f23ef0b39aefc2044a201c5b74f4cf26",
+    "tag_signature_verified": true,
+    "commit": "dba2a75e9c7ef81fe84774ba5eee5e67e01d801a"
+  },
+  "platform_build_lineage": {
+    "linux_x86_64": {
+      "workflow_blob": "dc63188ba7085e7e77c5045bc3878e756561495b",
+      "build_script_blob": "0331ff2037de243bb8b9bd275e2adc648bf83c2b",
+      "source": "official llvm-project-18.1.1.src.tar.xz release archive",
+      "llvm_enable_projects": "clang",
+      "build_shared_libs": false,
+      "llvm_enable_zlib": false,
+      "llvm_enable_zstd": false,
+      "llvm_enable_terminfo": false,
+      "targets": "X86",
+      "static_libgcc": true,
+      "static_libstdcxx": true,
+      "wheel_platform": "manylinux2010_x86_64"
+    },
+    "windows_x86_64": {
+      "workflow_blob": "cd6be419ca1de2b719149ed2f55fc5f0374b9c46",
+      "source": "official llvm/llvm-project clone at tag llvmorg-18.1.1 with depth 1",
+      "llvm_enable_projects": "clang",
+      "build_shared_libs": false,
+      "llvm_enable_zlib": false,
+      "llvm_enable_zstd": false,
+      "llvm_enable_terminfo": false,
+      "targets": "X86",
+      "static_msvc_crt": true,
+      "wheel_platform": "win_amd64"
+    }
+  },
+  "license_and_notice_boundary": {
+    "packaging_license": "Apache-2.0 WITH LLVM-exception",
+    "redistribution_permission_present": true,
+    "redistribution_requires_license_and_applicable_attribution_preservation": true,
+    "llvm_license_notes_third_party_code_may_have_separate_terms": true,
+    "exact_applicable_third_party_notice_set_for_selected_wheels_closed": false,
+    "wheel_to_exact_build_attestation_closed": false,
+    "commercial_redistribution_cleared": false,
+    "release_legal_review_still_required": true
+  },
+  "gate_status": {
+    "prior_false_missing_release_ref_corrected": true,
+    "exact_packaging_release_identity_closed": true,
+    "exact_upstream_llvm_source_identity_closed": true,
+    "windows_linux_build_recipe_identity_closed": true,
+    "selected_wheel_identity_closed": true,
+    "wheel_to_exact_build_attestation_closed": false,
+    "exact_applicable_native_third_party_notice_closure_completed": false,
+    "runtime_execution_admitted": false
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_downloaded": false,
+    "runtime_or_dependency_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Finish libclang 18.1.1 by closing the exact wheel notice/build-attestation boundary without downloading or installing the runtime. If that cannot be established from authoritative release/build evidence, stop treating this wheel as execution-cleared. Only after libclang clears should the same bounded review proceed to grpcio and h5py; TensorFlow/FaceSSD stays uninstalled and unexecuted until the complete dependency gate is closed."
+  }
+}
