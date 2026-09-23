@@ -15,6 +15,8 @@ from .tracking import NormalizedBox
 
 OID_V4_HUMAN_FACE_CLASS_ID = 502
 OID_V4_INPUT_NAME = "image_tensor:0"
+OID_V4_MODEL_INPUT_HEIGHT = 300
+OID_V4_MODEL_INPUT_WIDTH = 300
 OID_V4_BOXES_OUTPUT = (
     "Postprocessor/BatchMultiClassNonMaxSuppression/map/"
     "TensorArrayStack/TensorArrayGatherV3:0"
@@ -194,6 +196,14 @@ class OpenVINOOIDSSDDetector:
         )
 
     def detect(self, frame_bgr: Any) -> tuple[FaceDetection, ...]:
+        """Run the pinned detector preprocessing while preserving source geometry.
+
+        The admitted TensorFlow model's exact pipeline config fixes inference to
+        300x300. The model therefore receives a 300x300 RGB tensor while its
+        normalized output boxes remain applicable to the untouched source frame
+        used by the privacy-blur path.
+        """
+        import cv2
         import numpy as np
 
         frame = np.asarray(frame_bgr)
@@ -203,7 +213,18 @@ class OpenVINOOIDSSDDetector:
         if not 1 <= width <= 16384 or not 1 <= height <= 16384:
             raise ValueError("frame dimensions outside supported bounds")
 
-        rgb_batch = np.ascontiguousarray(frame[:, :, ::-1][None, ...])
+        if (
+            height == OID_V4_MODEL_INPUT_HEIGHT
+            and width == OID_V4_MODEL_INPUT_WIDTH
+        ):
+            model_frame = frame
+        else:
+            model_frame = cv2.resize(
+                frame,
+                (OID_V4_MODEL_INPUT_WIDTH, OID_V4_MODEL_INPUT_HEIGHT),
+                interpolation=cv2.INTER_AREA,
+            )
+        rgb_batch = np.ascontiguousarray(model_frame[:, :, ::-1][None, ...])
         outputs = self._compiled_model({self._input: rgb_batch})
         try:
             boxes = outputs[self._boxes]
