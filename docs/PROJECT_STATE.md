@@ -65,12 +65,26 @@ Analytics quality run #259 was the bounded first discovery head and passed Linux
 
 PR #105 then hard-pinned those archive/member identities, explicitly required the frozen graph, SavedModel graph and pipeline config, and failed closed if a label-map member unexpectedly appeared. Exact-head Analytics quality run #260 passed Linux, Windows, the bounded standard-donor admission evidence and the aggregate gate. PR #105 merged into `main` at `8267dd00bb645dbc41f76f2ee2e9542473b2bf14`; automatic main verification run #261 also passed. The standard OIDv4 artifact/provenance admission gate is therefore closed green. No model inference, media use, artifact retention or accuracy claim occurred in that admission.
 
-### Active post-admission runtime gate
-The single current work item is the smallest first runtime-construction attempt on the admitted standard frozen graph using the already-reviewed OpenVINO `2026.3.1` family. The dedicated `evidence/face-donor-facessd-standard-oid-openvino-*` lane must re-verify the exact admitted archive and frozen-graph hashes, materialize only that graph below hosted `RUNNER_TEMP`, call OpenVINO's TensorFlow frontend once, and compile once for CPU only if construction succeeds. It must not execute FaceSSD, infer, supply an input tensor, process media, retain a source/converted model, or make an accuracy/commercial-readiness claim. OpenCV `4.12.0` remains a separate one-attempt option only if the OpenVINO outcome justifies a changed follow-on approach; do not run both speculatively in the same first gate.
+### Standard OIDv4 runtime construction — closed green
+PR #106 performed the smallest post-admission runtime-construction attempt with the exact admitted `frozen_inference_graph.pb` and OpenVINO `2026.3.1`. Exact-head Analytics quality run #262 passed Linux, Windows and the aggregate gate. OpenVINO's TensorFlow frontend loaded the graph and the CPU plugin compiled it successfully without inference, an input tensor, media use or retained derived artifact.
 
-If the standard graph constructs, immediately add a model-specific adapter that filters only OIDv4 class `502` (`Human face`) into the existing normalized `FaceDetection` contract and default-on blur pipeline. The first execution after construction must be a no-media synthetic tensor smoke. Only after that is green may a separately rights-cleared real-person source be admitted for one untouched face-detection -> automatic-blur measurement. Preserve misses and false positives and do not tune before that first measurement.
+The verified model ports were:
+- input `image_tensor:0` — uint8, `[?,?,?,3]`;
+- boxes `Postprocessor/BatchMultiClassNonMaxSuppression/map/TensorArrayStack/TensorArrayGatherV3:0` — float32, `[?,100,4]`;
+- classes `add:0` — float32, `[?,100]`;
+- scores `Postprocessor/BatchMultiClassNonMaxSuppression/map/TensorArrayStack_1/TensorArrayGatherV3:0` — float32, `[?,100]`;
+- count `Postprocessor/ToFloat_3:0` — float32, `[?]`.
 
-If the standard Google donor fails provenance or runtime compatibility quickly, stop donor shopping and move to the project-owned training fallback: a permissive detector architecture such as the already-reviewed Apache-2.0 YOLOX-Nano style family plus individually rights-cleared Open Images Human-face training/validation data, with exact trainer/dependency/data/export lineage and no-spend/resource ceilings. Expensive training remains prohibited until the donor path is conclusively closed and the plan fits policy.
+PR #106 merged to `main` at `bb069a1899ce51a85b90d7a0ee6a7cc2cb1662a6`, and automatic main verification run #263 also passed. This is compatibility evidence only; it establishes neither face-detection accuracy nor commercial readiness.
+
+### Active face gate — class-502 adapter plus one synthetic execution
+The single current work item is now the model-specific standard-OID adapter plus the first no-media execution smoke. The adapter must admit only OIDv4 class `502` (`Human face`), convert TensorFlow Object Detection API `[y_min,x_min,y_max,x_max]` boxes into the existing normalized `FaceDetection` contract, preserve bounded counts/confidences, and feed those detections into the existing default-on privacy-blur policy. Face recognition, embeddings, ReID and identity matching remain excluded.
+
+The dedicated `evidence/face-donor-facessd-standard-oid-smoke-*` lane is limited to one deterministic generated in-memory uint8 tensor, one OpenVINO inference, the already-pinned `openvino==2026.3.1` plus `opencv-python-headless==4.12.0.88` runtimes, and exact re-verification of the admitted archive/graph before execution. It must use no image/video source or real person, retain/upload no model or pixels, and make no accuracy claim. The fixed pre-measurement face threshold remains `0.50`; it must not be tuned from this smoke result.
+
+Only after this synthetic execution/integration gate is exact-head green may a separately rights-cleared real-person source be admitted for one untouched face-detection -> automatic-blur measurement. That future measurement must preserve misses and false positives and must not tune before the first result.
+
+If the standard Google donor fails this bounded execution/integration gate quickly, stop donor shopping and move to the project-owned training fallback: a permissive detector architecture such as the already-reviewed Apache-2.0 YOLOX-Nano style family plus individually rights-cleared Open Images Human-face training/validation data, with exact trainer/dependency/data/export lineage and no-spend/resource ceilings. Expensive training remains prohibited until the donor path is conclusively closed and the plan fits policy.
 
 ## Commercial-release gates
 Nothing in the current face evidence supports a commercial accuracy claim. Artifact provenance, runtime compatibility, synthetic integration correctness, rights-cleared real-person accuracy evidence, privacy/security review, package/native dependency closure, notices, versioned integration and explicit owner commercial-release approval remain separate gates.
