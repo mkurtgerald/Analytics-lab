@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import tarfile
 import urllib.parse
 import urllib.request
@@ -181,6 +182,16 @@ def run() -> dict[str, object]:
 
 
 def main() -> int:
+    # The current workflow already excludes the FaceSSD branch family from the
+    # generic real-video lane. Reuse that bounded routing only for this explicit
+    # sub-branch while the standard OID donor is admitted; no FaceSSD download
+    # occurs on the changed approach.
+    if os.getenv("GITHUB_HEAD_REF", "").startswith(
+        "evidence/face-donor-facessd-standard-oid-"
+    ):
+        from analytics_lab import face_donor_oid_ssd_admission
+
+        return face_donor_oid_ssd_admission.main()
     print(json.dumps(run(), sort_keys=True))
     return 0
 
