@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_transitive_security_refresh",
+    "review_base_main": "3631837a2891d042326319b0662ed0b4614a5cf5",
+    "parent_graph_review": "ops/reviews/face-facessd-tensorflow-cpu-transitive-graph.json",
+    "decision": "security_refresh_selected_execution_still_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "Current PyPI release advisory metadata invalidates four versions carried forward from TensorFlow 2.21.0's March 2026 Python 3.11 lock: requests 2.32.4, idna 3.10, urllib3 2.6.3 and wheel 0.41.3. The runtime set is security-refreshed within the already-declared dependency ranges instead of executing stale locked versions. wheel 0.48.0 adds packaging>=24.0, so packaging is coherently rebased from 23.2 to current stable 26.3. This closes only the identified stale-version security repair; execution remains fail-closed pending complete platform-wheel, native/license/notice, security and artifact-to-source closure."
+  },
+  "observed_on": "2026-09-23",
+  "authoritative_metadata": {
+    "source": "PyPI release JSON and PyPI verified release/provenance pages",
+    "advisory_field_semantics": "Point-in-time PyPI/OSV release advisory metadata only; an empty vulnerabilities array is not a claim that a release is vulnerability-free.",
+    "source_lock_role": "TensorFlow v2.21.0 requirements_lock_3_11.txt remains an immutable historical compatibility reference, not an instruction to execute versions that have since acquired published advisories."
+  },
+  "rejected_stale_selections": {
+    "requests==2.32.4": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-25645",
+        "PYSEC-2026-2275",
+        "GHSA-gc5v-m9x4-r6x2"
+      ],
+      "fixed_in": "2.33.0",
+      "decision": "reject_from_proposed_execution_set"
+    },
+    "idna==3.10": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-45409",
+        "PYSEC-2026-215",
+        "GHSA-65pc-fj4g-8rjx"
+      ],
+      "fixed_in": "3.15",
+      "decision": "reject_from_proposed_execution_set"
+    },
+    "urllib3==2.6.3": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-44431",
+        "PYSEC-2026-141",
+        "GHSA-qccp-gfcp-xxvc",
+        "CVE-2026-44432",
+        "PYSEC-2026-142",
+        "GHSA-mf9v-mfxr-j63j"
+      ],
+      "fixed_in": "2.7.0",
+      "decision": "reject_from_proposed_execution_set"
+    },
+    "wheel==0.41.3": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-24049",
+        "GHSA-8rrh-rw8j-w5fx"
+      ],
+      "fixed_in": "0.46.2",
+      "decision": "reject_from_proposed_execution_set"
+    }
+  },
+  "security_refreshed_selections": {
+    "requests": {
+      "version": "2.34.2",
+      "release_date": "2026-05-14",
+      "python_requirement": ">=3.10",
+      "python_311_supported": true,
+      "license": "Apache-2.0",
+      "license_files": [
+        "LICENSE",
+        "NOTICE"
+      ],
+      "wheel": "requests-2.34.2-py3-none-any.whl",
+      "wheel_sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+      "wheel_size_bytes": 73075,
+      "platform": "py3-none-any",
+      "windows_linux_compatible": true,
+      "pypi_vulnerabilities_observed": 0,
+      "pypi_trusted_publishing": true,
+      "pypi_attested_source_repository": "psf/requests",
+      "pypi_attested_publishing_commit": "6e83187b8feb273ed4c6cdab5efd8d54901dfab3",
+      "selected_runtime_dependencies": {
+        "charset-normalizer": "3.4.1",
+        "idna": "3.20",
+        "urllib3": "2.8.0",
+        "certifi": "2025.1.31"
+      },
+      "optional_extras_selected": false
+    },
+    "idna": {
+      "version": "3.20",
+      "release_date": "2026-09-17",
+      "python_requirement": ">=3.9",
+      "python_311_supported": true,
+      "license": "BSD-3-Clause",
+      "license_files": [
+        "LICENSE.md"
+      ],
+      "wheel": "idna-3.20-py3-none-any.whl",
+      "wheel_sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+      "wheel_size_bytes": 69583,
+      "platform": "py3-none-any",
+      "windows_linux_compatible": true,
+      "pypi_vulnerabilities_observed": 0,
+      "pypi_trusted_publishing": true,
+      "pypi_attested_source_repository": "kjd/idna",
+      "pypi_attested_publishing_commit": "d55e65e1a3b1ede7f556bc202738066f5597e249",
+      "optional_extras_selected": false
+    },
+    "urllib3": {
+      "version": "2.8.0",
+      "release_date": "2026-09-15",
+      "python_requirement": ">=3.10",
+      "python_311_supported": true,
+      "license": "MIT",
+      "license_files": [
+        "LICENSE.txt"
+      ],
+      "wheel": "urllib3-2.8.0-py3-none-any.whl",
+      "wheel_sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+      "wheel_size_bytes": 135717,
+      "platform": "py3-none-any",
+      "windows_linux_compatible": true,
+      "pypi_vulnerabilities_observed": 0,
+      "pypi_trusted_publishing": true,
+      "pypi_attested_source_repository": "urllib3/urllib3",
+      "pypi_attested_publishing_commit": "b1d30ab61fe0db8f11092805e8c5ac43e091064a",
+      "optional_extras_selected": false
+    },
+    "wheel": {
+      "version": "0.48.0",
+      "release_date": "2026-08-11",
+      "python_requirement": ">=3.9",
+      "python_311_supported": true,
+      "license": "MIT",
+      "license_files": [
+        "LICENSE.txt"
+      ],
+      "wheel": "wheel-0.48.0-py3-none-any.whl",
+      "wheel_sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+      "wheel_size_bytes": 33320,
+      "platform": "py3-none-any",
+      "windows_linux_compatible": true,
+      "pypi_vulnerabilities_observed": 0,
+      "pypi_trusted_publishing": true,
+      "pypi_attested_source_repository": "pypa/wheel",
+      "pypi_attested_publishing_commit": "f06d4db093e097eedfa909c1ea0fa123ae0dafc2",
+      "requires": [
+        "packaging>=24.0"
+      ]
+    },
+    "packaging": {
+      "version": "26.3",
+      "selection_reason": "required to satisfy wheel 0.48.0 packaging>=24.0 while remaining compatible with TensorFlow and Keras packaging requirements",
+      "release_date": "2026-08-04",
+      "python_requirement": ">=3.9",
+      "python_311_supported": true,
+      "license_expression": "Apache-2.0 OR BSD-2-Clause",
+      "license_files": [
+        "LICENSE",
+        "LICENSE.APACHE",
+        "LICENSE.BSD"
+      ],
+      "wheel": "packaging-26.3-py3-none-any.whl",
+      "wheel_sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+      "wheel_size_bytes": 129956,
+      "platform": "py3-none-any",
+      "windows_linux_compatible": true,
+      "pypi_vulnerabilities_observed": 0,
+      "pypi_trusted_publishing": true,
+      "pypi_attested_source_repository": "pypa/packaging",
+      "pypi_attested_publishing_commit": "3db4261366eebeb802574458dd037b3e13515e2e",
+      "requires": []
+    }
+  },
+  "constraint_reconciliation": {
+    "requests_2_34_2": {
+      "charset_normalizer": "selected 3.4.1 satisfies >=2,<4",
+      "idna": "selected 3.20 satisfies >=2.5,<4",
+      "urllib3": "selected 2.8.0 satisfies >=1.26,<3",
+      "certifi": "selected 2025.1.31 satisfies >=2023.5.7"
+    },
+    "astunparse_1_6_3": {
+      "wheel": "selected 0.48.0 satisfies >=0.23.0,<1.0",
+      "six": "selected 1.17.0 satisfies >=1.6.1,<2.0"
+    },
+    "wheel_0_48_0": {
+      "packaging": "selected 26.3 satisfies >=24.0"
+    },
+    "tensorflow_and_keras": {
+      "requests": "TensorFlow's selected direct requirement remains requests; 2.34.2 replaces the stale lock selection without changing dependency name or adding an extra.",
+      "packaging": "TensorFlow and Keras already require packaging; 26.3 replaces the stale lock selection to satisfy the refreshed wheel dependency."
+    }
+  },
+  "security_boundary": {
+    "point_in_time_releases_with_zero_pypi_vulnerabilities_observed": [
+      "requests==2.34.2",
+      "idna==3.20",
+      "urllib3==2.8.0",
+      "wheel==0.48.0",
+      "packaging==26.3"
+    ],
+    "claim_that_selected_releases_are_vulnerability_free": false,
+    "complete_selected_set_security_review_completed": false,
+    "reason": "Other direct and transitive packages still require the same current advisory review before runtime execution can be admitted."
+  },
+  "redistribution_boundary": {
+    "licenses_recorded_for_this_refresh_slice": true,
+    "license_files_or_notice_files_recorded_for_this_refresh_slice": true,
+    "complete_runtime_native_notice_closure_completed": false,
+    "complete_runtime_commercial_redistribution_cleared": false,
+    "release_legal_review_still_required": true
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_downloaded": false,
+    "runtime_or_dependency_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "stale_advisory_versions_removed_from_proposed_execution_set": true,
+    "security_refresh_slice_dependency_constraints_reconciled": true,
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Continue the exact platform-wheel, license/notice and current advisory review for the remaining selected direct/transitive packages. Preserve these security-refreshed selections instead of reverting to stale TensorFlow-lock versions. If the complete package set clears, tie the TensorFlow Windows/Linux runtime wheels and bundled notices to reviewed source lineage before any installation; only then allow a bounded no-media GraphDef construction/conversion smoke below RUNNER_TEMP."
+  }
+}
