@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_transitive_security_refresh_2",
+    "review_base_main": "428dd90feb5a79e9f95f7a3ed2f5af2ed046560d",
+    "parent_security_review": "ops/reviews/face-facessd-tensorflow-cpu-transitive-security.json",
+    "decision": "second_security_refresh_selected_execution_still_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "Current PyPI/OSV advisory metadata invalidates two additional versions still carried by the proposed TensorFlow 2.21.0 Python 3.11 runtime set: protobuf 6.31.1 and setuptools 78.1.1. Replace them with the smallest fixed versions that remain inside TensorFlow's declared requirements: protobuf 6.33.5 and setuptools 83.0.0. Exact Windows/Linux protobuf wheel identities and the universal setuptools wheel identity are pinned. Execution remains fail-closed because the rest of the selected dependency set still needs complete exact-wheel, native/license/notice, current-advisory and artifact-to-source closure."
+  },
+  "observed_on": "2026-09-23",
+  "authoritative_metadata": {
+    "sources": [
+      "PyPI release JSON for protobuf 6.31.1 and 6.33.5",
+      "PyPI release JSON for setuptools 78.1.1 and 83.0.0",
+      "protocolbuffers/protobuf annotated tag v33.5",
+      "pypa/setuptools annotated tag v83.0.0",
+      "TensorFlow v2.21.0 exact dependency declaration already pinned by the parent runtime review"
+    ],
+    "advisory_field_semantics": "Point-in-time PyPI/OSV release advisory metadata only. An empty vulnerabilities array is not a claim that a release is vulnerability-free.",
+    "historical_tensorflow_lock_role": "Compatibility reference only; it must not force execution of a version that has acquired a published advisory."
+  },
+  "rejected_stale_selections": {
+    "protobuf==6.31.1": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-0994",
+        "GHSA-7gcm-g887-7qv7",
+        "PYSEC-2026-1805"
+      ],
+      "fixed_in_selected_line": "6.33.5",
+      "summary": "Python protobuf JSON ParseDict recursion-depth accounting can be bypassed through nested Any messages, allowing denial of service through recursion exhaustion.",
+      "decision": "reject_from_proposed_execution_set"
+    },
+    "setuptools==78.1.1": {
+      "selected_by_parent_graph": true,
+      "current_pypi_advisories_present": true,
+      "published_ids": [
+        "CVE-2026-59890",
+        "GHSA-h35f-9h28-mq5c",
+        "PYSEC-2026-3447"
+      ],
+      "fixed_in": "83.0.0",
+      "summary": "MANIFEST.in exclusion matching before 83.0.0 can be bypassed by Unicode normalization differences on normalization-preserving filesystems, potentially packaging an intended-to-be-excluded file into an sdist.",
+      "decision": "reject_from_proposed_execution_set"
+    }
+  },
+  "security_refreshed_selections": {
+    "protobuf": {
+      "version": "6.33.5",
+      "release_upload_date": "2026-01-29",
+      "python_requirement": ">=3.9",
+      "python_311_supported": true,
+      "license": "3-Clause BSD License",
+      "requires_dist": [],
+      "pypi_vulnerabilities_observed": 0,
+      "vulnerability_free_claim": false,
+      "source_repository": "protocolbuffers/protobuf",
+      "source_tag": "v33.5",
+      "source_tag_object_sha": "54603758f4dcce9338618bb58f8c14182ddc1d9a",
+      "source_commit": "b6f9284da830b69be787732ffdaa35049d20a088",
+      "source_tag_signature_verified": false,
+      "source_tag_signature_note": "GitHub reports the annotated v33.5 tag as unsigned; record this rather than treating the tag as a build attestation.",
+      "selected_windows_x86_64_wheel": {
+        "filename": "protobuf-6.33.5-cp310-abi3-win_amd64.whl",
+        "size_bytes": 437118,
+        "sha256": "3093804752167bcab3998bec9f1048baae6e29505adaf1afd14a37bddede533c",
+        "tag_compatibility": "CPython ABI3 at cp310 is compatible with the repository's CPython 3.11 Windows x86-64 runtime."
+      },
+      "selected_linux_x86_64_wheel": {
+        "filename": "protobuf-6.33.5-cp39-abi3-manylinux2014_x86_64.whl",
+        "size_bytes": 323465,
+        "sha256": "cbf16ba3350fb7b889fca858fb215967792dc125b35c7976ca4818bee3521cf0",
+        "tag_compatibility": "CPython ABI3 at cp39 and manylinux2014 x86-64 are compatible with the repository's CPython 3.11 Linux x86-64 runtime."
+      },
+      "pure_python_wheel_not_selected": {
+        "filename": "protobuf-6.33.5-py3-none-any.whl",
+        "size_bytes": 170687,
+        "sha256": "69915a973dd0f60f31a08b8318b73eab2bd6a392c79184b3612226b0a3f8ec02",
+        "reason": "The platform-specific ABI3 wheels are the narrower runtime artifacts for the selected Windows/Linux environments; do not silently substitute a different build during evidence execution."
+      }
+    },
+    "setuptools": {
+      "version": "83.0.0",
+      "release_upload_date": "2026-07-04",
+      "python_requirement": ">=3.10",
+      "python_311_supported": true,
+      "license_expression": "MIT",
+      "license_files": [
+        "LICENSE"
+      ],
+      "selected_runtime_extras": [],
+      "runtime_dependencies_without_extras": [],
+      "pypi_vulnerabilities_observed": 0,
+      "vulnerability_free_claim": false,
+      "source_repository": "pypa/setuptools",
+      "source_tag": "v83.0.0",
+      "source_tag_object_sha": "def9e4e76345d045cc5b585c8bedb1bdc8885a13",
+      "source_commit": "6519f728c6f23c992df81a5691ef7655184a20eb",
+      "source_tag_signature_verified": true,
+      "selected_windows_linux_wheel": {
+        "filename": "setuptools-83.0.0-py3-none-any.whl",
+        "size_bytes": 1008090,
+        "sha256": "29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3",
+        "platform": "py3-none-any",
+        "windows_linux_compatible": true
+      }
+    }
+  },
+  "constraint_reconciliation": {
+    "tensorflow_protobuf_requirement": "protobuf >= 6.31.1, < 8.0.0",
+    "protobuf_6_33_5_satisfies_tensorflow": true,
+    "tensorflow_setuptools_requirement": "setuptools",
+    "setuptools_83_0_0_satisfies_tensorflow": true,
+    "new_runtime_dependency_names_added": false,
+    "optional_extras_added": false
+  },
+  "provenance_and_redistribution_boundary": {
+    "exact_pypi_runtime_artifact_hashes_recorded_for_this_slice": true,
+    "source_release_tags_and_commits_recorded_for_this_slice": true,
+    "package_licenses_recorded_for_this_slice": true,
+    "package_default_runtime_dependencies_recorded_for_this_slice": true,
+    "pypi_artifact_to_source_build_attestation_completed": false,
+    "complete_native_component_notice_closure_completed": false,
+    "complete_runtime_commercial_redistribution_cleared": false,
+    "release_legal_review_still_required": true,
+    "reason_execution_stays_closed": "Source tags and release-wheel hashes are pinned, but this review does not assert that the PyPI wheels were reproducibly built from those commits. The remaining runtime dependency/native notice and source-artifact closure must complete before installation."
+  },
+  "security_boundary": {
+    "point_in_time_releases_with_zero_pypi_vulnerabilities_observed": [
+      "protobuf==6.33.5",
+      "setuptools==83.0.0"
+    ],
+    "claim_that_selected_releases_are_vulnerability_free": false,
+    "remaining_selected_set_security_review_completed": false,
+    "reason": "This slice repairs two additional demonstrated stale selections only. Other direct/transitive packages still require the same current advisory review before runtime execution can be admitted."
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_downloaded": false,
+    "runtime_or_dependency_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "newly_advisory_bearing_versions_removed_from_proposed_execution_set": true,
+    "replacement_versions_fit_tensorflow_constraints": true,
+    "exact_selected_platform_wheel_identities_recorded_for_this_slice": true,
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Continue the current-advisory plus exact Windows/Linux wheel and license/notice review for the remaining selected TensorFlow/Keras direct and reachable transitive packages, with special attention to native bundles such as libclang, grpcio, numpy, h5py and ml-dtypes. If every required package clears, close TensorFlow wheel-to-source/notice provenance before any installation. Only then allow the bounded no-media FaceSSD GraphDef construction/conversion smoke below RUNNER_TEMP."
+  }
+}
