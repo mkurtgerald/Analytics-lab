@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_litert_cpp_sdk_runtime_gate",
+    "review_base_main": "1f0c308a2f6b8c46064dc9c97ad08dff8f415361",
+    "decision": "closed_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "The smallest official LiteRT v2.2.0 C++ SDK release asset is not a standalone Windows/Linux CPU runtime. Google's exact v2.2.0 SDK README scopes this package to Android and requires a separately supplied prebuilt libLiteRt.so before the SDK can be built. It therefore does not replace the already-reviewed ai-edge-litert Windows/Linux runtime or remove the admitted FaceSSD GraphDef-to-FlatBuffer conversion boundary."
+  },
+  "already_admitted_donor": {
+    "repository": "tensorflow/models",
+    "commit": "8b12ae202a3ccf8f965c730a4e7617204e32000b",
+    "archive": "facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz",
+    "archive_size_bytes": 130655026,
+    "archive_sha256": "9ae49a245caddbe7d7bbc82a35da0191a2f2e210161df19be357a1c7f49118d5",
+    "member": "tflite_graph.pb",
+    "member_size_bytes": 22222216,
+    "member_sha256": "dc8e2c9e21407b2f6d35f1eb655ba8a0c9c73094e5987231a1a8de2edae74978",
+    "member_format": "TensorFlow frozen GraphDef",
+    "admission_unchanged": true
+  },
+  "official_litert_release": {
+    "repository": "google-ai-edge/LiteRT",
+    "tag": "v2.2.0",
+    "tag_commit": "145c7523ff08d5e57ab5c582141775eea47da9c7",
+    "published_at": "2026-08-13T17:30:00Z",
+    "source_license": "Apache-2.0",
+    "release_asset": {
+      "name": "litert_cc_sdk.zip",
+      "size_bytes": 283035,
+      "sha256": "0aa619d80aef27303ad9c6e3759a20110f77e7b11ade9b68061b8c6e5904b0c6"
+    },
+    "authoritative_sdk_contract": {
+      "path": "litert/cc_sdk/README.md",
+      "scope": "LiteRT C++ SDK for Android",
+      "requires_android_ndk": true,
+      "requires_separate_prebuilt_libLiteRt_so": true,
+      "runtime_binary_source_bound_by_sdk_asset": false,
+      "windows_desktop_runtime_supplied_by_this_path": false,
+      "linux_desktop_runtime_supplied_by_this_path": false
+    }
+  },
+  "existing_windows_linux_runtime_review": {
+    "package": "ai-edge-litert==2.2.0",
+    "source_commit": "145c7523ff08d5e57ab5c582141775eea47da9c7",
+    "source_license": "Apache-2.0",
+    "windows_x86_64_wheel_sha256": "c36ccb82a89f10f9e6c947f67f06dd00699caf5fe3bcb2be0eddcb213f70220d",
+    "linux_x86_64_wheel_sha256": "0171f556fffa335281acd7d468de999fd4de32f6bf1a5f14e680676591cef764",
+    "direct_runtime_compatible_with_admitted_member": false,
+    "blocking_interface": "LiteRT interpreter consumes a TFLite FlatBuffer; admitted member is a frozen TensorFlow GraphDef.",
+    "redistribution_notice_closure_complete": false,
+    "status": "unchanged_from_merged_runtime_review"
+  },
+  "authoritative_checks": [
+    {
+      "check": "exact_release_tag",
+      "result": "v2.2.0 resolves to commit 145c7523ff08d5e57ab5c582141775eea47da9c7."
+    },
+    {
+      "check": "exact_release_asset_identity",
+      "result": "GitHub release metadata publishes litert_cc_sdk.zip at 283035 bytes with SHA-256 0aa619d80aef27303ad9c6e3759a20110f77e7b11ade9b68061b8c6e5904b0c6."
+    },
+    {
+      "check": "exact_tagged_cpp_sdk_readme",
+      "result": "Google labels the SDK path Android-only, requires Android NDK, and instructs the user to place a separately obtained prebuilt libLiteRt.so under litert/cc_sdk before building."
+    },
+    {
+      "check": "cross_platform_runtime_requirement",
+      "result": "This asset cannot satisfy the project's preferred standalone CPU runtime requirement for both Windows and Linux."
+    },
+    {
+      "check": "facessd_model_format_boundary",
+      "result": "The C++ SDK shortcut does not convert or reinterpret the exact admitted tflite_graph.pb GraphDef into an interpreter-ready TFLite FlatBuffer."
+    }
+  ],
+  "execution_guardrails": {
+    "sdk_asset_downloaded": false,
+    "runtime_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "home_or_customer_media_used": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "licensing_requirements_weakened": false,
+    "paid_resources_used": false
+  },
+  "closure": {
+    "candidate_status": "rejected_as_cross_platform_runtime_shortcut",
+    "do_not_retry_unchanged": true,
+    "next_smallest_testable_direction": "Review whether current official Google LiteRT/TensorFlow tooling exposes a bounded, provenance-clean frozen-GraphDef-to-TFLite conversion path compatible with the repository's Python 3.11 hosted CPU envelope. Do not substitute an unreviewed converter. If no such current official path clears dependency, license, platform and reproducibility gates, stop this FaceSSD execution hypothesis rather than weakening provenance or package requirements."
+  }
+}
