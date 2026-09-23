@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_pip_stop_and_source_toco_replan",
+    "review_base_main": "e1bebfb740797bd6ad95d4a1712d13478e29fb69",
+    "observed_on": "2026-09-23",
+    "decision": "stop_tensorflow_2_21_pip_runtime_path_replan_to_exact_source_toco_review",
+    "runtime_execution_admitted": false,
+    "reason": "The tensorflow-cpu/TensorFlow 2.21.0 pip path still reaches libclang>=13.0.0. The selected libclang 18.1.1 package now has exact package/release/upstream-source/build-recipe lineage, but its selected Windows/Linux wheels were uploaded to PyPI with twine rather than Trusted Publishing, no GitHub Actions release runs survive for the exact packaging commit, and the Linux packaging recipe used an unpinned manylinux2010_x86_64:latest build image. Under the existing fail-closed bar, exact wheel-to-build attestation and the exact applicable native third-party notice set therefore remain unresolved. Do not bypass pip metadata, use --no-deps, or weaken provenance/redistribution requirements. Stop this pip runtime hypothesis and move to a distinct official-source conversion path."
+  },
+  "closed_pip_hypothesis": {
+    "tensorflow_source_commit": "a481b10260dfdf833a1b16007eead49c1d7febf3",
+    "tensorflow_version": "2.21.0",
+    "blocking_distribution": "libclang",
+    "blocking_distribution_version": "18.1.1",
+    "packaging_release_tag": "llvm-18.1.1",
+    "packaging_release_commit": "b7c2f3bcb9a525f10ab9577221106267a4f09a1c",
+    "upstream_llvm_tag": "llvmorg-18.1.1",
+    "upstream_llvm_tag_object": "5d9d7927f23ef0b39aefc2044a201c5b74f4cf26",
+    "upstream_llvm_commit": "dba2a75e9c7ef81fe84774ba5eee5e67e01d801a",
+    "upstream_llvm_tag_signature_verified": true,
+    "pypi_trusted_publishing": false,
+    "pypi_upload_client": "twine/5.0.0 CPython/3.12.2",
+    "linux_selected_wheel": {
+      "filename": "libclang-18.1.1-py2.py3-none-manylinux2010_x86_64.whl",
+      "sha256": "c533091d8a3bbf7460a00cb6c1a71da93bffe148f172c7d03b1c31fbf8aa2a0b"
+    },
+    "windows_selected_wheel": {
+      "filename": "libclang-18.1.1-py2.py3-none-win_amd64.whl",
+      "sha256": "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb"
+    },
+    "linux_build_workflow_blob": "dc63188ba7085e7e77c5045bc3878e756561495b",
+    "linux_build_script_blob": "0331ff2037de243bb8b9bd275e2adc648bf83c2b",
+    "windows_build_workflow_blob": "cd6be419ca1de2b719149ed2f55fc5f0374b9c46",
+    "historical_release_workflow_runs_available_for_exact_packaging_commit": false,
+    "linux_builder_image_reproducibly_pinned": false,
+    "exact_wheel_to_build_attestation_closed": false,
+    "exact_applicable_native_third_party_notice_set_closed": false,
+    "commercial_redistribution_cleared": false,
+    "execution_admitted": false
+  },
+  "next_distinct_candidate": {
+    "name": "TensorFlow 2.21.0 source-native TOCO command-line converter",
+    "repository": "tensorflow/tensorflow",
+    "source_commit": "a481b10260dfdf833a1b16007eead49c1d7febf3",
+    "build_file": "tensorflow/lite/toco/BUILD",
+    "build_file_blob": "8dbd7dfcd9bf5b3d7cb879551ca55e7eceec75b5",
+    "readme": "tensorflow/lite/toco/README.md",
+    "readme_blob": "962de012f44598b242e4decd53579fa72339fcc6",
+    "public_target": "//tensorflow/lite/toco:toco",
+    "target_type": "tf_cc_binary",
+    "capability_from_exact_source": "The exact TensorFlow 2.21.0 source defines a public native toco CLI backed by toco_tooling, TensorFlow graph import, and TFLite export. The exact-source README states that the TensorFlow Lite Converter accepts frozen TensorFlow graphs and generates TensorFlow Lite FlatBuffer files.",
+    "why_it_is_distinct": "This route does not depend on installing the tensorflow-cpu Python wheel or satisfying its libclang Python-distribution dependency. It is an official TensorFlow source target rather than a repackaged third-party wheel.",
+    "execution_admitted": false,
+    "review_required_before_execution": [
+      "prove the exact target can be built inside the repository's bounded cost/time policy or reject it as operationally too heavy",
+      "pin Bazel/toolchain identities and all build inputs needed for Linux and Windows",
+      "close TensorFlow and transitive native license/notice obligations for the produced converter binary",
+      "verify the exact admitted FaceSSD GraphDef input/output flags without materializing model or media",
+      "separately dependency-review the eventual Windows/Linux CPU TFLite/LiteRT inference runtime",
+      "only then consider a no-media construction/conversion smoke under RUNNER_TEMP"
+    ]
+  },
+  "policy_decisions": {
+    "do_not_retry_tensorflow_cpu_2_21_pip_path_unchanged": true,
+    "do_not_use_no_deps_or_metadata_bypass": true,
+    "do_not_substitute_libclang_ng_for_required_libclang_distribution": true,
+    "do_not_execute_or_build_toco_yet": true,
+    "do_not_materialize_facessd_yet": true,
+    "preserve_lpr_ocr_pr_84_closed_unmerged": true
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_installed": false,
+    "tensorflow_or_toco_built": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "tensorflow_cpu_pip_hypothesis_stopped": true,
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Dependency/build-feasibility review the exact TensorFlow 2.21.0 //tensorflow/lite/toco:toco native target without executing it. Reject it immediately if its pinned build/toolchain or license-notice closure cannot fit the bounded policy; otherwise use it only as the converter-side candidate while continuing to seek the smallest separately redistributable Windows/Linux CPU TFLite/LiteRT inference runtime."
+  }
+}
