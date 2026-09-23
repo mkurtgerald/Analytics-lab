@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_ai_edge_litert_runtime_gate",
+    "review_base_main": "d7edb8e1a2c9644adfda0951b5630aa889e8a587",
+    "decision": "closed_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "The current stable official Google ai-edge-litert 2.2.0 wheel family is the smallest cross-platform LiteRT Python runtime candidate found for the repository's Windows/Linux CPU target, but its exact v2.2.0 package metadata requires backports.strenum unconditionally while the latest backports.strenum 1.3.1 distribution declares Python >=3.8.6,<3.11 and explicitly does not install on Python >=3.11. Analytics-lab's Linux and Windows quality jobs are both pinned to Python 3.11. Normal dependency resolution therefore cannot satisfy the reviewed runtime package in the existing bounded evidence lane. Installing with --no-deps, changing the whole repository Python baseline, or suppressing the declared dependency would weaken the dependency gate, so this exact path is stopped before installation or execution."
+  },
+  "already_admitted_donor": {
+    "repository": "tensorflow/models",
+    "commit": "8b12ae202a3ccf8f965c730a4e7617204e32000b",
+    "archive": "facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz",
+    "archive_size_bytes": 130655026,
+    "archive_sha256": "9ae49a245caddbe7d7bbc82a35da0191a2f2e210161df19be357a1c7f49118d5",
+    "member": "tflite_graph.pb",
+    "member_size_bytes": 22222216,
+    "member_sha256": "dc8e2c9e21407b2f6d35f1eb655ba8a0c9c73094e5987231a1a8de2edae74978",
+    "member_format": "TensorFlow frozen GraphDef",
+    "admission_unchanged": true
+  },
+  "official_runtime_candidate": {
+    "distribution": "ai-edge-litert",
+    "version": "2.2.0",
+    "release_date": "2026-08-12",
+    "pypi_owner_organization": "Google ML",
+    "pypi_maintainer": "google-ai-edge",
+    "author": "Google AI Edge Authors",
+    "license": "Apache-2.0",
+    "source_repository": "google-ai-edge/LiteRT",
+    "source_release": "v2.2.0",
+    "source_commit": "145c7523ff08d5e57ab5c582141775eea47da9c7",
+    "source_version_binding": "litert/version.bzl at v2.2.0 declares LITERT_EXPERIMENTAL_VERSION = 2.2.0",
+    "python_311_windows_x86_64": {
+      "filename": "ai_edge_litert-2.2.0-cp311-cp311-win_amd64.whl",
+      "published_size_display": "17.9 MB",
+      "sha256": "c36ccb82a89f10f9e6c947f67f06dd00699caf5fe3bcb2be0eddcb213f70220d"
+    },
+    "python_311_linux_x86_64": {
+      "filename": "ai_edge_litert-2.2.0-cp311-cp311-manylinux_2_27_x86_64.whl",
+      "published_size_display": "21.3 MB",
+      "sha256": "0171f556fffa335281acd7d468de999fd4de32f6bf1a5f14e680676591cef764"
+    },
+    "official_platform_statement": {
+      "windows_cpu": true,
+      "linux_cpu": true,
+      "source": "README.md at source_commit"
+    },
+    "direct_requirements_from_exact_setup_source": [
+      "backports.strenum",
+      "flatbuffers",
+      "numpy >= 1.23.2",
+      "tqdm",
+      "typing-extensions",
+      "protobuf",
+      "ml_dtypes"
+    ],
+    "optional_extras_not_selected": [
+      "npu-intel",
+      "npu-sdk",
+      "model-utils"
+    ]
+  },
+  "hard_dependency_blocker": {
+    "distribution": "backports.strenum",
+    "latest_stable_version": "1.3.1",
+    "release_date": "2023-12-09",
+    "license": "MIT",
+    "requires_python": ">=3.8.6,<3.11",
+    "python_311_supported": false,
+    "wheel": "backports_strenum-1.3.1-py3-none-any.whl",
+    "wheel_sha256": "cdcfe36dc897e2615dc793b7d3097f54d359918fc448754a517e6f23044ccf83",
+    "normal_resolver_can_satisfy_on_repo_python_311": false
+  },
+  "native_and_redistribution_review": {
+    "runtime_shared_library_bundled_by_source_build": {
+      "windows": "//litert/c:litert_runtime_c_api_dll",
+      "linux": "//litert/c:libLiteRt.so"
+    },
+    "source_build_also_packages_platform_vendor_plugin_binaries": true,
+    "linux_x86_64_package_data_includes": [
+      "Google Tensor compiler plugin",
+      "Intel OpenVINO compiler plugin",
+      "Intel OpenVINO dispatch library",
+      "MediaTek compiler plugin",
+      "Qualcomm compiler plugin",
+      "Samsung compiler plugin"
+    ],
+    "windows_package_data_includes": [
+      "Intel OpenVINO compiler plugin",
+      "Intel OpenVINO dispatch library"
+    ],
+    "full_native_notice_closure_completed": false,
+    "full_transitive_selection_completed": false,
+    "reason_for_early_stop": "The mandatory Python dependency graph is already unsatisfiable on the repository's required Python 3.11 Linux/Windows lane, so resolving every remaining transitive package or bundled native notice cannot make this exact package installable without changing or bypassing the declared dependency contract."
+  },
+  "repository_execution_context": {
+    "linux_python": "3.11",
+    "windows_python": "3.11",
+    "required_platforms": [
+      "Linux x86-64",
+      "Windows x86-64"
+    ],
+    "python_baseline_changed": false,
+    "dependency_bypass_used": false
+  },
+  "execution_guardrails": {
+    "runtime_wheel_downloaded": false,
+    "runtime_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "home_or_customer_media_used": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "licensing_requirements_weakened": false,
+    "paid_resources_used": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "candidate_status": "rejected_as_repo_python311_runtime_path",
+    "do_not_retry_unchanged": true,
+    "next_smallest_testable_direction": "Continue the already-selected distinct TensorFlow CPU 2.21.0 fallback review against exact source tag v2.21.0 / commit a481b10260dfdf833a1b16007eead49c1d7febf3. It publishes CPython 3.11 Windows and Linux CPU wheels and the exact source retains tf.compat.v1.lite.TFLiteConverter.from_frozen_graph, so it can consume the admitted frozen GraphDef without repeating the closed OpenCV or legacy TensorFlow 1.15/Bazel paths. Before any install or execution, pin its exact selected wheels, dependency resolution, native components, licenses and redistribution notices. Do not use the TensorFlow 2.22.0rc0 prerelease released 2026-09-22 as a substitute for the current stable 2.21.0 path."
+  }
+}
