@@ -37,18 +37,18 @@ class FaceRealCC0AdmissionTests(unittest.TestCase):
     def test_source_metadata_is_fail_closed_and_cc0(self):
         self.assertEqual(admission._EXPECTED_SIZE, 9_023_019)
         self.assertEqual(admission._EXPECTED_SHA1, "d7ac58077d135b823e71e7b38e763f082e2053bc")
+        self.assertEqual(admission._SOURCE_SHA256, "7356daa8fd4ad53b946ce0036f06b014431dc89b7ae29ecd8ef18fc54edce6b5")
         self.assertEqual(admission._SOURCE_LICENSE, "CC0-1.0")
-        self.assertIsNone(admission._SOURCE_SHA256)
         self.assertLess(admission._EXPECTED_SIZE, admission._MAX_BYTES)
 
-    def test_discovery_stream_emits_identity_without_decode_or_inference(self):
+    def test_matching_pinned_sha256_is_admitted_without_decode_or_inference(self):
         payload = b"rights-cleared-face-source"
         with mock.patch.object(admission, "_EXPECTED_SIZE", len(payload)), \
              mock.patch.object(admission, "_EXPECTED_SHA1", hashlib.sha1(payload).hexdigest()), \
-             mock.patch.object(admission, "_SOURCE_SHA256", None):
+             mock.patch.object(admission, "_SOURCE_SHA256", hashlib.sha256(payload).hexdigest()):
             result = admission.run(_opener(payload))
         self.assertEqual(result["source_sha256"], hashlib.sha256(payload).hexdigest())
-        self.assertFalse(result["sha256_pinned"])
+        self.assertTrue(result["sha256_pinned"])
         self.assertFalse(result["media_decoded"])
         self.assertFalse(result["model_used"])
         self.assertFalse(result["inference_run"])

@@ -1,9 +1,9 @@
 """Bounded rights/source admission probe for one real-person CC0 face image.
 
-This probe streams one exact Wikimedia Commons source into memory, verifies the
-published byte length and SHA-1, and discovers (or later re-verifies) SHA-256.
-It does not decode the image, construct or execute a model, retain media, or
-make a face-detection accuracy claim.
+This probe streams one exact Wikimedia Commons source into memory and verifies
+its pinned byte length, SHA-1 and SHA-256. It does not decode the image,
+construct or execute a model, retain media, or make a face-detection accuracy
+claim.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ _SOURCE_AUTHOR = "William Stitt"
 _SOURCE_DATE = "2016-10-19"
 _EXPECTED_SIZE = 9_023_019
 _EXPECTED_SHA1 = "d7ac58077d135b823e71e7b38e763f082e2053bc"
-_SOURCE_SHA256: str | None = None
+_SOURCE_SHA256 = "7356daa8fd4ad53b946ce0036f06b014431dc89b7ae29ecd8ef18fc54edce6b5"
 _MAX_BYTES = 10_000_000
 _CHUNK = 64 * 1024
 _USER_AGENT = "Analytics-lab bounded evidence/1.0"
@@ -50,8 +50,7 @@ def run(opener: Callable = urlopen) -> dict[str, object]:
         raise RuntimeError("face source byte length changed")
     if sha1 != _EXPECTED_SHA1:
         raise RuntimeError("face source SHA-1 changed")
-    admitted = _SOURCE_SHA256 is not None
-    if admitted and sha256 != _SOURCE_SHA256:
+    if sha256 != _SOURCE_SHA256:
         raise RuntimeError("face source SHA-256 changed")
     return {
         "evidence": "face-real-cc0-source-admission-v1",
@@ -63,7 +62,7 @@ def run(opener: Callable = urlopen) -> dict[str, object]:
         "source_size": size,
         "source_sha1": sha1,
         "source_sha256": sha256,
-        "sha256_pinned": admitted,
+        "sha256_pinned": True,
         "media_decoded": False,
         "model_used": False,
         "inference_run": False,
