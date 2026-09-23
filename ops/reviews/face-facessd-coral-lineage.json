@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_coral_preconverted_lineage",
+    "review_base_main": "45c0c4ee1e108c5478d87de1142a0fadfed39ed0",
+    "decision": "closed_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "The historical Google Coral preconverted TFLite candidate cannot be proven to derive from the already-admitted TensorFlow FaceSSD donor. The previously documented Coral commit pin is also not resolvable through the authoritative GitHub commit API. Filename/architecture/Open Images proximity is not sufficient lineage evidence."
+  },
+  "already_admitted_donor": {
+    "repository": "tensorflow/models",
+    "commit": "8b12ae202a3ccf8f965c730a4e7617204e32000b",
+    "archive": "facessd_mobilenet_v2_quantized_320x320_open_image_v4.tar.gz",
+    "archive_size_bytes": 130655026,
+    "archive_sha256": "9ae49a245caddbe7d7bbc82a35da0191a2f2e210161df19be357a1c7f49118d5",
+    "member": "tflite_graph.pb",
+    "member_size_bytes": 22222216,
+    "member_sha256": "dc8e2c9e21407b2f6d35f1eb655ba8a0c9c73094e5987231a1a8de2edae74978",
+    "admission_unchanged": true
+  },
+  "historical_coral_candidate": {
+    "repository": "google-coral/edgetpu",
+    "path": "test_data/mobilenet_ssd_v2_face_quant_postprocess.tflite",
+    "size_bytes": 5504160,
+    "previously_documented_pin": {
+      "commit": "99c63d73b84fb54bab7b1ddfde7a8f1a3200c5f0",
+      "blob_sha1": "de3075475a0022f1b6fda055731620535c7ff6a3",
+      "status": "unresolvable",
+      "evidence": "GitHub REST commit lookup for this repository and SHA returned HTTP 422 / No commit found for SHA during this review. This pin must not be treated as an immutable execution identity."
+    },
+    "verified_historical_identity": {
+      "commit": "75e675633c2110a991426c8afa64f122b16ac372",
+      "commit_date": "2019-09-20",
+      "tree": "91f5b2523088e55e612333efebe62ea4a6aea1b2",
+      "blob_sha1": "18f1332823ac3a3514bbb1a004b9437aa662cf7a",
+      "size_bytes": 5504160,
+      "commit_has_parent": false,
+      "status": "verified_historical_snapshot_only"
+    },
+    "removal_history": {
+      "removal_commit": "3b625cddfe8886f15978221a02cda2e52044b24c",
+      "removal_commit_date": "2020-03-17",
+      "parent_commit": "285cacf0a879e3e343abd38c33eb622ae253529c",
+      "observation": "Exact-path history shows the file in the parentless initial snapshot and later removal; no checked-in conversion/derivation commit was found."
+    }
+  },
+  "authoritative_checks": [
+    {
+      "check": "exact_path_history",
+      "result": "No derivation/conversion commit found; file enters history in a parentless initial snapshot and is later removed."
+    },
+    {
+      "check": "coral_repo_exact_admitted_archive_name",
+      "query": "facessd_mobilenet_v2_quantized_320x320_open_image_v4",
+      "result": "no authoritative repository match found"
+    },
+    {
+      "check": "tensorflow_models_exact_coral_filename",
+      "query": "mobilenet_ssd_v2_face_quant_postprocess",
+      "result": "no authoritative repository match found"
+    },
+    {
+      "check": "coral_test_data_copyright",
+      "result": "Test-data attribution is present but does not establish model derivation from the admitted TensorFlow donor."
+    },
+    {
+      "check": "coral_open_images_subset_copyright",
+      "result": "Open Images test-subset attribution is present but does not establish candidate model lineage."
+    },
+    {
+      "check": "coral_detection_model_tests",
+      "result": "Tests exercise model files but do not document conversion provenance tying this candidate to the admitted donor."
+    },
+    {
+      "check": "authoritative_web_lineage_search",
+      "result": "No authoritative Google Coral, TensorFlow, or GitHub source found that ties this exact preconverted model identity to the already-admitted FaceSSD archive/member identity."
+    }
+  ],
+  "execution_guardrails": {
+    "model_downloaded": false,
+    "model_materialized": false,
+    "runtime_installed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "home_or_customer_media_used": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "licensing_requirements_weakened": false
+  },
+  "closure": {
+    "candidate_status": "rejected_for_execution_without_exact_lineage",
+    "do_not_retry_unchanged": true,
+    "next_smallest_testable_direction": "Replan away from this unproven preconverted Coral binary. Any next conversion/runtime hypothesis must preserve the exact admitted donor identity and prove toolchain/runtime provenance before execution."
+  }
+}
