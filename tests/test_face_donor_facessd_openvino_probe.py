@@ -32,6 +32,14 @@ class FaceSSDOpenVINOProbeTests(unittest.TestCase):
             probe._MODEL_MEMBER,
             "facessd_mobilenet_v2_quantized_320x320_open_image_v4/tflite_graph.pb",
         )
+        self.assertEqual(
+            probe._CUT_OUTPUTS,
+            (
+                "raw_outputs/box_encodings",
+                "raw_outputs/class_predictions",
+                "anchors",
+            ),
+        )
 
     def test_work_dir_must_be_below_runner_temp(self):
         with tempfile.TemporaryDirectory() as root:

@@ -23,6 +23,11 @@ _MODEL_MEMBER = (
     "facessd_mobilenet_v2_quantized_320x320_open_image_v4/tflite_graph.pb"
 )
 _EXPECTED_OPENVINO_VERSION = "2026.3.1"
+_CUT_OUTPUTS = (
+    "raw_outputs/box_encodings",
+    "raw_outputs/class_predictions",
+    "anchors",
+)
 
 
 def _bounded_work_dir(path: str | Path) -> Path:
@@ -67,58 +72,72 @@ def run(work_dir: str | Path) -> dict[str, object]:
             model_path = tmp / "tflite_graph.pb"
             model_path.write_bytes(graph)
 
+            full_graph_result = "loaded"
+            full_graph_convert_succeeded = True
             try:
                 converted = ov.convert_model(str(model_path))
             except Exception as exc:
-                return {
-                    "evidence": "face-donor-facessd-openvino-convert-v1",
-                    "archive_sha256": admission._EXPECTED_ARCHIVE_SHA256,
-                    "model_sha256": donor_probe._expected_member(_MODEL_MEMBER)[1],
-                    "openvino_version": version,
-                    "convert_succeeded": False,
-                    "compile_succeeded": False,
-                    "conversion_result": type(exc).__name__,
-                    "inputs": [],
-                    "outputs": [],
-                    "inference_run": False,
-                    "media_used": False,
-                    "derived_artifact_retained": False,
-                    "claim": "runtime conversion/compile classification only; not face-detection accuracy",
-                }
+                full_graph_convert_succeeded = False
+                full_graph_result = type(exc).__name__
+                converted = None
 
-            inputs = [
-                {
-                    "name": item.get_any_name() if item.get_names() else "",
-                    "shape": _shape_text(item),
-                    "element_type": str(item.get_element_type()),
-                }
-                for item in converted.inputs
-            ]
-            outputs = [
-                {
-                    "name": item.get_any_name() if item.get_names() else "",
-                    "shape": _shape_text(item),
-                    "element_type": str(item.get_element_type()),
-                }
-                for item in converted.outputs
-            ]
+            cut_graph_result = "not_attempted"
+            cut_graph_convert_succeeded = False
+            used_cut_outputs = False
+            if converted is None:
+                used_cut_outputs = True
+                try:
+                    converted = ov.convert_model(
+                        str(model_path),
+                        output=list(_CUT_OUTPUTS),
+                    )
+                    cut_graph_convert_succeeded = True
+                    cut_graph_result = "loaded"
+                except Exception as exc:
+                    cut_graph_result = type(exc).__name__
+                    converted = None
 
+            inputs = []
+            outputs = []
             compile_succeeded = False
             compile_result = "not_attempted"
-            try:
-                core = ov.Core()
-                compiled = core.compile_model(converted, "CPU")
-                compile_succeeded = compiled is not None
-                compile_result = "compiled" if compile_succeeded else "empty_compiled_model"
-            except Exception as exc:
-                compile_result = type(exc).__name__
+
+            if converted is not None:
+                inputs = [
+                    {
+                        "name": item.get_any_name() if item.get_names() else "",
+                        "shape": _shape_text(item),
+                        "element_type": str(item.get_element_type()),
+                    }
+                    for item in converted.inputs
+                ]
+                outputs = [
+                    {
+                        "name": item.get_any_name() if item.get_names() else "",
+                        "shape": _shape_text(item),
+                        "element_type": str(item.get_element_type()),
+                    }
+                    for item in converted.outputs
+                ]
+                try:
+                    core = ov.Core()
+                    compiled = core.compile_model(converted, "CPU")
+                    compile_succeeded = compiled is not None
+                    compile_result = "compiled" if compile_succeeded else "empty_compiled_model"
+                except Exception as exc:
+                    compile_result = type(exc).__name__
 
             return {
-                "evidence": "face-donor-facessd-openvino-convert-v1",
+                "evidence": "face-donor-facessd-openvino-convert-v2",
                 "archive_sha256": admission._EXPECTED_ARCHIVE_SHA256,
                 "model_sha256": donor_probe._expected_member(_MODEL_MEMBER)[1],
                 "openvino_version": version,
-                "convert_succeeded": True,
+                "full_graph_convert_succeeded": full_graph_convert_succeeded,
+                "full_graph_result": full_graph_result,
+                "used_cut_outputs": used_cut_outputs,
+                "cut_outputs": list(_CUT_OUTPUTS),
+                "cut_graph_convert_succeeded": cut_graph_convert_succeeded,
+                "cut_graph_result": cut_graph_result,
                 "compile_succeeded": compile_succeeded,
                 "compile_result": compile_result,
                 "inputs": inputs,
