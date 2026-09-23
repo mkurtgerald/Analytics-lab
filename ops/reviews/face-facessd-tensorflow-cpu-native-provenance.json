@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_native_dependency_provenance",
+    "review_base_main": "464ea4105d4d4dd603eb56fde7bfcbfbd8800d97",
+    "observed_on": "2026-09-23",
+    "decision": "native_provenance_slice_advanced_execution_still_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "Pin the exact Windows/Linux runtime artifacts and narrow the source/publishing/native-notice boundary for the five remaining native-bearing TensorFlow/Keras direct dependencies. NumPy is refreshed from the historical lock's 2.1.3 to 2.4.6 because 2.4.6 remains compatible with Python 3.11 and TensorFlow's numpy >=1.26.0 constraint while adding current PyPI Trusted Publishing provenance and a verified upstream signed release tag. ml-dtypes 0.5.1 also has Trusted Publishing provenance, but its wheel disclosures require preserving Eigen's MPL-2.0 notice. grpcio 1.71.0, h5py 3.13.0 and libclang 18.1.1 have exact platform wheel identities but do not provide PyPI Trusted Publishing provenance for the selected files; h5py bundles HDF5 and libclang bundles a native libclang library. Execution therefore remains fail-closed until exact artifact-to-source/native notice closure is complete."
+  },
+  "runtime_candidate_unchanged": {
+    "tensorflow_version": "2.21.0",
+    "tensorflow_source_commit": "a481b10260dfdf833a1b16007eead49c1d7febf3",
+    "python": "3.11",
+    "windows_distribution": "tensorflow",
+    "windows_wheel": "tensorflow-2.21.0-cp311-cp311-win_amd64.whl",
+    "windows_sha256": "0064a19bdc054a4b7c5e7e21cdf50ce38a114c2bada578b4f5267a37410f6784",
+    "linux_distribution": "tensorflow-cpu",
+    "linux_wheel": "tensorflow_cpu-2.21.0-cp311-cp311-manylinux_2_27_x86_64.whl",
+    "linux_sha256": "2b847d217b02ee7731ed91431daf3250daa0196c3c94614d23be27232e6e5b6c",
+    "runtime_installed_or_executed": false
+  },
+  "native_dependency_slice": {
+    "numpy": {
+      "prior_lock_version": "2.1.3",
+      "selected_review_version": "2.4.6",
+      "selection_status": "provenance_refresh_selected_but_not_executed",
+      "python_requirement": ">=3.11",
+      "tensorflow_constraint": "numpy >= 1.26.0",
+      "constraint_satisfied": true,
+      "license_expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "windows_x86_64_wheel": {
+        "filename": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+        "size_bytes": 12600000,
+        "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+      },
+      "linux_x86_64_wheel": {
+        "filename": "numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+        "size_bytes": 16900000,
+        "sha256": "89cd468399cfd2504718f0ba50e410dca55a170b61a02ad92bb18c8a65186e93"
+      },
+      "pypi_trusted_publishing": true,
+      "publishing_repository": "numpy/numpy-release",
+      "publishing_commit": "8ad4d02966922b711ac946d044f87ae6ebb071ff",
+      "publishing_workflow": ".github/workflows/wheels.yml",
+      "publishing_run": "26062028805/attempts/1",
+      "source_repository": "numpy/numpy",
+      "source_tag": "v2.4.6",
+      "source_tag_object_sha": "65daff092ee0f3d92f166630d32d6b9c81d99343",
+      "source_commit": "b832a09cf2a169c833dd2371e7c07aa00b293242",
+      "source_tag_signature_verified": true,
+      "artifact_to_exact_source_build_reproduction_closed": false,
+      "native_notice_closure_completed": false,
+      "execution_tested": false
+    },
+    "ml-dtypes": {
+      "version": "0.5.1",
+      "python_requirement": ">=3.9",
+      "source_license": "Apache-2.0",
+      "wheel_native_dependency_notice": "PyPI states precompiled wheels are built with Eigen, licensed MPL-2.0.",
+      "windows_x86_64_wheel": {
+        "filename": "ml_dtypes-0.5.1-cp311-cp311-win_amd64.whl",
+        "size_bytes": 209700,
+        "sha256": "15ad0f3b0323ce96c24637a88a6f44f6713c64032f27277b069f285c3cf66478"
+      },
+      "linux_x86_64_wheel": {
+        "filename": "ml_dtypes-0.5.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "size_bytes": 4700000,
+        "sha256": "c09526488c3a9e8b7a23a388d4974b670a9a3dd40c5c8a61db5593ce9b725bab"
+      },
+      "pypi_trusted_publishing": true,
+      "publishing_repository": "jax-ml/ml_dtypes",
+      "publishing_commit": "f656f18ff3539e289ba9031e5073b094bcf6b340",
+      "publishing_workflow": ".github/workflows/wheels.yml",
+      "publishing_run": "12644023054/attempts/1",
+      "artifact_to_exact_source_build_reproduction_closed": false,
+      "native_notice_closure_completed": false,
+      "execution_tested": false
+    },
+    "grpcio": {
+      "version": "1.71.0",
+      "python_requirement": ">=3.9",
+      "license": "Apache-2.0",
+      "windows_x86_64_wheel": {
+        "filename": "grpcio-1.71.0-cp311-cp311-win_amd64.whl",
+        "size_bytes": 4300000,
+        "sha256": "24e867651fc67717b6f896d5f0cac0ec863a8b5fb7d6441c2ab428f52c651c6b"
+      },
+      "linux_x86_64_wheel": {
+        "filename": "grpcio-1.71.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "size_bytes": 5900000,
+        "sha256": "4dd0dfbe4d5eb1fcfec9490ca13f82b089a309dc3678e2edabc144051270a66e"
+      },
+      "pypi_trusted_publishing": false,
+      "artifact_to_exact_source_build_reproduction_closed": false,
+      "native_notice_closure_completed": false,
+      "execution_tested": false
+    },
+    "h5py": {
+      "version": "3.13.0",
+      "python_requirement": ">=3.9",
+      "license": "BSD-3-Clause",
+      "wheel_native_dependency_notice": "PyPI states the project wheels include a copy of the HDF5 library.",
+      "windows_x86_64_wheel": {
+        "filename": "h5py-3.13.0-cp311-cp311-win_amd64.whl",
+        "size_bytes": 3000000,
+        "sha256": "22ffe2a25770a2d67213a1b94f58006c14dce06933a42d2aaa0318c5868d1508"
+      },
+      "linux_x86_64_wheel": {
+        "filename": "h5py-3.13.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "size_bytes": 4500000,
+        "sha256": "782ff0ac39f455f21fd1c8ebc007328f65f43d56718a89327eec76677ebf238a"
+      },
+      "pypi_trusted_publishing": false,
+      "artifact_to_exact_source_build_reproduction_closed": false,
+      "bundled_hdf5_notice_and_source_closure_completed": false,
+      "execution_tested": false
+    },
+    "libclang": {
+      "version": "18.1.1",
+      "python_requirement": "not constrained by the selected wheel metadata",
+      "license": "Apache-2.0 WITH LLVM-exception",
+      "packaging_repository": "sighingnow/libclang",
+      "packaging_repository_status": "upstream README describes the PyPI release project as unofficial",
+      "wheel_native_dependency_notice": "Package bundles a statically linked libclang shared library together with LLVM Python bindings.",
+      "windows_x86_64_wheel": {
+        "filename": "libclang-18.1.1-py2.py3-none-win_amd64.whl",
+        "size_bytes": 26400000,
+        "sha256": "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb"
+      },
+      "linux_x86_64_wheel": {
+        "filename": "libclang-18.1.1-py2.py3-none-manylinux2010_x86_64.whl",
+        "size_bytes": 24500000,
+        "sha256": "c533091d8a3bbf7460a00cb6c1a71da93bffe148f172c7d03b1c31fbf8aa2a0b"
+      },
+      "pypi_trusted_publishing": false,
+      "obvious_packaging_release_refs_checked": [
+        "18.1.1",
+        "v18.1.1"
+      ],
+      "obvious_packaging_release_refs_resolved": false,
+      "artifact_to_exact_source_build_reproduction_closed": false,
+      "native_notice_and_source_closure_completed": false,
+      "execution_blocker": true,
+      "execution_tested": false
+    }
+  },
+  "gate_status": {
+    "exact_windows_linux_wheel_identity_closed_for_this_slice": true,
+    "numpy_pypi_publishing_provenance_recorded": true,
+    "numpy_signed_source_release_recorded": true,
+    "ml_dtypes_pypi_publishing_provenance_recorded": true,
+    "artifact_to_exact_source_build_reproduction_closed_for_all_selected_wheels": false,
+    "external_native_notice_closure_completed": false,
+    "commercial_redistribution_cleared": false,
+    "runtime_execution_admitted": false,
+    "release_legal_review_still_required": true
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_downloaded": false,
+    "runtime_or_dependency_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  },
+  "closure": {
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Close libclang 18.1.1 wheel-to-source/native notice provenance first because it is the narrowest unresolved direct dependency boundary. If exact source/build/native redistribution provenance cannot be established without assumption, stop this TensorFlow package path and replan rather than installing it. If libclang clears, close the equivalent grpcio and h5py native provenance/notices, then the remaining package notices. Only after every required dependency clears may the bounded no-media FaceSSD GraphDef construction/conversion smoke execute below RUNNER_TEMP."
+  }
+}
