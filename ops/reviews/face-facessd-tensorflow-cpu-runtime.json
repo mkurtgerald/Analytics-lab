@@ -2,11 +2,11 @@
   "schema_version": 1,
   "review": {
     "component": "face_detection",
-    "work_item": "facessd_tensorflow_cpu_2_21_dependency_gate",
-    "review_base_main": "c8b347ae538991a0c0ce38eabc2dc17b566531d3",
-    "decision": "dependency_review_incomplete_fail_closed",
+    "work_item": "facessd_tensorflow_2_21_dependency_gate",
+    "review_base_main": "7b689882230962d95c04fdff5b02897c7684546e",
+    "decision": "dependency_review_narrowed_fail_closed",
     "admitted_for_execution": false,
-    "reason": "TensorFlow CPU 2.21.0 is now immutably identified as a viable frozen-GraphDef conversion/runtime candidate and its upstream Python 3.11 lock plus bundled third-party-notice lineage are pinned. Execution remains fail-closed because the exact external Python wheel closure, per-wheel license/notice set, and the current Windows wheel provenance/redistribution lineage have not yet been reconciled into one reproducible package set. The official current TensorFlow installation documentation still describes Windows x86/x64 CPU builds as Intel build-collaborator releases and says tensorflow/tensorflow-cpu installs tensorflow-intel, while the 2.21.0 PyPI release publishes a direct CPython 3.11 tensorflow_cpu Windows wheel and no tensorflow-intel 2.21.0 release endpoint is present. Do not install or execute until that exact package boundary is resolved; do not bypass dependencies or substitute the 2.22.0rc0 prerelease."
+    "reason": "The Windows package-name ambiguity is narrowed without execution: current official TensorFlow installation documentation at a pinned 2026-09-23 docs revision explicitly lists tensorflow-2.21.0-cp311-cp311-win_amd64.whl for Windows CPU-only Python 3.11, while the same official package table lists tensorflow_cpu-2.21.0-cp311-cp311-manylinux_2_27_x86_64.whl for Linux CPU-only Python 3.11. The selected path is therefore the exact official tensorflow Windows wheel plus the smaller exact official tensorflow-cpu Linux wheel, both from stable 2.21.0 and the same TensorFlow source release. The previously reviewed direct tensorflow-cpu Windows wheel is not selected. Execution remains fail-closed because the complete external Python transitive wheel/license/notice closure and artifact-to-source build attestation are not yet complete. No package is installed or executed on this head."
   },
   "already_admitted_donor": {
     "repository": "tensorflow/models",
@@ -21,7 +21,6 @@
     "admission_unchanged": true
   },
   "official_runtime_candidate": {
-    "distribution": "tensorflow-cpu",
     "version": "2.21.0",
     "release_date": "2026-03-06",
     "source_repository": "tensorflow/tensorflow",
@@ -30,15 +29,35 @@
     "source_license": "Apache-2.0",
     "python_requirement": ">=3.10",
     "selected_python": "3.11",
-    "python_311_windows_x86_64": {
-      "filename": "tensorflow_cpu-2.21.0-cp311-cp311-win_amd64.whl",
-      "size_bytes": 350834051,
-      "sha256": "6fc992a9c8700e18c178b0525f4e7697e58fce88df0dcb95db4dd3c7ad5f4651"
+    "selected_windows_x86_64": {
+      "distribution": "tensorflow",
+      "filename": "tensorflow-2.21.0-cp311-cp311-win_amd64.whl",
+      "published_size_display": "350.8 MB",
+      "sha256": "0064a19bdc054a4b7c5e7e21cdf50ce38a114c2bada578b4f5267a37410f6784",
+      "authoritative_listing": "tensorflow/docs site/en/install/pip.md at a7aba9d3659fa2b521165d263a6012b110b0ab5f lists this exact 2.21.0 Windows CPU-only Python 3.11 filename",
+      "selected": true
     },
-    "python_311_linux_x86_64": {
+    "selected_linux_x86_64": {
+      "distribution": "tensorflow-cpu",
       "filename": "tensorflow_cpu-2.21.0-cp311-cp311-manylinux_2_27_x86_64.whl",
       "size_bytes": 273829956,
-      "sha256": "2b847d217b02ee7731ed91431daf3250daa0196c3c94614d23be27232e6e5b6c"
+      "sha256": "2b847d217b02ee7731ed91431daf3250daa0196c3c94614d23be27232e6e5b6c",
+      "authoritative_listing": "tensorflow/docs site/en/install/pip.md at a7aba9d3659fa2b521165d263a6012b110b0ab5f lists this exact 2.21.0 Linux CPU-only Python 3.11 filename",
+      "selected": true
+    },
+    "rejected_windows_distribution_candidate": {
+      "distribution": "tensorflow-cpu",
+      "filename": "tensorflow_cpu-2.21.0-cp311-cp311-win_amd64.whl",
+      "size_bytes": 350834051,
+      "sha256": "6fc992a9c8700e18c178b0525f4e7697e58fce88df0dcb95db4dd3c7ad5f4651",
+      "reason": "PyPI publishes this direct wheel, but the pinned current official TensorFlow package table names tensorflow rather than tensorflow-cpu for Windows CPU-only Python 3.11. Keep the narrower documented artifact and do not mix the ambiguous Windows tensorflow-cpu path into execution evidence."
+    },
+    "larger_linux_distribution_not_selected": {
+      "distribution": "tensorflow",
+      "filename": "tensorflow-2.21.0-cp311-cp311-manylinux_2_27_x86_64.whl",
+      "published_size_display": "572.4 MB",
+      "sha256": "9056fbc9ba04235810b71ae6cbd958a196e8804fb53bbcffbf3e23b56155f124",
+      "reason": "The official CPU-only table provides the substantially smaller tensorflow-cpu Linux wheel from the same 2.21.0 source release."
     },
     "newer_prerelease_not_selected": {
       "version": "2.22.0rc0",
@@ -58,6 +77,8 @@
   "upstream_dependency_identity": {
     "setup_source": "tensorflow/tools/pip_package/setup.py.tpl",
     "setup_source_blob_sha": "9480a3d39ec44914739112b42ccc25796fc2d8c9",
+    "same_setup_template_for_tensorflow_and_tensorflow_cpu": true,
+    "collaborator_build_behavior": "The exact setup template replaces the normal dependency set with tensorflow-intel only when collaborator_build is true; the selected Windows artifact is the full official tensorflow wheel explicitly listed by current TensorFlow installation docs, not a selected tensorflow-intel dependency path.",
     "direct_requirements_from_exact_source": [
       "absl-py >= 1.0.0",
       "astunparse >= 1.6.0",
@@ -88,19 +109,29 @@
       "generation_statement": "autogenerated by pip-compile with Python 3.11 via //ci/official/requirements_updater:requirements.update",
       "role": "immutable upstream compatibility/hash reference only; it is broader than the runtime closure and must not be installed wholesale"
     },
-    "confirmed_lock_examples": {
+    "selected_direct_lock_versions": {
       "absl-py": "2.2.2",
       "astunparse": "1.6.3",
       "flatbuffers": "25.9.23",
       "gast": "0.4.0",
       "google-pasta": "0.2.0",
-      "grpcio": "1.71.0",
-      "h5py": "3.13.0",
-      "keras": "3.12.1",
       "libclang": "18.1.1",
-      "namex": "0.0.8",
-      "numpy": "2.1.3"
+      "opt-einsum": "3.3.0",
+      "packaging": "23.2",
+      "protobuf": "6.31.1",
+      "requests": "2.32.4",
+      "setuptools": "78.1.1",
+      "six": "1.17.0",
+      "termcolor": "2.3.0",
+      "typing-extensions": "4.14.1",
+      "wrapt": "1.16.0",
+      "grpcio": "1.71.0",
+      "keras": "3.12.1",
+      "numpy": "2.1.3",
+      "h5py": "3.13.0",
+      "ml-dtypes": "0.5.1"
     },
+    "every_direct_requirement_has_selected_lock_version": true,
     "full_minimal_runtime_transitive_selection_completed": false,
     "exact_platform_wheel_hashes_for_every_external_python_dependency_completed": false
   },
@@ -112,19 +143,43 @@
       "gnu_gpl_string_observed": false,
       "gnu_lgpl_string_observed": false
     },
-    "tensorflow_pip_build_license_filegroup_blob_sha": "3437fa0252c86ecd447cea2ed55800adfd48865f",
+    "tensorflow_pip_build": {
+      "build_file": "tensorflow/tools/pip_package/BUILD",
+      "build_file_blob_sha": "3437fa0252c86ecd447cea2ed55800adfd48865f",
+      "wheel_rule_file": "tensorflow/tools/pip_package/utils/tf_wheel.bzl",
+      "wheel_rule_blob_sha": "c4dcd4682c8a23c538e3b6e5b83ce124f5c52404",
+      "license_filegroup_included_in_wheel_headers": true,
+      "third_party_notices_included_in_wheel_sources": true,
+      "wheel_name_is_explicit_build_input": true,
+      "collaborator_flag_is_explicit_build_input": true
+    },
+    "current_official_install_docs": {
+      "repository": "tensorflow/docs",
+      "commit": "a7aba9d3659fa2b521165d263a6012b110b0ab5f",
+      "path": "site/en/install/pip.md",
+      "blob_sha": "296d17cc1491c308ee509472fb269fd030e39f9b",
+      "observed_on": "2026-09-23",
+      "windows_python311_cpu_only_filename": "tensorflow-2.21.0-cp311-cp311-win_amd64.whl",
+      "linux_python311_cpu_only_filename": "tensorflow_cpu-2.21.0-cp311-cp311-manylinux_2_27_x86_64.whl",
+      "legacy_collaborator_prose_still_present": true
+    },
     "tensorflow_source_license_cleared_for_commercial_use": true,
     "bundled_native_notice_lineage_present": true,
+    "selected_package_pair_has_authoritative_current_doc_listing": true,
+    "artifact_to_exact_source_build_attestation_completed": false,
     "external_python_dependency_license_closure_completed": false,
     "commercial_redistribution_cleared": false,
     "release_legal_review_still_required": true
   },
-  "windows_provenance_conflict": {
-    "official_install_doc_statement": "Starting with TensorFlow 2.10, Windows CPU builds for x86/x64 are built, maintained, tested and released by Intel; the documentation says installing tensorflow or tensorflow-cpu installs tensorflow-intel.",
-    "exact_2_21_pypi_observation": "PyPI publishes a direct 350834051-byte CPython 3.11 tensorflow_cpu 2.21.0 Windows wheel with SHA-256 6fc992a9c8700e18c178b0525f4e7697e58fce88df0dcb95db4dd3c7ad5f4651.",
-    "tensorflow_intel_2_21_release_endpoint_observation": "https://pypi.org/pypi/tensorflow-intel/2.21.0/json returned 404 during this review.",
-    "resolved": false,
-    "why_material": "The project requires one reproducible Windows/Linux package path with exact redistribution lineage before execution; broad project metadata is not a substitute for exact wheel provenance and notices."
+  "windows_package_selection": {
+    "prior_conflict": "Current TensorFlow prose still says Windows tensorflow/tensorflow-cpu installs tensorflow-intel, while stable 2.21.0 publishes full direct Windows wheels and no tensorflow-intel 2.21.0 endpoint was found in the earlier review.",
+    "narrowing_evidence": "The current official TensorFlow 2.21.0 package table explicitly lists tensorflow-2.21.0-cp311-cp311-win_amd64.whl for Windows CPU-only Python 3.11. Select that exact documented artifact and reject the ambiguous tensorflow-cpu Windows artifact from this path.",
+    "selected_distribution": "tensorflow",
+    "selected_filename": "tensorflow-2.21.0-cp311-cp311-win_amd64.whl",
+    "selected_sha256": "0064a19bdc054a4b7c5e7e21cdf50ce38a114c2bada578b4f5267a37410f6784",
+    "package_selection_conflict_resolved": true,
+    "full_execution_provenance_closed": false,
+    "why_execution_stays_closed": "Authoritative package selection is now deterministic, but exact external wheel/license/notice closure and artifact-to-source build attestation are still required before installation or execution."
   },
   "repository_execution_context": {
     "linux_python": "3.11",
@@ -152,8 +207,8 @@
     "accuracy_claim_made": false
   },
   "closure": {
-    "progress_boundary": "Exact stable TensorFlow CPU 2.21.0 source/wheel identity, frozen-GraphDef converter interface, upstream Python 3.11 lock identity, and bundled TensorFlow notice lineage are now pinned. This removes package-name/version guessing from the next review step.",
+    "progress_boundary": "The ambiguous Windows tensorflow-cpu candidate is removed from the active path. Current authoritative TensorFlow docs now pin the exact platform package pair: tensorflow 2.21.0 on Windows CPython 3.11 and the smaller tensorflow-cpu 2.21.0 on Linux CPython 3.11. Every direct TensorFlow requirement also now has an exact selected version from the immutable upstream Python 3.11 lock.",
     "do_not_execute_yet": true,
-    "next_smallest_testable_direction": "Resolve the exact CPython 3.11 Windows wheel metadata/provenance and derive the minimal external Python dependency closure from the immutable upstream Python 3.11 lock. Pin the selected Linux/Windows wheel hashes and exact licenses/notices for that closure. Only if those checks clear may a subsequent evidence lane install TensorFlow CPU 2.21.0, re-verify and materialize only the admitted tflite_graph.pb below RUNNER_TEMP, and attempt the first no-media converter construction/invocation."
+    "next_smallest_testable_direction": "Derive only the transitive closure reachable from the selected direct lock versions, then pin exact CPython 3.11 Linux/Windows wheel identities and per-package licenses/notices for that closure. Do not install or execute TensorFlow or materialize FaceSSD until that package set is complete and the selected runtime artifacts are tied to the reviewed source/notice lineage. If that closure fails, stop this runtime path and switch approaches rather than bypassing metadata or dependencies."
   }
 }
