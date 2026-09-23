@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "review": {
+    "component": "face_detection",
+    "work_item": "facessd_tensorflow_2_21_transitive_graph_gate",
+    "review_base_main": "ba8f66a220bb0c9be992002d192fb4a290616115",
+    "decision": "transitive_graph_derived_execution_still_fail_closed",
+    "admitted_for_execution": false,
+    "reason": "Derive the smallest external Python dependency graph reachable from the already-selected TensorFlow 2.21.0 Python 3.11 package set after the Keras 3.15.1 security refresh. This closes dependency-name/version scope only. TensorFlow/FaceSSD execution remains fail-closed until exact Windows/Linux wheel identities, package/native license and notice closure, current security review, and runtime artifact/source lineage are complete."
+  },
+  "inputs": {
+    "parent_review": "ops/reviews/face-facessd-tensorflow-cpu-runtime.json",
+    "tensorflow_version": "2.21.0",
+    "tensorflow_source_commit": "a481b10260dfdf833a1b16007eead49c1d7febf3",
+    "python": "3.11",
+    "upstream_lock_path": "requirements_lock_3_11.txt",
+    "upstream_lock_blob_sha": "95b850d215de121286329b18aa33f592e5b6c002",
+    "upstream_lock_role": "Compatibility/version/hash reference only; do not install the whole upstream development lock.",
+    "keras_security_refresh": {
+      "version": "3.15.1",
+      "wheel": "keras-3.15.1-py3-none-any.whl",
+      "sha256": "836460e480930acbd19bb7a17e62f9ecad40e8a9af9a651fc8d0586a96d27e20",
+      "requires_python": ">=3.11",
+      "license": "Apache-2.0"
+    }
+  },
+  "selected_direct_versions": {
+    "absl-py": "2.2.2",
+    "astunparse": "1.6.3",
+    "flatbuffers": "25.9.23",
+    "gast": "0.4.0",
+    "google-pasta": "0.2.0",
+    "libclang": "18.1.1",
+    "opt-einsum": "3.3.0",
+    "packaging": "23.2",
+    "protobuf": "6.31.1",
+    "requests": "2.32.4",
+    "setuptools": "78.1.1",
+    "six": "1.17.0",
+    "termcolor": "2.3.0",
+    "typing-extensions": "4.14.1",
+    "wrapt": "1.16.0",
+    "grpcio": "1.71.0",
+    "keras": "3.15.1",
+    "numpy": "2.1.3",
+    "h5py": "3.13.0",
+    "ml-dtypes": "0.5.1"
+  },
+  "reachable_transitive_versions": {
+    "certifi": "2025.1.31",
+    "charset-normalizer": "3.4.1",
+    "idna": "3.10",
+    "urllib3": "2.6.3",
+    "wheel": "0.41.3",
+    "rich": "14.0.0",
+    "namex": "0.0.8",
+    "optree": "0.16.0",
+    "markdown-it-py": "3.0.0",
+    "mdurl": "0.1.2",
+    "pygments": "2.19.1"
+  },
+  "dependency_edges": {
+    "astunparse==1.6.3": [
+      "six==1.17.0",
+      "wheel==0.41.3"
+    ],
+    "requests==2.32.4": [
+      "certifi==2025.1.31",
+      "charset-normalizer==3.4.1",
+      "idna==3.10",
+      "urllib3==2.6.3"
+    ],
+    "keras==3.15.1": [
+      "absl-py==2.2.2",
+      "numpy==2.1.3",
+      "rich==14.0.0",
+      "namex==0.0.8",
+      "h5py==3.13.0",
+      "optree==0.16.0",
+      "ml-dtypes==0.5.1",
+      "packaging==23.2"
+    ],
+    "rich==14.0.0": [
+      "pygments==2.19.1",
+      "markdown-it-py==3.0.0"
+    ],
+    "markdown-it-py==3.0.0": [
+      "mdurl==0.1.2"
+    ],
+    "optree==0.16.0": [
+      "typing-extensions==4.14.1"
+    ],
+    "h5py==3.13.0": [
+      "numpy==2.1.3"
+    ],
+    "ml-dtypes==0.5.1": [
+      "numpy==2.1.3"
+    ]
+  },
+  "marker_and_extra_decisions": {
+    "rich_typing_extensions_marker": "Rich 14.0.0 requires typing-extensions only for Python <3.11; the selected runtime is Python 3.11, and typing-extensions is already a direct TensorFlow requirement regardless.",
+    "tensorflow_gpu_extra_selected": false,
+    "tensorflow_gcs_filesystem_extra_selected": false,
+    "keras_optional_extras_selected": false,
+    "rich_jupyter_extra_selected": false,
+    "markdown_it_optional_extras_selected": false,
+    "urllib3_optional_extras_selected": false,
+    "requests_optional_extras_selected": false
+  },
+  "broader_upstream_lock_exclusions": {
+    "install_upstream_lock_wholesale": false,
+    "reason": "TensorFlow's official lock also contains build, test, development, JAX, SciPy and packaging-tool dependencies that are not reachable from the selected runtime distributions. They are provenance/compatibility reference material, not part of this runtime execution set."
+  },
+  "selected_lock_evidence": {
+    "certifi": {
+      "version": "2025.1.31",
+      "wheel_sha256_from_upstream_lock": "ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"
+    },
+    "idna": {
+      "version": "3.10",
+      "wheel_sha256_from_upstream_lock": "946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"
+    },
+    "rich": {
+      "version": "14.0.0",
+      "wheel_sha256_from_upstream_lock": "1c9491e1951aac09caffd42f448ee3d04e58923ffe14993f6e83068dc395d7e0"
+    },
+    "namex": {
+      "version": "0.0.8",
+      "wheel_or_sdist_hashes_present_in_upstream_lock": true
+    },
+    "markdown-it-py": {
+      "version": "3.0.0",
+      "wheel_sha256_from_upstream_lock": "355216845c60bd96232cd8d8c40e8f9765cc86f46880e43a8fd22dc1a1a8cab1"
+    },
+    "mdurl": {
+      "version": "0.1.2",
+      "upstream_lock_hashes_present": true
+    },
+    "pygments": {
+      "version": "2.19.1",
+      "wheel_sha256_from_upstream_lock": "61c16d2a8576dc0649d9f39e089b5f02bcd27fba10d8fb4dcc28173f7a45151f"
+    }
+  },
+  "current_metadata_checks": {
+    "observed_on": "2026-09-23",
+    "sources": [
+      "TensorFlow v2.21.0 exact Python 3.11 lock",
+      "PyPI release JSON for the selected reachable transitive versions",
+      "PyPI release JSON for Keras 3.15.1 and selected direct packages where dependency markers affect reachability"
+    ],
+    "purpose": "Confirm runtime dependency reachability and reject optional/dev dependency expansion. This is not a vulnerability-free or redistribution-clearance claim.",
+    "security_review_completed": false,
+    "license_notice_review_completed": false
+  },
+  "closure": {
+    "external_python_dependency_name_and_version_graph_completed": true,
+    "exact_platform_wheel_identity_closure_completed": false,
+    "native_component_notice_closure_completed": false,
+    "current_security_review_completed": false,
+    "artifact_to_source_build_attestation_completed": false,
+    "commercial_redistribution_cleared": false,
+    "release_legal_review_still_required": true,
+    "runtime_execution_admitted": false,
+    "next_smallest_testable_direction": "Pin the exact CPython 3.11 Windows/Linux wheel selected for every package in this derived reachable graph and review each package/native license, notice and current PyPI advisory status. Stop the TensorFlow runtime path if any required package cannot satisfy platform, provenance, security or redistribution requirements. Only after that closure may a deliberately bounded evidence head install the pinned set, reverify the admitted FaceSSD archive/member identities and attempt no-media GraphDef construction/conversion below RUNNER_TEMP."
+  },
+  "execution_guardrails": {
+    "runtime_or_dependency_downloaded": false,
+    "runtime_or_dependency_installed": false,
+    "model_downloaded": false,
+    "model_materialized": false,
+    "conversion_executed": false,
+    "inference_executed": false,
+    "media_used": false,
+    "home_or_customer_media_used": false,
+    "artifacts_uploaded_or_retained": false,
+    "recognition_embeddings_reid_identity_matching": false,
+    "paid_resources_used": false,
+    "licensing_requirements_weakened": false,
+    "accuracy_claim_made": false
+  }
+}
