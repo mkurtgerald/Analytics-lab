@@ -50,7 +50,6 @@ _SOURCE_HEIGHT = 1_779
 # Independently authored from the exact CC0 source before OCR/model output.
 # Excludes the state name/top registration tabs and bottom motto while preserving the complete serial.
 _PLATE_TEXT_BOX_PX = (180, 600, 3_380, 1_510)
-_PLATE_BOX_PX = _PLATE_TEXT_BOX_PX
 _EXPECTED_TEXT = "CPU4704"
 _CROP_RGB24_SHA256: str | None = "0e4655be2fe57d47c890855cf22371ff2b7ab764cfc9c1084a692a9ee67d8bca"
 

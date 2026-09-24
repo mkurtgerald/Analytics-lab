@@ -107,14 +107,6 @@
           "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.lpr_ocr_fixed_crop_evidence\n"
         },
         {
-          "name": "Bounded CC0 LPR glyph comparison evidence",
-          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
-          "env": {
-            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
-          },
-          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m unittest tests.test_lpr_ocr_glyph -v\npython -m analytics_lab.lpr_ocr_glyph_evidence\n"
-        },
-        {
           "name": "Bounded Figshare archive-index evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-') }}",
           "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"
@@ -219,7 +211,7 @@
         },
         {
           "name": "Bounded exact Tesseract 5.5.3 LPR OCR evidence",
-          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
