@@ -50,6 +50,7 @@ _SOURCE_HEIGHT = 634
 # Independently authored from the exact CC0 source before OCR/model output.
 # Excludes the slogan/footer while preserving the complete serial and center mark.
 _PLATE_TEXT_BOX_PX = (45, 145, 1_220, 455)
+_PLATE_BOX_PX = _PLATE_TEXT_BOX_PX  # compatibility alias for shared bounded evidence harness
 _EXPECTED_TEXT = "354AVV"
 _CROP_RGB24_SHA256: str | None = "c13f5cb796cbe2d6a6505e41bf75d69d3dc1c9877bd4c8ef0a55a3389b3ced4b"
 
