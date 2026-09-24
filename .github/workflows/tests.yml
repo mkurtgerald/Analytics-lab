@@ -216,7 +216,7 @@
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
           "shell": "bash",
-          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-glyph-* ]]; then\n  python -m unittest tests.test_lpr_ocr_glyph -v\n  python -m analytics_lab.lpr_ocr_glyph_evidence\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"
         }
       ]
     },
