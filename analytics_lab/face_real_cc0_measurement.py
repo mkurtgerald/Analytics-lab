@@ -19,7 +19,9 @@ import json
 import os
 from pathlib import Path
 import shutil
+import tarfile
 import tempfile
+import time
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -47,6 +49,77 @@ def _bounded_work_dir(path: str | Path) -> Path:
     if root == runner_temp or runner_temp not in root.parents:
         raise RuntimeError("work directory must be below RUNNER_TEMP")
     return root
+
+
+def _expected_graph_identity() -> tuple[int, str]:
+    return model_probe._expected_model_identity()
+
+
+def _stream_verified_graph() -> bytes:
+    parsed = urlparse(model_admission._ARCHIVE_URL)
+    if parsed.scheme != "https" or parsed.hostname != model_admission._ALLOWED_HOST:
+        raise RuntimeError("unapproved model archive URL")
+
+    head = Request(
+        model_admission._ARCHIVE_URL,
+        headers={"User-Agent": _USER_AGENT},
+        method="HEAD",
+    )
+    with urlopen(head, timeout=20) as response:
+        final = urlparse(response.geturl())
+        if final.scheme != "https" or final.hostname != model_admission._ALLOWED_HOST:
+            raise RuntimeError("model archive redirect escaped approved host")
+        declared = response.headers.get("Content-Length")
+    if declared is None or int(declared) != model_admission._EXPECTED_ARCHIVE_SIZE:
+        raise RuntimeError("model archive Content-Length changed")
+
+    request = Request(
+        model_admission._ARCHIVE_URL,
+        headers={"User-Agent": _USER_AGENT},
+    )
+    expected_size, expected_sha256 = _expected_graph_identity()
+    with urlopen(request, timeout=30) as response:
+        final = urlparse(response.geturl())
+        if final.scheme != "https" or final.hostname != model_admission._ALLOWED_HOST:
+            raise RuntimeError("model archive redirect escaped approved host")
+        with tarfile.open(fileobj=response, mode="r|gz") as archive:
+            seen = 0
+            for member in archive:
+                seen += 1
+                if seen > 32:
+                    raise RuntimeError("model archive member search exceeded bound")
+                name = member.name
+                if (
+                    not isinstance(name, str)
+                    or not name
+                    or name.startswith("/")
+                    or "\\" in name
+                    or ".." in name.split("/")
+                    or member.issym()
+                    or member.islnk()
+                    or member.isdev()
+                ):
+                    raise RuntimeError("unsafe model archive member")
+                if name != model_probe._MODEL_MEMBER:
+                    continue
+                if not member.isfile() or int(member.size) != expected_size:
+                    raise RuntimeError("model graph metadata mismatch")
+                stream = archive.extractfile(member)
+                if stream is None:
+                    raise RuntimeError("model graph unreadable")
+                graph = stream.read(expected_size + 1)
+                if len(graph) != expected_size:
+                    raise RuntimeError("model graph length mismatch")
+                if hashlib.sha256(graph).hexdigest() != expected_sha256:
+                    raise RuntimeError("model graph SHA-256 mismatch")
+                return graph
+    raise RuntimeError("model graph missing from canonical archive")
+
+
+def _phase(name: str, started: float) -> float:
+    elapsed = time.perf_counter() - started
+    print(f"phase={name} seconds={elapsed:.6f}", flush=True)
+    return elapsed
 
 
 def _download_source() -> bytes:
@@ -155,9 +228,15 @@ def run(work_dir: str | Path) -> dict[str, object]:
         shutil.rmtree(root)
     root.mkdir(parents=True)
 
-    model_payload = model_admission._download()
-    graph = model_probe._verified_graph_bytes(model_payload)
+    timings: dict[str, float] = {}
+
+    started = time.perf_counter()
+    graph = _stream_verified_graph()
+    timings["model_graph_stream_verify"] = _phase("model_graph_stream_verify", started)
+
+    started = time.perf_counter()
     source_payload = _download_source()
+    timings["source_stream_verify"] = _phase("source_stream_verify", started)
 
     import cv2
     import numpy as np
@@ -170,6 +249,7 @@ def run(work_dir: str | Path) -> dict[str, object]:
     if opencv_version != _EXPECTED_OPENCV_VERSION:
         raise RuntimeError("unexpected OpenCV runtime version")
 
+    started = time.perf_counter()
     encoded = np.frombuffer(source_payload, dtype=np.uint8)
     frame = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
     if (
@@ -180,6 +260,8 @@ def run(work_dir: str | Path) -> dict[str, object]:
     ):
         raise RuntimeError("admitted face source did not decode to HxWx3 uint8 BGR")
 
+    timings["image_decode"] = _phase("image_decode", started)
+
     height, width = int(frame.shape[0]), int(frame.shape[1])
     before = hashlib.sha256(frame.tobytes()).hexdigest()
 
@@ -187,13 +269,19 @@ def run(work_dir: str | Path) -> dict[str, object]:
         with tempfile.TemporaryDirectory(prefix="face-real-cc0-", dir=root) as temporary:
             model_path = Path(temporary) / "frozen_inference_graph.pb"
             model_path.write_bytes(graph)
+
+            started = time.perf_counter()
             converted = ov.convert_model(str(model_path))
             compiled = ov.Core().compile_model(converted, "CPU")
+            timings["model_convert_compile"] = _phase("model_convert_compile", started)
+
             detector = OpenVINOOIDSSDDetector(
                 compiled,
                 confidence_threshold=_FIXED_THRESHOLD,
             )
+            started = time.perf_counter()
             result = apply_face_privacy(frame, detector)
+            timings["one_inference_and_blur"] = _phase("one_inference_and_blur", started)
 
         after = hashlib.sha256(frame.tobytes()).hexdigest()
         input_immutable = before == after
@@ -209,7 +297,7 @@ def run(work_dir: str | Path) -> dict[str, object]:
             output_changed=output_changed,
             openvino_version=openvino_version,
             opencv_version=opencv_version,
-        )
+        ) | {"phase_seconds": {key: round(value, 6) for key, value in timings.items()}}
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

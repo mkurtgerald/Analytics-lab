@@ -4,11 +4,19 @@ from __future__ import annotations
 import unittest
 
 from analytics_lab.face_privacy import FaceDetection
-from analytics_lab.face_real_cc0_measurement import _observation, _serialize_detections
+from analytics_lab.face_real_cc0_measurement import _expected_graph_identity, _observation, _serialize_detections
 from analytics_lab.tracking import NormalizedBox
 
 
 class FaceRealCC0MeasurementTests(unittest.TestCase):
+    def test_measurement_reuses_pinned_graph_identity_without_archive_readmission(self):
+        size, digest = _expected_graph_identity()
+        self.assertEqual(size, 66_606_111)
+        self.assertEqual(
+            digest,
+            "150f3eb77b741ed24e1a19559589205ccd616b059fc976c8b8d5cefc126bf86b",
+        )
+
     def test_serializes_raw_detections_without_identity_fields(self):
         detections = (
             FaceDetection(0.875, NormalizedBox(0.1, 0.2, 0.7, 0.8)),
