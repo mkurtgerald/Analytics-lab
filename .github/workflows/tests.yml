@@ -138,6 +138,14 @@
           "run": "set -euo pipefail\npython -m unittest tests.test_face_real_cc0_admission -v\npython -m analytics_lab.face_real_cc0_admission\n"
         },
         {
+          "name": "Bounded CC0 face detection -> blur measurement",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/face-real-cc0-measurement-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'openvino==2026.3.1' 'opencv-python-headless==4.12.0.88'\npython -m unittest tests.test_face_real_cc0_measurement -v\npython -m analytics_lab.face_real_cc0_measurement --work-dir \"$RUNNER_TEMP/analytics-face-real-cc0-measurement\"\n"
+        },
+        {
           "name": "Face donor bounded evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/face-donor-facessd-') }}",
           "env": {
@@ -147,7 +155,7 @@
         },
         {
           "name": "Bounded real-video CPU evidence",
-          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/face-privacy-') && !startsWith(github.head_ref, 'evidence/face-donor-facessd-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-admission-') }}",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/face-privacy-') && !startsWith(github.head_ref, 'evidence/face-donor-facessd-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-admission-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-measurement-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
