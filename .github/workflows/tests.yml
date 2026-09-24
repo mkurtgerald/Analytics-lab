@@ -107,6 +107,14 @@
           "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m analytics_lab.lpr_ocr_fixed_crop_evidence\n"
         },
         {
+          "name": "Bounded CC0 LPR glyph comparison evidence",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\npython -m unittest tests.test_lpr_ocr_glyph -v\npython -m analytics_lab.lpr_ocr_glyph_evidence\n"
+        },
+        {
           "name": "Bounded Figshare archive-index evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/figshare-') }}",
           "run": "set -euo pipefail\npython -m analytics_lab.figshare_probe\n"
@@ -211,12 +219,12 @@
         },
         {
           "name": "Bounded exact Tesseract 5.5.3 LPR OCR evidence",
-          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') }}",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
           "shell": "bash",
-          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-glyph-* ]]; then\n  python -m unittest tests.test_lpr_ocr_glyph -v\n  python -m analytics_lab.lpr_ocr_glyph_evidence\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir 'opencv-python-headless==4.12.0.88'\nif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-sc-* ]]; then\n  python -m analytics_lab.lpr_ocr_sc_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelif [[ \"$GITHUB_HEAD_REF\" == evidence/lpr-ocr-exact-wa-* ]]; then\n  python -m analytics_lab.lpr_ocr_wa_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nelse\n  python -m analytics_lab.lpr_ocr_exact_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-ocr\"\nfi\n"
         }
       ]
     },

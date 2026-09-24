@@ -162,6 +162,20 @@ class GuardrailsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             g.validate_workflow(self.workflow, self.policy)
 
+    def test_lpr_glyph_evidence_routes_only_to_linux(self):
+        linux = [step for step in self.workflow['jobs']['linux']['steps']
+                 if step.get('name') == 'Bounded CC0 LPR glyph comparison evidence']
+        self.assertEqual(len(linux), 1)
+        self.assertIn("evidence/lpr-ocr-exact-glyph-", linux[0]['if'])
+        self.assertIn("opencv-python-headless==4.12.0.88", linux[0]['run'])
+        self.assertIn("tests.test_lpr_ocr_glyph", linux[0]['run'])
+        self.assertIn("analytics_lab.lpr_ocr_glyph_evidence", linux[0]['run'])
+        windows = [step for step in self.workflow['jobs']['windows']['steps']
+                   if step.get('name') == 'Bounded exact Tesseract 5.5.3 LPR OCR evidence']
+        self.assertEqual(len(windows), 1)
+        self.assertIn("!startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-')", windows[0]['if'])
+        self.assertNotIn('lpr_ocr_glyph', windows[0]['run'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):

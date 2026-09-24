@@ -132,10 +132,31 @@ def validate_workflow(workflow: dict, policy: dict) -> None:
             expected_if = "${{ steps.scope.outputs.run_full_tests == 'true' }}" if name == "linux" else None
             require(found[0].get("if") == expected_if, "Regression condition changed")
     linux_steps = jobs["linux"].get("steps", [])
+    glyph_steps = [step for step in linux_steps if step.get("name") == "Bounded CC0 LPR glyph comparison evidence"]
+    require(len(glyph_steps) == 1, "LPR glyph Linux evidence step missing")
+    glyph = glyph_steps[0]
+    require(glyph.get("if") == "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
+            "LPR glyph evidence must be restricted to the reviewed PR branch")
+    glyph_run = glyph.get("run", "")
+    for command in (
+        "opencv-python-headless==4.12.0.88",
+        "python -m unittest tests.test_lpr_ocr_glyph -v",
+        "python -m analytics_lab.lpr_ocr_glyph_evidence",
+    ):
+        require(command in glyph_run, "LPR glyph evidence command missing")
+
     require(any(step.get("id") == "scope" and step.get("run") == "python tools/guardrails.py ci"
                 and "if" not in step for step in linux_steps), "Scope preflight missing")
     require(any(step.get("run") == "python -m unittest discover -s tests -p test_guardrails.py -v"
                 and "if" not in step for step in linux_steps), "Always-on guardrail tests missing")
+    exact_steps = [step for step in jobs["windows"].get("steps", [])
+                   if step.get("name") == "Bounded exact Tesseract 5.5.3 LPR OCR evidence"]
+    require(len(exact_steps) == 1, "Exact Tesseract LPR evidence step missing")
+    exact = exact_steps[0]
+    require(exact.get("if") == "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-glyph-') }}",
+            "Exact Tesseract lane must exclude the Linux glyph branch")
+    require("lpr_ocr_glyph" not in exact.get("run", ""),
+            "Glyph evidence must not execute in the Windows Tesseract lane")
     require(jobs["windows"].get("needs") == "linux", "Linux must precede Windows")
     require(jobs["windows"].get("if") == "${{ needs.linux.outputs.run_full_tests == 'true' }}",
             "Windows scope condition changed")
