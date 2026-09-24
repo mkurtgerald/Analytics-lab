@@ -152,6 +152,16 @@ def _download_source() -> bytes:
     return data
 
 
+class _FixedDetections:
+    """Return one already-measured detection tuple without a second inference."""
+
+    def __init__(self, detections: tuple[FaceDetection, ...]) -> None:
+        self._detections = detections
+
+    def detect(self, _frame_bgr: object) -> tuple[FaceDetection, ...]:
+        return self._detections
+
+
 def _serialize_detections(
     detections: tuple[FaceDetection, ...],
 ) -> list[dict[str, object]]:
@@ -259,7 +269,6 @@ def run(work_dir: str | Path) -> dict[str, object]:
         or int(frame.shape[2]) != 3
     ):
         raise RuntimeError("admitted face source did not decode to HxWx3 uint8 BGR")
-
     timings["image_decode"] = _phase("image_decode", started)
 
     height, width = int(frame.shape[0]), int(frame.shape[1])
@@ -280,8 +289,12 @@ def run(work_dir: str | Path) -> dict[str, object]:
                 confidence_threshold=_FIXED_THRESHOLD,
             )
             started = time.perf_counter()
-            result = apply_face_privacy(frame, detector)
-            timings["one_inference_and_blur"] = _phase("one_inference_and_blur", started)
+            detections = detector.detect(frame)
+            timings["one_inference"] = _phase("one_inference", started)
+
+            started = time.perf_counter()
+            result = apply_face_privacy(frame, _FixedDetections(detections))
+            timings["privacy_blur"] = _phase("privacy_blur", started)
 
         after = hashlib.sha256(frame.tobytes()).hexdigest()
         input_immutable = before == after

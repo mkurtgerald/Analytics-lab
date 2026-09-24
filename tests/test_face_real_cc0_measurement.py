@@ -3,8 +3,13 @@ from __future__ import annotations
 
 import unittest
 
-from analytics_lab.face_privacy import FaceDetection
-from analytics_lab.face_real_cc0_measurement import _expected_graph_identity, _observation, _serialize_detections
+from analytics_lab.face_privacy import FaceDetection, _bounded_blur_plan
+from analytics_lab.face_real_cc0_measurement import (
+    _FixedDetections,
+    _expected_graph_identity,
+    _observation,
+    _serialize_detections,
+)
 from analytics_lab.tracking import NormalizedBox
 
 
@@ -29,6 +34,35 @@ class FaceRealCC0MeasurementTests(unittest.TestCase):
         text = repr(payload).lower()
         for forbidden in ("name", "identity", "embedding", "reid"):
             self.assertNotIn(forbidden, text)
+
+    def test_fixed_detections_reuses_one_measured_result_without_inference(self):
+        detections = (
+            FaceDetection(0.75, NormalizedBox(0.1, 0.1, 0.9, 0.9)),
+        )
+        frozen = _FixedDetections(detections)
+        self.assertIs(frozen.detect(object()), detections)
+
+    def test_large_blur_plan_bounds_direct_sigma_without_weakening_source_strength(self):
+        width, height, sigma = 5144, 3430, 548.8
+        target_width, target_height, sigma_x, sigma_y = _bounded_blur_plan(
+            width=width,
+            height=height,
+            sigma=sigma,
+        )
+        self.assertLess(target_width, width)
+        self.assertLess(target_height, height)
+        self.assertLessEqual(sigma_x, 32.0)
+        self.assertLessEqual(sigma_y, 32.0)
+        self.assertAlmostEqual(
+            sigma_x / (target_width / width),
+            sigma,
+            places=6,
+        )
+        self.assertAlmostEqual(
+            sigma_y / (target_height / height),
+            sigma,
+            places=6,
+        )
 
     def test_observation_keeps_first_measurement_unscored_without_ground_truth(self):
         detections = (

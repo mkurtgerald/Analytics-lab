@@ -17,6 +17,7 @@ from .tracking import NormalizedBox
 
 _MAX_FACES = 64
 _MAX_MODEL_BYTES = 16 * 1024 * 1024
+_MAX_DIRECT_GAUSSIAN_SIGMA = 32.0
 
 
 def _score(value: Any, name: str) -> float:
@@ -258,8 +259,67 @@ def _expanded_pixels(box: NormalizedBox, *, width: int, height: int, ratio: floa
     return left, top, right, bottom
 
 
-def _blur_regions(frame_bgr: Any, detections: tuple[FaceDetection, ...], config: FacePrivacyConfig) -> Any:
+def _bounded_blur_plan(
+    *, width: int, height: int, sigma: float
+) -> tuple[int, int, float, float]:
+    """Preserve requested Gaussian strength while bounding direct kernel work.
+
+    Large full-resolution face regions can imply Gaussian sigmas in the hundreds
+    of pixels. OpenCV expands an unconstrained direct kernel accordingly, which
+    can consume the entire CI budget. Downsampling before the Gaussian and
+    restoring afterward keeps the effective sigma in source-pixel units while
+    discarding detail before the blur; it does not create a weaker unblur path.
+    """
+    if type(width) is not int or type(height) is not int or width < 1 or height < 1:
+        raise ValueError("blur dimensions must be positive integers")
+    numeric = float(sigma)
+    if not math.isfinite(numeric) or numeric <= 0.0:
+        raise ValueError("blur sigma must be positive and finite")
+    if numeric <= _MAX_DIRECT_GAUSSIAN_SIGMA:
+        return width, height, numeric, numeric
+
+    scale = _MAX_DIRECT_GAUSSIAN_SIGMA / numeric
+    target_width = max(1, int(math.floor(width * scale)))
+    target_height = max(1, int(math.floor(height * scale)))
+    sigma_x = numeric * (target_width / width)
+    sigma_y = numeric * (target_height / height)
+    return target_width, target_height, sigma_x, sigma_y
+
+
+def _gaussian_blur_bounded(region: Any, sigma: float) -> Any:
     import cv2
+
+    shape = getattr(region, "shape", None)
+    if shape is None or len(shape) != 3 or int(shape[2]) != 3:
+        raise ValueError("blur region must be HxWx3")
+    height, width = int(shape[0]), int(shape[1])
+    target_width, target_height, sigma_x, sigma_y = _bounded_blur_plan(
+        width=width, height=height, sigma=sigma
+    )
+    if target_width == width and target_height == height:
+        return cv2.GaussianBlur(
+            region, (0, 0), sigmaX=sigma_x, sigmaY=sigma_y
+        )
+
+    reduced = cv2.resize(
+        region,
+        (target_width, target_height),
+        interpolation=cv2.INTER_AREA,
+    )
+    blurred = cv2.GaussianBlur(
+        reduced,
+        (0, 0),
+        sigmaX=sigma_x,
+        sigmaY=sigma_y,
+    )
+    return cv2.resize(
+        blurred,
+        (width, height),
+        interpolation=cv2.INTER_LINEAR,
+    )
+
+
+def _blur_regions(frame_bgr: Any, detections: tuple[FaceDetection, ...], config: FacePrivacyConfig) -> Any:
     width, height = _frame_size(frame_bgr)
     result = frame_bgr.copy()
     for item in detections:
@@ -271,7 +331,7 @@ def _blur_regions(frame_bgr: Any, detections: tuple[FaceDetection, ...], config:
             continue
         minimum = max(1, min(right - left, bottom - top))
         sigma = max(float(config.min_sigma), minimum * float(config.sigma_ratio))
-        result[top:bottom, left:right] = cv2.GaussianBlur(region, (0, 0), sigmaX=sigma, sigmaY=sigma)
+        result[top:bottom, left:right] = _gaussian_blur_bounded(region, sigma)
     return result
 
 
