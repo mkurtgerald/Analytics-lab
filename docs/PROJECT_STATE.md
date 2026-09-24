@@ -10,7 +10,7 @@ Analytics Lab develops platform-independent video analytics for paid integration
 4. Weapons.
 5. Appearance search.
 
-Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 22, 2026 the owner explicitly moved Face detection + automated/selectable blurring into the active single implementation lane. LPR/OCR PR #84 remains closed/unmerged and must stay preserved until the owner changes direction.
+Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
 ## Detection + tracking — frozen at first real-video acceptance gate
 Tracking remains stopped at the policy's three-session threshold. The retained boundary includes the detector-neutral tracking contract, portable ByteTrack slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` (MIT), bounded evaluator, rights/evidence admission, pre-registered Wikimedia CC0 frames 150-174, canonical RGB24 frame identities, exhaustive ground-truth package binding, frozen simple-IoU control, and first-attempt head-to-head runner.
@@ -19,12 +19,14 @@ The fixed frame-manifest SHA-256 is `52f00a4fc1e013d9c0cae9647cb386369441f005a97
 
 The remaining blocker is unchanged: an independently authored exhaustive person/track annotation package for those exact frames cannot currently be materialized in the independent annotation environment without violating the approved evidence lane. No detector/tracker output may substitute for ground truth and no further tracker machinery should be added until that exact label path becomes executable.
 
-## LPR/OCR — preserved while Face owns the lane
-The retained baseline remains Open Model Zoo `vehicle-license-plate-detection-barrier-0106` FP16 behind a replaceable detector boundary, OpenVINO `2026.3.1` CPU, Tesseract `5.5.3`, pinned `tessdata_fast` English data, and the model-free OpenCV 4.12.0 proposal fallback. All current plate sources/results remain engineering evidence only, not commercial-accuracy evidence.
+## LPR/OCR — smallest runnable engineering baseline closed
+The retained runnable baseline is Open Model Zoo `vehicle-license-plate-detection-barrier-0106` FP16 behind a replaceable detector boundary, OpenVINO `2026.3.1` CPU, Tesseract `5.5.3` with pinned `tessdata_fast` English data, and the model-free OpenCV 4.12.0 proposal fallback. This is an engineering baseline only; it is not a commercial-accuracy or release-readiness claim.
 
-The detector donor screen reached the three-candidate policy ceiling and did not admit a stronger pretrained plate detector because weight/data redistribution provenance did not close cleanly. The model-free OpenCV proposal baseline therefore remains the smallest safe fallback. Exact Tesseract Windows execution and fixed-crop evidence are preserved, including the Land Rover, South Carolina, and Washington rights-cleared sample identities already recorded in repository tests and third-party/evidence documentation.
+Exact rights-cleared CC0 OCR evidence is already preserved from successful hosted-Windows runs. The preregistered gray/Otsu Land Rover run #202 observed `MPR318 -> IFMPR318J`; South Carolina run #206 observed `354AVV -> 354AVIV`; Washington run #209 observed `CPU4704 -> CPU404`. The frozen aggregate Levenshtein edit distance is therefore `5` across three samples. These misses are retained as measured evidence and must not be normalized away or used for image-specific tuning.
 
-PR #84 is intentionally closed/unmerged. Do not revive, reopen, or supersede it while Face owns the single implementation slot.
+The donor screen previously reached its three-candidate ceiling without admitting replacement OCR weights because training-data/weight commercial provenance did not close strongly enough. The project-authored OpenCV glyph fallback was then attempted as a no-weights alternative. Runs #211 and #212 exposed pre-measurement harness defects; the crop-interface mismatch was diagnosed. After Face completed, successor PR #111 resumed that hypothesis. Run #276 and changed-approach Linux run #277 both failed before any aggregate glyph comparison result because the pinned Wikimedia acquisition path returned HTTP 429. Synthetic glyph regressions passed, but no rights-cleared real glyph observation was produced. Under the three-session stop rule, this network-dependent glyph-evidence hypothesis is now closed without acceptance or rejection of the recognizer; do not retry it unchanged, do not tune it from synthetic fixtures, and do not substitute unpinned media.
+
+The smallest runnable LPR/OCR engineering baseline is therefore frozen at the already-verified Tesseract 5.5.3 path plus the existing replaceable detector/proposal boundaries. Remaining non-baseline gates are broader independently labeled rights-cleared held-out evidence, a stronger OCR donor only if code/weight/data rights close cleanly, native dependency/redistribution notices, representative soak/performance work, and explicit commercial-release approval. After PR #111 exact-head and post-merge main verification are green, move the single active implementation lane to Weapons. Tracking remains frozen at its independent-label blocker.
 
 ## Retained person-down / slip-fall path
 The required secondary path remains:
@@ -32,8 +34,13 @@ The required secondary path remains:
 
 Candidate events never infer injury, cause, fault, intent, negligence or medical condition. Existing detector/temporal behavior and hard negatives remain protected while higher-priority shared perception/evaluation work advances.
 
-## Face detection + automated/selectable blurring — active owner priority
+## Face detection + automated/selectable blurring — ~90% ENGINEERING maturity; feature expansion stopped
 The privacy/product boundary is already in place independently of model admission: normalized face boxes, immutable local-model verification, replaceable detector adapter, default-on Gaussian blur with bounded box expansion, permission-gated unblur/reblur, unauthorized-unblur denial, input-frame immutability, bounded face counts, and privacy audit state containing no biometric identity. Face recognition, embeddings, ReID and identity matching remain explicitly out of scope.
+
+### September 24 engineering-maturity checkpoint
+PR #110 hardened the reusable standard-OID/OpenVINO runtime so model conversion/CPU compilation occurs once per runtime instance and subsequent detections reuse the compiled model. Exact head `436854718f2fbc261bc74dc715ad74713473cb30` passed run #274 on unchanged base `d4a76770690171656a789c025ad88aab4511dd3a`; it merged to `main` as `8d42e7110419900a9e8d8ef9f97df80fb0774fdd`, and post-merge run #275 passed. The bounded hardening evidence used only deterministic synthetic input for three sequential calls and recorded compile count, per-call engineering timing, peak process RSS and input immutability. Existing regression coverage includes zero-face output, multiple class-502 filtering, non-face rejection, malformed-output fail-closed behavior, default blur, denied-unblur remains blurred, authorized-unblur passthrough, input immutability, max-face bounds, and bounded large-region Gaussian planning. The earlier admitted CC0 real portrait remains the sole real-person execution sample and is not a basis for an accuracy claim.
+
+Face is therefore recorded as approximately **90% ENGINEERING maturity only**. This is not commercial accuracy, release approval, biometric identity functionality, or a product-performance claim. The remaining gates are: broader rights-cleared held-out evidence across face scale, pose, lighting, multiple faces and no-face negatives; packaging/native-dependency notices and redistribution review; long-run soak/resource/performance validation on representative supported hardware; and explicit commercial-release approval. Do not tune the frozen `0.50` threshold from the one admitted real source and do not add recognition, embeddings, ReID or identity matching.
 
 ### Donor-screen outcome
 The first face donor screen remained fail-closed:
