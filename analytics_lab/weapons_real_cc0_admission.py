@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 from typing import Callable
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 _USER_AGENT = "Analytics-lab bounded Weapons evidence/1.0"
@@ -77,15 +78,37 @@ def _stream_identity(source: _Source, opener: Callable = urlopen) -> tuple[int, 
     sha256 = hashlib.sha256()
     total = 0
     with opener(request, timeout=20) as response:
+        final = urlparse(response.geturl())
+        expected = urlparse(source.url)
+        if (
+            final.scheme != "https"
+            or final.netloc != expected.netloc
+            or final.path != expected.path
+        ):
+            raise RuntimeError("Weapons evidence source redirected outside the reviewed asset")
+        content_length = response.headers.get("Content-Length")
+        if content_length is not None:
+            try:
+                advertised = int(content_length)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError("invalid Weapons evidence Content-Length") from exc
+            if advertised != source.expected_size:
+                raise RuntimeError(
+                    "Weapons evidence Content-Length does not match the published asset"
+                )
         while True:
             chunk = response.read(_CHUNK)
             if not chunk:
                 break
+            if not isinstance(chunk, (bytes, bytearray)):
+                raise ValueError("Weapons evidence response must yield bytes")
             total += len(chunk)
             if total > source.max_bytes:
                 raise RuntimeError("Weapons evidence source exceeds bounded admission limit")
             sha1.update(chunk)
             sha256.update(chunk)
+    if total == 0:
+        raise RuntimeError("Weapons evidence source was empty")
     return total, sha1.hexdigest(), sha256.hexdigest()
 
 

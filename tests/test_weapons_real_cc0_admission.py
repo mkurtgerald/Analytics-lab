@@ -8,9 +8,19 @@ from analytics_lab import weapons_real_cc0_admission as admission
 
 
 class _Response:
-    def __init__(self, payload: bytes):
+    def __init__(
+        self,
+        payload: bytes,
+        *,
+        url: str,
+        content_length: str | None = None,
+    ):
         self._payload = payload
         self._offset = 0
+        self._url = url
+        self.headers = {}
+        if content_length is not None:
+            self.headers["Content-Length"] = content_length
 
     def __enter__(self):
         return self
@@ -25,11 +35,27 @@ class _Response:
         self._offset += len(chunk)
         return chunk
 
+    def geturl(self) -> str:
+        return self._url
 
-def _opener(payloads: dict[str, bytes]):
+
+def _opener(
+    payloads: dict[str, bytes],
+    *,
+    final_urls: dict[str, str] | None = None,
+    content_lengths: dict[str, str | None] | None = None,
+):
+    final_urls = final_urls or {}
+    content_lengths = content_lengths or {}
+
     def open_request(request, timeout: int):
         del timeout
-        return _Response(payloads[request.full_url])
+        payload = payloads[request.full_url]
+        return _Response(
+            payload,
+            url=final_urls.get(request.full_url, request.full_url),
+            content_length=content_lengths.get(request.full_url, str(len(payload))),
+        )
     return open_request
 
 
@@ -93,10 +119,73 @@ class WeaponsRealCC0AdmissionTests(unittest.TestCase):
             admission._admit(source, _opener({source.url: payload}))
 
     def test_stream_bound_is_enforced(self):
-        payload = b"12345"
-        source = replace(admission._RIFLE, expected_size=1)
+        payload = b"x" * 5000
+        source = replace(
+            admission._RIFLE,
+            expected_size=1,
+        )
         with self.assertRaisesRegex(RuntimeError, "bounded admission limit"):
-            admission._stream_identity(source, _opener({source.url: payload}))
+            admission._stream_identity(
+                source,
+                _opener(
+                    {source.url: payload},
+                    content_lengths={source.url: None},
+                ),
+            )
+
+    def test_redirect_escape_fails_closed(self):
+        payload = b"payload"
+        source = replace(admission._RIFLE, expected_size=len(payload))
+        with self.assertRaisesRegex(RuntimeError, "redirected outside"):
+            admission._stream_identity(
+                source,
+                _opener(
+                    {source.url: payload},
+                    final_urls={source.url: "https://example.com/escape.jpg"},
+                ),
+            )
+
+    def test_mismatched_content_length_fails_closed(self):
+        payload = b"payload"
+        source = replace(admission._RIFLE, expected_size=len(payload))
+        with self.assertRaisesRegex(RuntimeError, "Content-Length does not match"):
+            admission._stream_identity(
+                source,
+                _opener(
+                    {source.url: payload},
+                    content_lengths={source.url: str(len(payload) + 1)},
+                ),
+            )
+
+    def test_malformed_content_length_fails_closed(self):
+        payload = b"payload"
+        source = replace(admission._RIFLE, expected_size=len(payload))
+        with self.assertRaisesRegex(RuntimeError, "invalid Weapons evidence Content-Length"):
+            admission._stream_identity(
+                source,
+                _opener(
+                    {source.url: payload},
+                    content_lengths={source.url: "invalid"},
+                ),
+            )
+
+    def test_missing_content_length_uses_streamed_identity(self):
+        payload = b"payload"
+        source = replace(
+            admission._RIFLE,
+            expected_size=len(payload),
+            expected_sha1=hashlib.sha1(payload).hexdigest(),
+        )
+        size, sha1, sha256 = admission._stream_identity(
+            source,
+            _opener(
+                {source.url: payload},
+                content_lengths={source.url: None},
+            ),
+        )
+        self.assertEqual(size, len(payload))
+        self.assertEqual(sha1, hashlib.sha1(payload).hexdigest())
+        self.assertEqual(sha256, hashlib.sha256(payload).hexdigest())
 
 
 if __name__ == "__main__":
