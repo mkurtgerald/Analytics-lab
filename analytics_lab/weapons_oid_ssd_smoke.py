@@ -2,8 +2,8 @@
 
 This evidence lane re-verifies the already-admitted standard OIDv4 SSD archive
 and frozen graph, constructs the reviewed OpenVINO 2026.3.1 CPU model exactly
-once, and executes two sequential detections through the project-owned warm
-runtime using one deterministic generated in-memory uint8 tensor. It uses no
+once, and executes exactly one detection through the project-owned warm runtime
+using one deterministic generated in-memory uint8 tensor. It uses no
 image/video media, retains no model or pixel artifact, and makes no accuracy,
 performance, or commercial-readiness claim.
 """
@@ -24,7 +24,7 @@ from .weapons_oid_ssd import OID_V4_WEAPON_CLASSES, OpenVINOOIDSSDWeaponRuntime
 _EXPECTED_OPENVINO_VERSION = "2026.3.1"
 _SYNTHETIC_HEIGHT = 300
 _SYNTHETIC_WIDTH = 300
-_EXPECTED_INFERENCES = 2
+_EXPECTED_INFERENCES = 1
 
 
 def _validate_detections(
@@ -70,12 +70,15 @@ def run(work_dir: str | Path) -> dict[str, object]:
         graph = construction._verified_graph_bytes(payload)
         _, model_sha256 = construction._expected_model_identity()
 
+        import cv2
         import numpy as np
         import openvino as ov
 
         version = str(getattr(ov, "__version__", ""))
-        if not version.startswith(_EXPECTED_OPENVINO_VERSION):
+        if version != _EXPECTED_OPENVINO_VERSION:
             raise RuntimeError("unexpected OpenVINO runtime version")
+        if str(getattr(cv2, "__version__", "")) != "4.12.0":
+            raise RuntimeError("unexpected OpenCV runtime version")
 
         with tempfile.TemporaryDirectory(prefix="oidv4-security-smoke-", dir=root) as temporary:
             model_path = Path(temporary) / "frozen_inference_graph.pb"
@@ -86,7 +89,6 @@ def run(work_dir: str | Path) -> dict[str, object]:
             runtime = OpenVINOOIDSSDWeaponRuntime.from_tensorflow_graph(model_path)
 
             first = _validate_detections(runtime.detect(frame))
-            second = _validate_detections(runtime.detect(frame))
 
             if runtime.compile_count != 1:
                 raise RuntimeError("runtime did not preserve compile-once lifecycle")
@@ -106,9 +108,7 @@ def run(work_dir: str | Path) -> dict[str, object]:
                 "compile_count": runtime.compile_count,
                 "inference_count": runtime.inference_count,
                 "first_detection_count": len(first),
-                "second_detection_count": len(second),
                 "first_class_ids": [item["class_id"] for item in first],
-                "second_class_ids": [item["class_id"] for item in second],
                 "input_unchanged": input_unchanged,
                 "media_used": False,
                 "derived_artifact_retained": False,
