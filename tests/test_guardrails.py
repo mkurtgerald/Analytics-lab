@@ -162,6 +162,19 @@ class GuardrailsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             g.validate_workflow(self.workflow, self.policy)
 
+    def test_weapons_oidv4_smoke_is_hash_locked_and_isolated(self):
+        linux = self.workflow['jobs']['linux']['steps']
+        smoke = [step for step in linux if step.get('name') == 'Bounded OIDv4 Weapons exact-model smoke']
+        self.assertEqual(len(smoke), 1)
+        step = smoke[0]
+        self.assertIn("evidence/weapons-oidv4-smoke-", step['if'])
+        self.assertIn("--only-binary=:all: --require-hashes -r requirements/oidv4-object-smoke-linux.txt", step['run'])
+        self.assertIn("tests.test_weapons_oid_ssd", step['run'])
+        self.assertIn("analytics_lab.weapons_oid_ssd_smoke", step['run'])
+        generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
+        self.assertEqual(len(generic), 1)
+        self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-oidv4-smoke-')", generic[0]['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):

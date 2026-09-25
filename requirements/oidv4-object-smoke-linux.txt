@@ -1,0 +1,8 @@
+openvino==2026.3.1 \
+    --hash=sha256:a767aab95940ce78901335f5e89e61087b81ce122a546e3023489303f8488cd3
+opencv-python-headless==4.12.0.88 \
+    --hash=sha256:236c8df54a90f4d02076e6f9c1cc763d794542e886c576a6fee46ec8ff75a7a9
+numpy==2.2.6 \
+    --hash=sha256:ba10f8411898fc418a521833e014a77d3ca01c15b0c6cdcce6a0d2897e6dbbdf
+openvino-telemetry==2025.2.0 \
+    --hash=sha256:bcb667e83a44f202ecf4cfa49281715c6d7e21499daec04ff853b7f964833599
