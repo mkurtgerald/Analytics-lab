@@ -11,7 +11,8 @@ engineering integration boundary, not a weapon-detection accuracy claim.
 """
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import Any, Callable
 
 from .face_oid_ssd import (
     OID_V4_BOXES_OUTPUT,
@@ -197,3 +198,78 @@ class OpenVINOOIDSSDWeaponDetector:
             confidence_threshold=self.confidence_threshold,
             max_detections=self.max_detections,
         )
+
+
+DetectorFactory = Callable[..., Any]
+
+
+class OpenVINOOIDSSDWeaponRuntime:
+    """Own one compiled admitted OIDv4 graph and reuse it for weapon detection."""
+
+    def __init__(self, detector: Any, *, compile_count: int) -> None:
+        if not callable(getattr(detector, "detect", None)):
+            raise ValueError("detector must expose detect")
+        if type(compile_count) is not int or compile_count != 1:
+            raise ValueError("runtime must represent exactly one model compilation")
+        self._detector = detector
+        self._compile_count = compile_count
+        self._inference_count = 0
+
+    @classmethod
+    def from_tensorflow_graph(
+        cls,
+        model_path: str | Path,
+        *,
+        confidence_threshold: float = _DEFAULT_CONFIDENCE_THRESHOLD,
+        max_detections: int = _MAX_WEAPON_DETECTIONS,
+        core: Any | None = None,
+        convert_model: Callable[[str], Any] | None = None,
+        detector_factory: DetectorFactory | None = None,
+    ) -> "OpenVINOOIDSSDWeaponRuntime":
+        """Convert/compile exactly once and bind the reusable weapon adapter."""
+        candidate = Path(model_path)
+        if candidate.is_symlink() or not candidate.is_file():
+            raise ValueError("OIDv4 graph must be a regular non-symlink file")
+
+        if core is None or convert_model is None:
+            import openvino as ov
+
+            if core is None:
+                core = ov.Core()
+            if convert_model is None:
+                convert_model = ov.convert_model
+
+        compiler = getattr(core, "compile_model", None)
+        if not callable(compiler):
+            raise ValueError("core must expose compile_model")
+        if not callable(convert_model):
+            raise ValueError("convert_model must be callable")
+
+        converted = convert_model(str(candidate))
+        compiled = compiler(converted, "CPU")
+        factory = detector_factory or OpenVINOOIDSSDWeaponDetector
+        detector = factory(
+            compiled,
+            confidence_threshold=confidence_threshold,
+            max_detections=max_detections,
+        )
+        return cls(detector, compile_count=1)
+
+    @property
+    def compile_count(self) -> int:
+        return self._compile_count
+
+    @property
+    def inference_count(self) -> int:
+        return self._inference_count
+
+    def detect(self, frame_bgr: Any) -> tuple[DetectionCandidate, ...]:
+        detections = self._detector.detect(frame_bgr)
+        try:
+            normalized = tuple(detections)
+        except TypeError as exc:
+            raise ValueError("detector must return an iterable") from exc
+        if any(not isinstance(item, DetectionCandidate) for item in normalized):
+            raise ValueError("detector returned unsupported weapon value")
+        self._inference_count += 1
+        return normalized

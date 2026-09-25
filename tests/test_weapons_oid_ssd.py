@@ -1,8 +1,11 @@
+import tempfile
+from pathlib import Path
 import unittest
 
 from analytics_lab.tracking import DetectionCandidate, NormalizedBox
 from analytics_lab.weapons_oid_ssd import (
     OID_V4_WEAPON_CLASSES,
+    OpenVINOOIDSSDWeaponRuntime,
     parse_oid_v4_weapon_detections,
 )
 
@@ -82,6 +85,69 @@ class WeaponOIDSSDTests(unittest.TestCase):
                 ),
             ),
         )
+
+
+class WeaponRuntimeLifecycleTests(unittest.TestCase):
+    def test_convert_compile_once_and_reuse_for_repeated_detections(self):
+        calls = {"convert": 0, "compile": 0, "factory": 0, "detect": 0}
+        candidate = DetectionCandidate(
+            category="handgun",
+            confidence=0.90,
+            box=NormalizedBox(0.10, 0.20, 0.30, 0.40),
+            model_class_id=533,
+        )
+
+        def convert_model(path):
+            self.assertTrue(Path(path).is_file())
+            calls["convert"] += 1
+            return "converted"
+
+        class Core:
+            def compile_model(self, converted, device):
+                self_outer.assertEqual(converted, "converted")
+                self_outer.assertEqual(device, "CPU")
+                calls["compile"] += 1
+                return "compiled"
+
+        class Detector:
+            def detect(self, _frame):
+                calls["detect"] += 1
+                return (candidate,)
+
+        def detector_factory(compiled, **kwargs):
+            self.assertEqual(compiled, "compiled")
+            self.assertEqual(kwargs["confidence_threshold"], 0.50)
+            self.assertEqual(kwargs["max_detections"], 64)
+            calls["factory"] += 1
+            return Detector()
+
+        self_outer = self
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "frozen_inference_graph.pb"
+            path.write_bytes(b"synthetic-graph-fixture")
+            runtime = OpenVINOOIDSSDWeaponRuntime.from_tensorflow_graph(
+                path,
+                core=Core(),
+                convert_model=convert_model,
+                detector_factory=detector_factory,
+            )
+            self.assertEqual(runtime.detect(object()), (candidate,))
+            self.assertEqual(runtime.detect(object()), (candidate,))
+            self.assertEqual(runtime.detect(object()), (candidate,))
+
+        self.assertEqual(runtime.compile_count, 1)
+        self.assertEqual(runtime.inference_count, 3)
+        self.assertEqual(calls, {"convert": 1, "compile": 1, "factory": 1, "detect": 3})
+
+    def test_runtime_rejects_non_detection_values_without_counting_inference(self):
+        class Detector:
+            def detect(self, _frame):
+                return ("not-a-detection",)
+
+        runtime = OpenVINOOIDSSDWeaponRuntime(Detector(), compile_count=1)
+        with self.assertRaisesRegex(ValueError, "unsupported weapon value"):
+            runtime.detect(object())
+        self.assertEqual(runtime.inference_count, 0)
 
 
 if __name__ == "__main__":
