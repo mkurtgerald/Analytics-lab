@@ -175,6 +175,18 @@ class GuardrailsTests(unittest.TestCase):
         self.assertEqual(len(generic), 1)
         self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-oidv4-smoke-')", generic[0]['if'])
 
+    def test_weapons_real_cc0_admission_is_isolated(self):
+        linux = self.workflow['jobs']['linux']['steps']
+        admission_steps = [step for step in linux if step.get('name') == 'Bounded CC0 Weapons source admission']
+        self.assertEqual(len(admission_steps), 1)
+        step = admission_steps[0]
+        self.assertIn("evidence/weapons-real-cc0-admission-", step['if'])
+        self.assertIn("tests.test_weapons_real_cc0_admission", step['run'])
+        self.assertIn("analytics_lab.weapons_real_cc0_admission", step['run'])
+        generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
+        self.assertEqual(len(generic), 1)
+        self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-real-cc0-admission-')", generic[0]['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):
