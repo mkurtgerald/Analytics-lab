@@ -75,7 +75,7 @@ def run(work_dir: str | Path) -> dict[str, object]:
         import openvino as ov
 
         version = str(getattr(ov, "__version__", ""))
-        if version != _EXPECTED_OPENVINO_VERSION:
+        if not version.startswith(_EXPECTED_OPENVINO_VERSION):
             raise RuntimeError("unexpected OpenVINO runtime version")
         if str(getattr(cv2, "__version__", "")) != "4.12.0":
             raise RuntimeError("unexpected OpenCV runtime version")
