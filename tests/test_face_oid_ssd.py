@@ -6,6 +6,7 @@ from analytics_lab.face_oid_ssd import (
     parse_oid_v4_detections,
 )
 from analytics_lab.tracking import NormalizedBox
+from analytics_lab.security_object_oid_ssd import OID_V4_SECURITY_OBJECT_CLASSES
 
 
 class OIDV4FaceAdapterTests(unittest.TestCase):
@@ -57,6 +58,12 @@ class OIDV4FaceAdapterTests(unittest.TestCase):
                 classes=[[502.5]],
                 num_detections=[1.0],
             )
+
+
+class OIDV4SharedSecurityObjectContractTests(unittest.TestCase):
+    def test_reused_oid_class_allowlist_is_bounded(self):
+        self.assertEqual(len(OID_V4_SECURITY_OBJECT_CLASSES), 7)
+        self.assertEqual(set(OID_V4_SECURITY_OBJECT_CLASSES), {285, 325, 351, 361, 365, 408, 533})
 
 
 if __name__ == "__main__":
