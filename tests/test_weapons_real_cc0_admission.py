@@ -67,10 +67,12 @@ class WeaponsRealCC0AdmissionTests(unittest.TestCase):
         self.assertEqual(rifle.expected_size, 1_068_333)
         self.assertEqual(rifle.expected_sha1, "a4e50100507987ce58ff128d93eb2b11bccd88e2")
         self.assertEqual((rifle.width, rifle.height), (4000, 1663))
+        self.assertEqual(rifle.sha256, "4c58e411b9e3e7348420915dcb32be0e6dcd0132f6120a6049af36791605c0f2")
         self.assertEqual(chair.license, "CC0-1.0")
         self.assertEqual(chair.expected_size, 2_508_211)
         self.assertEqual(chair.expected_sha1, "f131416b5f2757d57b5a6fdb8b049c7bad87872b")
         self.assertEqual((chair.width, chair.height), (2848, 4272))
+        self.assertEqual(chair.sha256, "73db796087c551375d7d537ca78c81ede7b106cd8d25e1fad729a29a7b59483c")
         self.assertTrue(all(source.url.startswith("https://upload.wikimedia.org/") for source in admission._SOURCES))
 
     def test_unpinned_discovery_emits_sha256_without_decode_or_inference(self):

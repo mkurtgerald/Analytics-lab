@@ -55,6 +55,7 @@ _RIFLE = _Source(
     expected_sha1="a4e50100507987ce58ff128d93eb2b11bccd88e2",
     width=4000,
     height=1663,
+    sha256="4c58e411b9e3e7348420915dcb32be0e6dcd0132f6120a6049af36791605c0f2",
 )
 
 _CHAIR = _Source(
@@ -67,6 +68,7 @@ _CHAIR = _Source(
     expected_sha1="f131416b5f2757d57b5a6fdb8b049c7bad87872b",
     width=2848,
     height=4272,
+    sha256="73db796087c551375d7d537ca78c81ede7b106cd8d25e1fad729a29a7b59483c",
 )
 
 _SOURCES = (_RIFLE, _CHAIR)
