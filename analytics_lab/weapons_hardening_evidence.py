@@ -13,7 +13,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import resource
 import shutil
 import tempfile
 import time
@@ -72,6 +71,8 @@ def run(work_dir: str | Path) -> dict[str, object]:
         started = time.perf_counter()
         graph = measurement._stream_verified_graph()
         graph_stream_seconds = time.perf_counter() - started
+
+        import resource
 
         frame = _synthetic_frame()
         before = hashlib.sha256(frame.tobytes()).hexdigest()
