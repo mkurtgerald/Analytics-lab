@@ -175,8 +175,16 @@
           "run": "set -euo pipefail\npython -m unittest tests.test_weapons_real_cc0_admission -v\npython -m analytics_lab.weapons_real_cc0_admission\n"
         },
         {
+          "name": "Bounded CC0 Weapons real measurement",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/weapons-real-cc0-measurement-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements/oidv4-object-smoke-linux.txt\npython -m unittest tests.test_weapons_real_cc0_measurement tests.test_weapons_real_cc0_admission tests.test_weapons_oid_ssd -v\npython -m analytics_lab.weapons_real_cc0_measurement --work-dir \"$RUNNER_TEMP/analytics-weapons-real-cc0-measurement\"\n"
+        },
+        {
           "name": "Bounded real-video CPU evidence",
-          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/face-privacy-') && !startsWith(github.head_ref, 'evidence/face-donor-facessd-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-admission-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-measurement-') && !startsWith(github.head_ref, 'evidence/face-hardening-') && !startsWith(github.head_ref, 'evidence/weapons-oidv4-smoke-') && !startsWith(github.head_ref, 'evidence/weapons-real-cc0-admission-') }}",
+          "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/') && !startsWith(github.head_ref, 'evidence/figshare-') && !startsWith(github.head_ref, 'evidence/tracking-cc0-') && !startsWith(github.head_ref, 'evidence/lpr-wikimedia-') && !startsWith(github.head_ref, 'evidence/lpr-vehicle-scene-') && !startsWith(github.head_ref, 'evidence/lpr-front-envelope-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-fixed-crop-') && !startsWith(github.head_ref, 'evidence/lpr-ocr-exact-') && !startsWith(github.head_ref, 'evidence/face-privacy-') && !startsWith(github.head_ref, 'evidence/face-donor-facessd-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-admission-') && !startsWith(github.head_ref, 'evidence/face-real-cc0-measurement-') && !startsWith(github.head_ref, 'evidence/face-hardening-') && !startsWith(github.head_ref, 'evidence/weapons-oidv4-smoke-') && !startsWith(github.head_ref, 'evidence/weapons-real-cc0-admission-') && !startsWith(github.head_ref, 'evidence/weapons-real-cc0-measurement-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },

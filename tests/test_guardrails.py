@@ -187,6 +187,19 @@ class GuardrailsTests(unittest.TestCase):
         self.assertEqual(len(generic), 1)
         self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-real-cc0-admission-')", generic[0]['if'])
 
+    def test_weapons_real_cc0_measurement_is_hash_locked_and_isolated(self):
+        linux = self.workflow['jobs']['linux']['steps']
+        steps = [step for step in linux if step.get('name') == 'Bounded CC0 Weapons real measurement']
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertIn("evidence/weapons-real-cc0-measurement-", step['if'])
+        self.assertIn("--require-hashes -r requirements/oidv4-object-smoke-linux.txt", step['run'])
+        self.assertIn("tests.test_weapons_real_cc0_measurement", step['run'])
+        self.assertIn("analytics_lab.weapons_real_cc0_measurement", step['run'])
+        generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
+        self.assertEqual(len(generic), 1)
+        self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-real-cc0-measurement-')", generic[0]['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):
