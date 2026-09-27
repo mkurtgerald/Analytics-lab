@@ -27,7 +27,7 @@ _HTTPS = re.compile(r"https://[^\s]+\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 RFDETR_REPOSITORY = "roboflow/rf-detr"
-RFDETR_REVISION = "1985300a0e8f905c70bb1772855dcf6c964e5ed5"
+RFDETR_REVISION = "d96d6ff9303ec5af7bb8f73e83f0f04ecb6ef728"
 RFDETR_LICENSE = "Apache-2.0"
 RFDETR_VARIANT = "RFDETRNano"
 PRETRAIN_WEIGHTS = None
