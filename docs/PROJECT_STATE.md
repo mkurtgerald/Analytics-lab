@@ -16,7 +16,11 @@ Person-down and slip/fall remain required deliverables and are secondary only in
 
 Forensic search is now a first-class Analytics Lab capability rather than a synonym for appearance/ReID search. The first engineering slice is metadata-first and model-independent: normalized analytic observations can be indexed and searched by bounded UTC time range, source/camera, category, session-local track id, exact/prefix plate/OCR text, minimum confidence, and exact generic analytic attributes. Existing Tracking and LPR/OCR outputs have explicit adapters into this record contract.
 
+PR #121 exact-head run #301 passed Linux, Windows and the Analytics quality gate, merged to main as `4305dfca6ddb794d96d7d51cb4c9773a0e7eeae2`, and post-merge run #302 passed. The deterministic metadata-search foundation is therefore closed green.
+
 The reference index is intentionally bounded and deterministic. It stores normalized analytic metadata only, not video/image pixels. Track ids remain session-local association identifiers and do not create biometric identity or cross-camera identity claims. Generic attributes carry their own confidence and provenance so future reviewed producers can add color, garment, vehicle, direction, zone, or similar facets without changing the query contract.
+
+The active next forensic gate binds every searchable record to immutable evidence provenance: source event id, producer + exact version, configuration SHA-256, optional model SHA-256 and optional source revision. A record without this provenance must not enter the searchable index. This makes every hit traceable back to the analytic evidence that produced it instead of becoming an orphan search result.
 
 Appearance/vector similarity is a later ranking backend behind this search boundary. No embedding model, ReID donor, face-recognition capability, vector database, or biometric identity behavior is admitted by the foundation. The next forensic gates are durable index/backend abstraction, query-result provenance/evidence linking, multi-camera temporal search, and then a bounded donor screen for appearance descriptors/vector search with commercial code/weight/data provenance closed separately.
 
