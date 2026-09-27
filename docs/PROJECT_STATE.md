@@ -8,9 +8,17 @@ Analytics Lab develops platform-independent video analytics for paid integration
 2. LPR/OCR.
 3. Face — including required selectable face blurring with policy-driven default blur, permission-gated unblur/reblur, server-side enforcement, auditability and preservation of original evidence.
 4. Weapons.
-5. Appearance search.
+5. Forensic search — deterministic metadata/time/camera/LPR/track search first, then rights-cleared appearance/vector ranking.
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
+
+## Forensic search — foundation active
+
+Forensic search is now a first-class Analytics Lab capability rather than a synonym for appearance/ReID search. The first engineering slice is metadata-first and model-independent: normalized analytic observations can be indexed and searched by bounded UTC time range, source/camera, category, session-local track id, exact/prefix plate/OCR text, minimum confidence, and exact generic analytic attributes. Existing Tracking and LPR/OCR outputs have explicit adapters into this record contract.
+
+The reference index is intentionally bounded and deterministic. It stores normalized analytic metadata only, not video/image pixels. Track ids remain session-local association identifiers and do not create biometric identity or cross-camera identity claims. Generic attributes carry their own confidence and provenance so future reviewed producers can add color, garment, vehicle, direction, zone, or similar facets without changing the query contract.
+
+Appearance/vector similarity is a later ranking backend behind this search boundary. No embedding model, ReID donor, face-recognition capability, vector database, or biometric identity behavior is admitted by the foundation. The next forensic gates are durable index/backend abstraction, query-result provenance/evidence linking, multi-camera temporal search, and then a bounded donor screen for appearance descriptors/vector search with commercial code/weight/data provenance closed separately.
 
 ## Detection + tracking — frozen at first real-video acceptance gate
 Tracking remains stopped at the policy's three-session threshold. The retained boundary includes the detector-neutral tracking contract, portable ByteTrack slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` (MIT), bounded evaluator, rights/evidence admission, pre-registered Wikimedia CC0 frames 150-174, canonical RGB24 frame identities, exhaustive ground-truth package binding, frozen simple-IoU control, and first-attempt head-to-head runner.
