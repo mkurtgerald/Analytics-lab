@@ -58,7 +58,7 @@ class WeaponTrainingAsset:
     asset_url: str
     license_id: str
     rights_basis: str
-    source_class: str
+    source_class: str | None
     split: str
     expected_size: int
     sha256: str
@@ -66,6 +66,8 @@ class WeaponTrainingAsset:
     height: int
     annotation_id: str
     annotation_sha256: str
+    annotation_box_count: int
+    annotation_classes: tuple[str, ...]
     commercial_training_allowed: bool
     commercial_evaluation_allowed: bool
     identifiable_people: bool
@@ -80,7 +82,7 @@ class WeaponTrainingAsset:
             value = getattr(self, name)
             if not isinstance(value, str) or _HTTPS.fullmatch(value) is None:
                 raise ValueError(f"{name} must be https")
-        if self.source_class not in WEAPON_TAXONOMY:
+        if self.source_class is not None and self.source_class not in WEAPON_TAXONOMY:
             raise ValueError("source_class is outside the frozen Weapons taxonomy")
         if self.split not in _SPLITS:
             raise ValueError("split must be train, validation, or test")
@@ -92,6 +94,22 @@ class WeaponTrainingAsset:
             raise ValueError("dimensions outside supported bounds")
         _sha256(self.sha256, "sha256")
         _sha256(self.annotation_sha256, "annotation_sha256")
+        if type(self.annotation_box_count) is not int or not 0 <= self.annotation_box_count <= 4096:
+            raise ValueError("annotation_box_count is outside the supported bound")
+        if not isinstance(self.annotation_classes, tuple):
+            raise ValueError("annotation_classes must be an immutable tuple")
+        if any(item not in WEAPON_TAXONOMY for item in self.annotation_classes):
+            raise ValueError("annotation_classes contains an unknown Weapons class")
+        if len(set(self.annotation_classes)) != len(self.annotation_classes):
+            raise ValueError("annotation_classes must not contain duplicates")
+        if self.source_class is None:
+            if self.annotation_box_count != 0 or self.annotation_classes != ():
+                raise ValueError("negative asset must have zero boxes and no annotation classes")
+        else:
+            if self.annotation_box_count < 1:
+                raise ValueError("positive asset must have at least one annotation box")
+            if self.annotation_classes != (self.source_class,):
+                raise ValueError("positive asset annotation class summary must match source_class")
         for name in (
             "commercial_training_allowed",
             "commercial_evaluation_allowed",
@@ -202,6 +220,8 @@ def manifest_digest(assets: Iterable[WeaponTrainingAsset]) -> str:
             "height": item.height,
             "annotation_id": item.annotation_id,
             "annotation_sha256": item.annotation_sha256,
+            "annotation_box_count": item.annotation_box_count,
+            "annotation_classes": list(item.annotation_classes),
             "commercial_training_allowed": item.commercial_training_allowed,
             "commercial_evaluation_allowed": item.commercial_evaluation_allowed,
             "identifiable_people": item.identifiable_people,
