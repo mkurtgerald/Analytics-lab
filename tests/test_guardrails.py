@@ -228,6 +228,21 @@ class GuardrailsTests(unittest.TestCase):
             generic[0]['if'],
         )
 
+    def test_weapons_training_cc0_admission_is_isolated(self):
+        linux = self.workflow['jobs']['linux']['steps']
+        steps = [step for step in linux if step.get('name') == 'Bounded CC0 Weapons training-source admission']
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertIn("evidence/weapons-training-cc0-admission-", step['if'])
+        self.assertIn("tests.test_weapons_training_cc0_admission", step['run'])
+        self.assertIn("analytics_lab.weapons_training_cc0_admission", step['run'])
+        generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
+        self.assertEqual(len(generic), 1)
+        self.assertIn(
+            "!startsWith(github.head_ref, 'evidence/weapons-training-cc0-admission-')",
+            generic[0]['if'],
+        )
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):
