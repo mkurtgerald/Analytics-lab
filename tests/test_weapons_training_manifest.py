@@ -20,7 +20,9 @@ def _asset(
     split: str,
     sha: str,
     annotation_sha: str,
-    source_class: str = "rifle",
+    source_class: str | None = "rifle",
+    annotation_box_count: int | None = None,
+    annotation_classes: tuple[str, ...] | None = None,
     commercial_training: bool = True,
     commercial_evaluation: bool = True,
     identifiable_people: bool = False,
@@ -40,6 +42,16 @@ def _asset(
         height=480,
         annotation_id=f"annotation-{asset_id}",
         annotation_sha256=annotation_sha,
+        annotation_box_count=(
+            annotation_box_count
+            if annotation_box_count is not None
+            else (0 if source_class is None else 1)
+        ),
+        annotation_classes=(
+            annotation_classes
+            if annotation_classes is not None
+            else (() if source_class is None else (source_class,))
+        ),
         commercial_training_allowed=commercial_training,
         commercial_evaluation_allowed=commercial_evaluation,
         identifiable_people=identifiable_people,
@@ -106,6 +118,66 @@ class WeaponsTrainingManifestTests(unittest.TestCase):
                 )
                 validate_training_manifest((blocked, validation))
 
+    def test_true_negative_is_not_relabelled_as_weapon(self):
+        train = _asset(
+            asset_id="train-rifle",
+            split="train",
+            sha="1" * 64,
+            annotation_sha="2" * 64,
+        )
+        negative = _asset(
+            asset_id="validation-chair",
+            split="validation",
+            sha="3" * 64,
+            annotation_sha="4" * 64,
+            source_class=None,
+        )
+        self.assertIsNone(negative.source_class)
+        self.assertEqual(negative.annotation_box_count, 0)
+        self.assertEqual(negative.annotation_classes, ())
+        self.assertEqual(validate_training_manifest((train, negative)), (train, negative))
+
+    def test_negative_rejects_boxes_or_classes(self):
+        base = dict(
+            asset_id="negative",
+            split="validation",
+            sha="5" * 64,
+            annotation_sha="6" * 64,
+            source_class=None,
+        )
+        for changes in (
+            {"annotation_box_count": 1},
+            {"annotation_classes": ("weapon",)},
+            {"annotation_box_count": 1, "annotation_classes": ("weapon",)},
+        ):
+            with self.subTest(changes=changes), self.assertRaisesRegex(
+                ValueError, "negative asset"
+            ):
+                _asset(**base, **changes)
+
+    def test_positive_requires_boxes_and_exact_class_summary(self):
+        with self.assertRaisesRegex(ValueError, "at least one annotation box"):
+            _asset(
+                asset_id="positive-zero",
+                split="train",
+                sha="7" * 64,
+                annotation_sha="8" * 64,
+                source_class="rifle",
+                annotation_box_count=0,
+            )
+        for classes in ((), ("weapon",), ("rifle", "weapon")):
+            with self.subTest(classes=classes), self.assertRaisesRegex(
+                ValueError, "class summary must match"
+            ):
+                _asset(
+                    asset_id="positive-mismatch",
+                    split="train",
+                    sha="9" * 64,
+                    annotation_sha="a" * 64,
+                    source_class="rifle",
+                    annotation_classes=classes,
+                )
+
     def test_same_media_or_annotation_cannot_cross_splits(self):
         train = _asset(
             asset_id="train",
@@ -148,6 +220,15 @@ class WeaponsTrainingManifestTests(unittest.TestCase):
         second = manifest_digest((train, validation))
         self.assertEqual(first, second)
         self.assertEqual(len(first), 64)
+
+        negative = _asset(
+            asset_id="validation-negative",
+            split="validation",
+            sha="b" * 64,
+            annotation_sha="c" * 64,
+            source_class=None,
+        )
+        self.assertNotEqual(first, manifest_digest((train, negative)))
 
 
 if __name__ == "__main__":
