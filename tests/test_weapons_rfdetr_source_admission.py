@@ -45,7 +45,7 @@ class RFDETRSourceAdmissionTests(unittest.TestCase):
     def test_pinned_revision_and_source_set_are_exact(self):
         self.assertEqual(
             admission.REVISION,
-            "1985300a0e8f905c70bb1772855dcf6c964e5ed5",
+            "d96d6ff9303ec5af7bb8f73e83f0f04ecb6ef728",
         )
         self.assertEqual(admission.LICENSE_ID, "Apache-2.0")
         self.assertEqual(
