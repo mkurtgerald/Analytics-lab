@@ -16,7 +16,7 @@ from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 REPOSITORY = "roboflow/rf-detr"
-REVISION = "1985300a0e8f905c70bb1772855dcf6c964e5ed5"
+REVISION = "d96d6ff9303ec5af7bb8f73e83f0f04ecb6ef728"
 LICENSE_ID = "Apache-2.0"
 _ALLOWED_HOST = "raw.githubusercontent.com"
 _USER_AGENT = "Analytics-lab bounded RF-DETR source admission/1.0"
@@ -39,16 +39,16 @@ class _PinnedSource:
 
 _FILES = (
     _PinnedSource("LICENSE", 11_345, "56db37c53b61c7976042682a83d85383a6bf6007"),
-    _PinnedSource("pyproject.toml", 27_636, "dcd04cd862d06e088f6099001925eb39cabbfd59"),
+    _PinnedSource("pyproject.toml", 27_019, "d703cd70d6ef5da7c6d3dd9037f0847294bf45a0"),
     _PinnedSource(
         "src/rfdetr/config.py",
-        86_219,
-        "d8fc6fa0b0ab9e96f1370cf04d6d1666f297cdb9",
+        85_988,
+        "9b1508a4d7e96bac7b9e663c20d88ffdcd8ee523",
     ),
     _PinnedSource(
         "src/rfdetr/detr.py",
-        186_353,
-        "1bea7f6092f429e1b6e07f9ccafe9a05d6ac0c19",
+        186_124,
+        "a8466d234d479248b6511960651f8c9251352118",
     ),
     _PinnedSource(
         "src/rfdetr/models/backbone/dinov2.py",
