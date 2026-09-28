@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import tempfile
 import threading
@@ -144,7 +145,10 @@ class SQLiteForensicIndexTests(unittest.TestCase):
 
     def test_special_character_paths_reopen_exact_database(self):
         with tempfile.TemporaryDirectory() as tmp:
-            for name in ("hash#db.sqlite", "query?db.sqlite", "space db.sqlite", "percent%db.sqlite"):
+            names = ["hash#db.sqlite", "space db.sqlite", "percent%db.sqlite"]
+            if os.name != "nt":
+                names.append("query?db.sqlite")
+            for name in names:
                 with self.subTest(name=name):
                     path = Path(tmp) / name
                     with SQLiteForensicIndex.create(path) as store:
@@ -158,6 +162,10 @@ class SQLiteForensicIndexTests(unittest.TestCase):
                     self.assertIn(name, siblings)
                     self.assertNotIn("hash", siblings)
                     self.assertNotIn("query", siblings)
+
+            if os.name == "nt":
+                with self.assertRaises((OSError, sqlite3.OperationalError)):
+                    SQLiteForensicIndex.create(Path(tmp) / "query?db.sqlite")
 
     def test_open_missing_and_unidentified_store_fail_closed(self):
         with tempfile.TemporaryDirectory() as tmp:
