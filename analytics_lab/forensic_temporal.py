@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from .forensic_search import ForensicQuery, ForensicRecord
+from .forensic_search import AttributeFilter, ForensicQuery, ForensicRecord
 
 
 class ForensicSearcher(Protocol):
@@ -165,6 +165,173 @@ def exact_plate_temporal_trails(
         key=lambda item: (
             item.records[0].timestamp_ms,
             item.association_value,
+            item.records[0].source_id,
+            item.records[0].observation_id,
+        )
+    )
+    return tuple(trails)
+
+
+@dataclass(frozen=True)
+class AttributeCandidateTrail:
+    """Cross-camera candidate trail from exact reviewed analytic attributes.
+
+    This is retrieval/correlation assistance only. It is never an identity or
+    ReID claim, and every original record/evidence link remains intact.
+    """
+
+    category: str
+    required_attributes: tuple[AttributeFilter, ...]
+    records: tuple[ForensicRecord, ...]
+    identity_claim: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.category, str) or not self.category:
+            raise ValueError("attribute trail category must be nonempty")
+        if type(self.required_attributes) is not tuple or not self.required_attributes:
+            raise ValueError("attribute trail requires at least one attribute filter")
+        if any(not isinstance(item, AttributeFilter) for item in self.required_attributes):
+            raise ValueError("required_attributes must contain AttributeFilter values")
+        canonical = tuple(
+            AttributeFilter(name, value)
+            for name, value in sorted(
+                {(item.name, item.value) for item in self.required_attributes}
+            )
+        )
+        if self.required_attributes != canonical:
+            raise ValueError("required_attributes must be canonical and deduplicated")
+        if type(self.records) is not tuple or len(self.records) < 2:
+            raise ValueError("attribute trail requires at least two records")
+        if self.identity_claim is not False:
+            raise ValueError("attribute candidate trails must never claim identity")
+        ordered = tuple(
+            sorted(
+                self.records,
+                key=lambda item: (item.timestamp_ms, item.source_id, item.observation_id),
+            )
+        )
+        if ordered != self.records:
+            raise ValueError("attribute trail records must be deterministically ordered")
+        if len({item.source_id for item in self.records}) < 2:
+            raise ValueError("cross-camera attribute trail requires distinct sources")
+        if any(item.category != self.category for item in self.records):
+            raise ValueError("attribute trail cannot mix categories")
+        required = {(item.name, item.value) for item in self.required_attributes}
+        for record in self.records:
+            present = {(item.name, item.value) for item in record.attributes}
+            if not required.issubset(present):
+                raise ValueError("attribute trail record does not match required attributes")
+            if record.evidence is None:
+                raise ValueError("attribute trail records require immutable evidence provenance")
+
+
+def _emit_attribute_candidate(
+    records: list[ForensicRecord],
+    *,
+    category: str,
+    required_attributes: tuple[AttributeFilter, ...],
+) -> AttributeCandidateTrail | None:
+    if len(records) < 2 or len({item.source_id for item in records}) < 2:
+        return None
+    return AttributeCandidateTrail(
+        category=category,
+        required_attributes=required_attributes,
+        records=tuple(records),
+    )
+
+
+def attribute_temporal_trails(
+    searcher: ForensicSearcher,
+    query: ForensicQuery,
+    *,
+    config: TemporalAssociationConfig | None = None,
+) -> tuple[AttributeCandidateTrail, ...]:
+    """Build bounded cross-camera candidate trails from exact query attributes.
+
+    The query must contain at least one exact AttributeFilter. The search backend
+    performs retrieval. Returned records are then grouped by category and bounded
+    temporally. Matching attributes are candidate evidence only and never imply
+    the same person, vehicle, or object across cameras.
+    """
+    if not callable(getattr(searcher, "search", None)):
+        raise ValueError("searcher must expose search")
+    if not isinstance(query, ForensicQuery):
+        raise ValueError("query must be ForensicQuery")
+    if not query.attributes:
+        raise ValueError("attribute temporal search requires exact attribute filters")
+    cfg = config or TemporalAssociationConfig()
+    if not isinstance(cfg, TemporalAssociationConfig):
+        raise ValueError("config must be TemporalAssociationConfig")
+
+    required_attributes = tuple(
+        AttributeFilter(name, value)
+        for name, value in sorted({(item.name, item.value) for item in query.attributes})
+    )
+
+    records = searcher.search(query)
+    if not isinstance(records, tuple):
+        raise ValueError("searcher must return a tuple of ForensicRecord values")
+    if len(records) > query.limit:
+        raise ValueError("searcher returned more records than the query limit")
+    if any(not isinstance(item, ForensicRecord) for item in records):
+        raise ValueError("searcher returned an unsupported record")
+
+    groups: dict[str, list[ForensicRecord]] = {}
+    for record in records:
+        if record.category == "license_plate":
+            continue
+        groups.setdefault(record.category, []).append(record)
+
+    trails: list[AttributeCandidateTrail] = []
+    for category in sorted(groups):
+        ordered = sorted(
+            groups[category],
+            key=lambda item: (item.timestamp_ms, item.source_id, item.observation_id),
+        )
+        segment: list[ForensicRecord] = []
+        sources: set[str] = set()
+
+        for record in ordered:
+            if not segment:
+                segment = [record]
+                sources = {record.source_id}
+                continue
+
+            previous = segment[-1]
+            new_source_count = len(sources | {record.source_id})
+            exceeds = (
+                record.timestamp_ms - previous.timestamp_ms > cfg.max_link_gap_ms
+                or record.timestamp_ms - segment[0].timestamp_ms > cfg.max_total_span_ms
+                or len(segment) >= cfg.max_records_per_trail
+                or new_source_count > cfg.max_sources_per_trail
+            )
+            if exceeds:
+                trail = _emit_attribute_candidate(
+                    segment,
+                    category=category,
+                    required_attributes=required_attributes,
+                )
+                if trail is not None:
+                    trails.append(trail)
+                segment = [record]
+                sources = {record.source_id}
+            else:
+                segment.append(record)
+                sources.add(record.source_id)
+
+        trail = _emit_attribute_candidate(
+            segment,
+            category=category,
+            required_attributes=required_attributes,
+        )
+        if trail is not None:
+            trails.append(trail)
+
+    trails.sort(
+        key=lambda item: (
+            item.records[0].timestamp_ms,
+            item.category,
+            tuple((f.name, f.value) for f in item.required_attributes),
             item.records[0].source_id,
             item.records[0].observation_id,
         )
