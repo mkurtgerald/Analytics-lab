@@ -23,6 +23,7 @@ _MAX_TIMESTAMP_MS = 253402300799999
 _SAFE_TOKEN = re.compile(r"[A-Za-z0-9_.:/-]{1,128}\Z")
 _SAFE_ATTR = re.compile(r"[A-Za-z0-9_.:/ -]{1,128}\Z")
 _SAFE_PLATE = re.compile(r"[A-Z0-9]{1,16}\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def _token(value: object, name: str) -> str:
