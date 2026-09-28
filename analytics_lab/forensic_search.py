@@ -23,6 +23,7 @@ _MAX_TIMESTAMP_MS = 253402300799999
 _SAFE_TOKEN = re.compile(r"[A-Za-z0-9_.:/-]{1,128}\Z")
 _SAFE_ATTR = re.compile(r"[A-Za-z0-9_.:/ -]{1,128}\Z")
 _SAFE_PLATE = re.compile(r"[A-Z0-9]{1,16}\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def _token(value: object, name: str) -> str:
@@ -76,6 +77,38 @@ class ForensicAttribute:
 
 
 @dataclass(frozen=True)
+class ForensicEvidenceLink:
+    """Immutable provenance for one searchable analytic observation."""
+
+    event_id: str
+    producer: str
+    producer_version: str
+    config_sha256: str
+    model_sha256: str | None = None
+    source_revision: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "event_id", _token(self.event_id, "evidence event_id"))
+        object.__setattr__(self, "producer", _token(self.producer, "evidence producer"))
+        object.__setattr__(
+            self,
+            "producer_version",
+            _token(self.producer_version, "evidence producer_version"),
+        )
+        if not isinstance(self.config_sha256, str) or _SHA256.fullmatch(self.config_sha256) is None:
+            raise ValueError("config_sha256 must be lowercase SHA-256")
+        if self.model_sha256 is not None:
+            if not isinstance(self.model_sha256, str) or _SHA256.fullmatch(self.model_sha256) is None:
+                raise ValueError("model_sha256 must be lowercase SHA-256")
+        if self.source_revision is not None:
+            object.__setattr__(
+                self,
+                "source_revision",
+                _token(self.source_revision, "evidence source_revision"),
+            )
+
+
+@dataclass(frozen=True)
 class ForensicRecord:
     """One searchable normalized analytic observation.
 
@@ -92,6 +125,7 @@ class ForensicRecord:
     track_id: str | None = None
     plate_text: str | None = None
     attributes: tuple[ForensicAttribute, ...] = ()
+    evidence: ForensicEvidenceLink | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "observation_id", _token(self.observation_id, "observation_id"))
@@ -121,6 +155,8 @@ class ForensicRecord:
         keys = [(item.name, item.value, item.provenance) for item in self.attributes]
         if len(keys) != len(set(keys)):
             raise ValueError("duplicate forensic attribute")
+        if self.evidence is not None and not isinstance(self.evidence, ForensicEvidenceLink):
+            raise ValueError("evidence must be ForensicEvidenceLink or None")
 
 
 @dataclass(frozen=True)
@@ -207,6 +243,8 @@ class ForensicIndex:
     def add(self, record: ForensicRecord) -> None:
         if not isinstance(record, ForensicRecord):
             raise ValueError("record must be ForensicRecord")
+        if record.evidence is None:
+            raise ValueError("searchable forensic record requires immutable evidence provenance")
         existing = self._records.get(record.observation_id)
         if existing is not None:
             if existing != record:
@@ -269,6 +307,7 @@ def record_from_track(
     source_id: str,
     timestamp_ms: int,
     tracked: TrackedDetection,
+    evidence: ForensicEvidenceLink,
     attributes: tuple[ForensicAttribute, ...] = (),
 ) -> ForensicRecord:
     if not isinstance(tracked, TrackedDetection):
@@ -282,6 +321,7 @@ def record_from_track(
         box=tracked.box,
         track_id=tracked.track_id,
         attributes=attributes,
+        evidence=evidence,
     )
 
 
@@ -291,6 +331,7 @@ def record_from_lpr(
     source_id: str,
     timestamp_ms: int,
     observation: LPRObservation,
+    evidence: ForensicEvidenceLink,
     attributes: tuple[ForensicAttribute, ...] = (),
 ) -> ForensicRecord:
     if not isinstance(observation, LPRObservation):
@@ -305,4 +346,5 @@ def record_from_lpr(
         box=NormalizedBox(plate.x1, plate.y1, plate.x2, plate.y2),
         plate_text=observation.text.text,
         attributes=attributes,
+        evidence=evidence,
     )

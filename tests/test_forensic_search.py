@@ -3,6 +3,7 @@ import unittest
 from analytics_lab.forensic_search import (
     AttributeFilter,
     ForensicAttribute,
+    ForensicEvidenceLink,
     ForensicIndex,
     ForensicQuery,
     ForensicRecord,
@@ -11,6 +12,17 @@ from analytics_lab.forensic_search import (
 )
 from analytics_lab.lpr_ocr import LPRObservation, OCRText, PlateDetection
 from analytics_lab.tracking import NormalizedBox, TrackedDetection
+
+
+def _evidence(event_id: str) -> ForensicEvidenceLink:
+    return ForensicEvidenceLink(
+        event_id=event_id,
+        producer="analytics-test",
+        producer_version="1.0.0",
+        config_sha256="1" * 64,
+        model_sha256="2" * 64,
+        source_revision="source-rev-1",
+    )
 
 
 class ForensicSearchTests(unittest.TestCase):
@@ -25,11 +37,13 @@ class ForensicSearchTests(unittest.TestCase):
             ForensicAttribute("upper_color", "blue", 0.88, "appearance-v1"),
             ForensicAttribute("direction", "east", 0.93, "motion-v1"),
         )
+        evidence = _evidence("event-track-1")
         record = record_from_track(
             observation_id="obs-1",
             source_id="camera-1",
             timestamp_ms=1_000,
             tracked=track,
+            evidence=evidence,
             attributes=attrs,
         )
         index = ForensicIndex()
@@ -45,6 +59,7 @@ class ForensicSearchTests(unittest.TestCase):
             min_confidence=0.9,
         )
         self.assertEqual(index.search(query), (record,))
+        self.assertEqual(record.evidence, evidence)
 
     def test_lpr_adapter_supports_exact_and_prefix_search(self):
         observation = LPRObservation(
@@ -56,6 +71,7 @@ class ForensicSearchTests(unittest.TestCase):
             source_id="gate-2",
             timestamp_ms=2_000,
             observation=observation,
+            evidence=_evidence("event-lpr-1"),
         )
         index = ForensicIndex()
         index.add(record)
@@ -78,9 +94,9 @@ class ForensicSearchTests(unittest.TestCase):
     def test_search_order_and_limit_are_deterministic(self):
         index = ForensicIndex()
         records = (
-            ForensicRecord("c", "camera-2", 20, "vehicle", 0.8),
-            ForensicRecord("b", "camera-1", 10, "vehicle", 0.8),
-            ForensicRecord("a", "camera-1", 10, "vehicle", 0.8),
+            ForensicRecord("c", "camera-2", 20, "vehicle", 0.8, evidence=_evidence("event-c")),
+            ForensicRecord("b", "camera-1", 10, "vehicle", 0.8, evidence=_evidence("event-b")),
+            ForensicRecord("a", "camera-1", 10, "vehicle", 0.8, evidence=_evidence("event-a")),
         )
         index.extend(records)
         result = index.search(ForensicQuery(categories=("vehicle",), limit=2))
@@ -88,17 +104,51 @@ class ForensicSearchTests(unittest.TestCase):
 
     def test_duplicate_id_is_idempotent_but_conflict_fails_closed(self):
         index = ForensicIndex()
-        first = ForensicRecord("obs-1", "camera-1", 10, "person", 0.8)
+        first = ForensicRecord(
+            "obs-1",
+            "camera-1",
+            10,
+            "person",
+            0.8,
+            evidence=_evidence("event-one"),
+        )
         index.add(first)
         index.add(first)
         with self.assertRaisesRegex(ValueError, "conflicts"):
-            index.add(ForensicRecord("obs-1", "camera-1", 11, "person", 0.8))
+            index.add(
+                ForensicRecord(
+                    "obs-1",
+                    "camera-1",
+                    11,
+                    "person",
+                    0.8,
+                    evidence=_evidence("event-two"),
+                )
+            )
 
     def test_capacity_is_bounded(self):
         index = ForensicIndex(max_records=1)
-        index.add(ForensicRecord("one", "camera-1", 1, "person", 0.8))
+        index.add(
+            ForensicRecord(
+                "one",
+                "camera-1",
+                1,
+                "person",
+                0.8,
+                evidence=_evidence("event-one"),
+            )
+        )
         with self.assertRaisesRegex(RuntimeError, "capacity"):
-            index.add(ForensicRecord("two", "camera-1", 2, "person", 0.8))
+            index.add(
+                ForensicRecord(
+                    "two",
+                    "camera-1",
+                    2,
+                    "person",
+                    0.8,
+                    evidence=_evidence("event-two"),
+                )
+            )
 
     def test_attribute_filters_require_all_requested_facets(self):
         record = ForensicRecord(
@@ -111,6 +161,7 @@ class ForensicSearchTests(unittest.TestCase):
                 ForensicAttribute("color", "red", 0.9, "vehicle-attrs-v1"),
                 ForensicAttribute("type", "pickup", 0.8, "vehicle-attrs-v1"),
             ),
+            evidence=_evidence("event-attrs"),
         )
         index = ForensicIndex()
         index.add(record)
@@ -137,6 +188,24 @@ class ForensicSearchTests(unittest.TestCase):
             (),
         )
 
+    def test_searchable_record_requires_evidence_provenance(self):
+        index = ForensicIndex()
+        with self.assertRaisesRegex(ValueError, "requires immutable evidence"):
+            index.add(ForensicRecord("obs", "camera-1", 10, "person", 0.9))
+
+    def test_evidence_link_is_hash_bound(self):
+        evidence = _evidence("event-1")
+        self.assertEqual(evidence.producer, "analytics-test")
+        self.assertEqual(evidence.config_sha256, "1" * 64)
+        self.assertEqual(evidence.model_sha256, "2" * 64)
+        with self.assertRaisesRegex(ValueError, "config_sha256"):
+            ForensicEvidenceLink(
+                event_id="bad",
+                producer="analytics-test",
+                producer_version="1.0.0",
+                config_sha256="not-a-hash",
+            )
+
     def test_plate_text_is_restricted_to_plate_records(self):
         with self.assertRaisesRegex(ValueError, "only valid"):
             ForensicRecord(
@@ -146,6 +215,7 @@ class ForensicSearchTests(unittest.TestCase):
                 "person",
                 0.9,
                 plate_text="ABC123",
+                evidence=_evidence("event-plate-invalid"),
             )
 
     def test_query_rejects_ambiguous_plate_modes_and_bad_time_window(self):
