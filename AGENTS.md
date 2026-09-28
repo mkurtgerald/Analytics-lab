@@ -77,6 +77,8 @@ Exact-attribute cross-camera forensic candidate trails are permitted only as non
 
 Operator-facing forensic results may project normalized metadata and immutable evidence provenance into bounded non-authorizing playback references only. A playback reference may contain source ID, UTC timestamp, bounded pre-roll/post-roll and the exact evidence link; it must not contain credentials, raw source URIs, media pixels or an authorization grant. Analytics must never resolve or open playback itself. Any consuming K5/VMS layer must apply its own RBAC/evidence permissions before using the pointer. Every operator hit/trail result must preserve `identity_claim=false` and `authorizes_action=false`.
 
+Serialized forensic handoff to K5/VMS must use an explicit versioned schema and deterministic bounded JSON. The initial accepted schema is `analytics.forensic-result.v1`. Parsers must fail closed on unknown schema versions, invalid JSON, payloads over the configured bound, unexpected top-level fields, `identity_claim=true`, or `authorizes_action=true`. Serialization must never add credentials, raw source URIs, media pixels, hidden authority, biometric templates or unversioned extension fields.
+
 ## Commercial and data controls
 Prefer mature commercially compatible donor perception components; pin exact code commits and weight hashes, record licenses and transitive dependencies, and preserve notices. Approve code, weights, data, and usage rights separately. Do not introduce GPL/AGPL, noncommercial, research-only, or unknown-license components into the shippable path without approval and a separate rights review. Never assert ownership of donor work. Keep commercial logic isolated behind versioned adapters.
 
