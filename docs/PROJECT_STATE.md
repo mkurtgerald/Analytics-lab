@@ -12,6 +12,10 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## Appearance benchmark — deterministic engineering metrics active
+
+The first appearance benchmark is project-authored fixture evaluation only, not person/object identity ground truth and not a commercial accuracy claim. It measures deterministic model-free ranking with precision@K, recall@K, reciprocal rank and top-1 fixture relevance over evidence-linked synthetic/model-free descriptor cases. Cases require exact category/schema/dimension compatibility, unique candidate IDs, explicit fixture-relevant candidate IDs, bounded K and bounded case counts. Benchmark results and summaries remain `identity_claim=false` and `authorizes_action=false`.
+
 ## Appearance / visual similarity — model-free ranking active
 
 The first appearance-search gate is deliberately non-biometric and model-free. It uses evidence-linked, L1-normalized color-histogram descriptors behind schema `analytics.appearance-descriptor.v1` and kind `model_free.color_histogram.v1`. Face and license-plate categories are rejected. Learned/ReID descriptor kinds are rejected. Ranking uses deterministic histogram intersection with an inclusive similarity threshold, bounded candidate/result counts, exact category/dimension compatibility, deterministic tie ordering, and `identity_claim=false` / `authorizes_action=false`.
