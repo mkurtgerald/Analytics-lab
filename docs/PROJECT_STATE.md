@@ -12,6 +12,12 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## Appearance / visual similarity — model-free ranking active
+
+The first appearance-search gate is deliberately non-biometric and model-free. It uses evidence-linked, L1-normalized color-histogram descriptors behind schema `analytics.appearance-descriptor.v1` and kind `model_free.color_histogram.v1`. Face and license-plate categories are rejected. Learned/ReID descriptor kinds are rejected. Ranking uses deterministic histogram intersection with an inclusive similarity threshold, bounded candidate/result counts, exact category/dimension compatibility, deterministic tie ordering, and `identity_claim=false` / `authorizes_action=false`.
+
+The donor screen remains capped at three: OpenCV histogram algorithms are acceptable as an algorithmic reference without a new pretrained runtime dependency; DINOv2 ViT-S/14 remains on HOLD because pretrained training-data commercial provenance is not yet strong enough; OpenCLIP ViT-B/32 LAION-2B remains on HOLD for the same fail-closed commercial provenance reason. No learned weights are admitted by this gate.
+
 ## Forensic search — foundation active
 
 Forensic search is now a first-class Analytics Lab capability rather than a synonym for appearance/ReID search. The first engineering slice is metadata-first and model-independent: normalized analytic observations can be indexed and searched by bounded UTC time range, source/camera, category, session-local track id, exact/prefix plate/OCR text, minimum confidence, and exact generic analytic attributes. Existing Tracking and LPR/OCR outputs have explicit adapters into this record contract.
