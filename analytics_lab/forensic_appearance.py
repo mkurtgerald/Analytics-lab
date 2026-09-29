@@ -7,6 +7,7 @@ identity, raw-media storage, or vector-database dependency.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import islice
 import math
 from typing import Iterable
 
@@ -102,9 +103,10 @@ def rank_appearance_similarity(
     if type(limit) is not int or not 1 <= limit <= 1000:
         raise ValueError("limit must be an integer in [1, 1000]")
     try:
-        items = tuple(candidates)
+        iterator = iter(candidates)
     except TypeError as exc:
         raise ValueError("candidates must be iterable") from exc
+    items = tuple(islice(iterator, _MAX_CANDIDATES + 1))
     if len(items) > _MAX_CANDIDATES:
         raise RuntimeError("appearance candidate count exceeds supported bound")
     if any(not isinstance(item, AppearanceDescriptor) for item in items):

@@ -139,11 +139,20 @@ class ForensicAppearanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             rank_appearance_similarity(probe, (a, b))
 
-    def test_candidate_count_is_bounded(self):
+    def test_candidate_count_is_bounded_without_exhausting_iterable(self):
         probe = _descriptor("probe", (0.5, 0.5))
         candidate = _descriptor("c", (0.5, 0.5), source_id="camera-2")
+        produced = 0
+
+        def candidates():
+            nonlocal produced
+            while produced < 20_000:
+                produced += 1
+                yield candidate
+
         with self.assertRaisesRegex(RuntimeError, "count exceeds"):
-            rank_appearance_similarity(probe, (candidate,) * 10_001)
+            rank_appearance_similarity(probe, candidates())
+        self.assertEqual(produced, 10_001)
 
     def test_matches_remain_nonidentity_and_nonauthorizing(self):
         probe = _descriptor("probe", (0.5, 0.5))
