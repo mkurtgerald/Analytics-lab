@@ -12,6 +12,10 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## Appearance scale probe — vector-need measurement prepared
+
+The next appearance-search gate measures the current model-free in-memory descriptor scan before any vector infrastructure is adopted. The probe uses deterministic synthetic metadata descriptors only, measures ranking-call elapsed time separately from descriptor generation, supports 1..10000 candidates, 2..512 dimensions and 1..5 iterations, and records median/max runner timing plus result count. Probe output is runner-specific engineering evidence only with `identity_claim=false`, `authorizes_action=false` and `performance_claim=false`; it is not an SLA or release-performance claim. Vector infrastructure must not be adopted until this measured baseline shows a real need.
+
 ## Appearance result handoff — K5 serialization active
 
 Appearance ranking results use the already-accepted `analytics.forensic-result.v1` envelope rather than a parallel transport. An appearance payload identifies the probe observation, fixed descriptor schema/kind, deterministic ordered similarity scores, and evidence-linked operator hits/playback pointers for each candidate. The payload is bounded to at most 1000 matches, requires one shared probe observation, unique candidate observation IDs, exact deterministic ranking order, and preserves `identity_claim=false` / `authorizes_action=false` at the envelope, match and hit levels.
