@@ -89,19 +89,19 @@ class FaceOutputHardeningTests(unittest.TestCase):
         self.assertEqual(len(faces), 2)
         self.assertEqual([item.confidence for item in faces], [0.90, 0.80])
 
-    def test_max_face_bound_truncates_parser_and_rejects_invalid_configuration(self):
+    def test_max_face_bound_rejects_overflow_and_invalid_configuration(self):
         count = 65
         boxes = [[[0.10, 0.10, 0.20, 0.20] for _ in range(count)]]
         scores = [[0.90 for _ in range(count)]]
         classes = [[float(OID_V4_HUMAN_FACE_CLASS_ID) for _ in range(count)]]
-        faces = parse_oid_v4_detections(
-            boxes=boxes,
-            scores=scores,
-            classes=classes,
-            num_detections=[float(count)],
-            max_faces=64,
-        )
-        self.assertEqual(len(faces), 64)
+        with self.assertRaisesRegex(RuntimeError, "face count exceeds configured bound"):
+            parse_oid_v4_detections(
+                boxes=boxes,
+                scores=scores,
+                classes=classes,
+                num_detections=[float(count)],
+                max_faces=64,
+            )
         with self.assertRaises(ValueError):
             parse_oid_v4_detections(
                 boxes=boxes,

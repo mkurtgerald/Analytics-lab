@@ -73,6 +73,7 @@ def parse_oid_v4_detections(
 
     The TensorFlow Object Detection API box convention is
     ``[y_min, x_min, y_max, x_max]``. Only class id 502 is admitted.
+    Exceeding max_faces raises instead of returning a partial redaction set.
     """
     cutoff = _finite_number(confidence_threshold, "confidence_threshold")
     if not 0.0 <= cutoff <= 1.0:
@@ -133,6 +134,8 @@ def parse_oid_v4_detections(
         detections.append(
             FaceDetection(score, NormalizedBox(left, top, right, bottom))
         )
+        if len(detections) > max_faces:
+            raise RuntimeError("face count exceeds configured bound")
 
     detections.sort(
         key=lambda item: (
@@ -143,7 +146,7 @@ def parse_oid_v4_detections(
             item.box.y_max,
         )
     )
-    return tuple(detections[:max_faces])
+    return tuple(detections)
 
 
 def _port_by_name(ports: Any, exact_name: str) -> Any:
