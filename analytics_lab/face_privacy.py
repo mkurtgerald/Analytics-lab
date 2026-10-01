@@ -41,6 +41,8 @@ class FaceDetection:
 
 
 class FaceDetectorBackend(Protocol):
+    """Return every admitted face or raise; never silently truncate detections."""
+
     def detect(self, frame_bgr: Any) -> Iterable[FaceDetection]: ...
 
 
@@ -130,8 +132,10 @@ def parse_yunet_rows(
         if right <= left or bottom <= top:
             continue
         result.append(FaceDetection(confidence, NormalizedBox(left, top, right, bottom)))
+        if len(result) > max_faces:
+            raise RuntimeError("face count exceeds configured bound")
     result.sort(key=lambda item: (-item.confidence, item.box.x_min, item.box.y_min))
-    return tuple(result[:max_faces])
+    return tuple(result)
 
 
 DetectorFactory = Callable[[str, str, tuple[int, int], float, float, int], Any]
@@ -340,6 +344,12 @@ def apply_face_privacy(
     config: FacePrivacyConfig | None = None,
     request_unblur: bool = False, authorized_unblur: bool = False,
 ) -> FacePrivacyResult:
+    """Apply privacy only to a complete, bounded detection result.
+
+    Detector failures (including face-count overflow) propagate without a
+    result or success audit. Callers must withhold unassessed frames rather
+    than display the original frame as a privacy fallback.
+    """
     if type(request_unblur) is not bool or type(authorized_unblur) is not bool:
         raise ValueError("unblur flags must be booleans")
     if not callable(getattr(detector, "detect", None)):
