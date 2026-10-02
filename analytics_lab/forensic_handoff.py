@@ -11,9 +11,124 @@ import json
 from typing import Any
 
 from .forensic_appearance import AppearanceMatch
-from .forensic_results import ForensicOperatorHit, ForensicTrailResult, operator_hit_from_record
+from .forensic_results import (
+    ForensicOperatorHit, ForensicTrailResult, PlaybackReference, operator_hit_from_record,
+)
+from .forensic_search import (
+    AttributeFilter, ForensicAttribute, ForensicEvidenceLink, ForensicRecord, _token,
+)
+from .forensic_temporal import AttributeCandidateTrail, TemporalTrail
 
 _SCHEMA = "analytics.forensic-result.v1"
+_MAX_JSON_BYTES = 1_000_000
+_FLAGS = {"identity_claim", "authorizes_action"}
+_HIT_FIELDS = {
+    "observation_id", "source_id", "timestamp_ms", "category", "confidence",
+    "plate_text", "local_track_id", "attributes", "evidence", "playback", *_FLAGS,
+}
+
+
+def _fields(value: object, expected: set[str], name: str) -> dict:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError(f"{name} has missing or unexpected fields")
+    return value
+
+
+def _non_authorizing(value: dict) -> None:
+    if value.get("identity_claim") is not False:
+        raise ValueError("serialized forensic result must not claim identity")
+    if value.get("authorizes_action") is not False:
+        raise ValueError("serialized forensic result must remain non-authorizing")
+
+
+def _evidence(value: object) -> ForensicEvidenceLink:
+    fields = _fields(value, {"event_id", "producer", "producer_version", "config_sha256",
+                             "model_sha256", "source_revision"}, "evidence")
+    return ForensicEvidenceLink(**fields)
+
+
+def _hit(value: object) -> tuple[ForensicOperatorHit, ForensicRecord]:
+    fields = _fields(value, _HIT_FIELDS, "hit")
+    _non_authorizing(fields)
+    attributes = fields["attributes"]
+    if not isinstance(attributes, list) or len(attributes) > 64:
+        raise ValueError("hit attributes must be a bounded list")
+    attributes = tuple(ForensicAttribute(**_fields(
+        item, {"name", "value", "confidence", "provenance"}, "attribute")) for item in attributes)
+    evidence = _evidence(fields["evidence"])
+    record = ForensicRecord(
+        observation_id=fields["observation_id"], source_id=fields["source_id"],
+        timestamp_ms=fields["timestamp_ms"], category=fields["category"],
+        confidence=fields["confidence"], plate_text=fields["plate_text"],
+        track_id=fields["local_track_id"], attributes=attributes, evidence=evidence,
+    )
+    playback = _fields(fields["playback"], {"source_id", "timestamp_ms", "pre_roll_ms",
+                                           "post_roll_ms", "evidence", "authorizes_action"}, "playback")
+    playback = PlaybackReference(**{**playback, "evidence": _evidence(playback["evidence"])})
+    hit = operator_hit_from_record(record, pre_roll_ms=playback.pre_roll_ms,
+                                   post_roll_ms=playback.post_roll_ms)
+    if hit.playback != playback:
+        raise ValueError("playback reference must bind the same hit/evidence")
+    if _hit_payload(hit) != fields:
+        raise ValueError("hit must contain canonical normalized metadata")
+    return hit, record
+
+
+def _validate_payload(payload: dict) -> None:
+    _non_authorizing(payload)
+    kind = payload.get("kind")
+    if kind == "hit":
+        _fields(payload, {"kind", *_HIT_FIELDS}, "hit payload")
+        _hit({key: value for key, value in payload.items() if key != "kind"})
+    elif kind == "trail":
+        _fields(payload, {"kind", "association_kind", "association_value", "required_attributes",
+                          "hits", *_FLAGS}, "trail payload")
+        if not isinstance(payload["hits"], list):
+            raise ValueError("trail hits must be a list")
+        if not isinstance(payload["required_attributes"], list):
+            raise ValueError("trail attributes must be a list")
+        filters = tuple(AttributeFilter(**_fields(item, {"name", "value"}, "attribute filter"))
+                        for item in payload["required_attributes"])
+        hits_and_records = tuple(_hit(item) for item in payload["hits"])
+        ForensicTrailResult(
+            association_kind=payload["association_kind"], association_value=payload["association_value"],
+            hits=tuple(item[0] for item in hits_and_records), required_attributes=filters,
+        )
+        records = tuple(item[1] for item in hits_and_records)
+        if payload["association_kind"] == "exact_plate_text":
+            TemporalTrail("exact_plate_text", payload["association_value"], records)
+        else:
+            AttributeCandidateTrail(records[0].category, filters, records)
+        if [asdict(item) for item in filters] != payload["required_attributes"]:
+            raise ValueError("trail attributes must be canonical")
+    elif kind == "appearance_matches":
+        _fields(payload, {"kind", "probe_observation_id", "descriptor_schema", "descriptor_kind",
+                          "matches", *_FLAGS}, "appearance payload")
+        _token(payload["probe_observation_id"], "probe_observation_id")
+        if (payload["descriptor_schema"] != "analytics.appearance-descriptor.v1"
+                or payload["descriptor_kind"] != "model_free.color_histogram.v1"):
+            raise ValueError("unsupported appearance descriptor schema/kind")
+        values = payload["matches"]
+        if not isinstance(values, list) or not 1 <= len(values) <= 1000:
+            raise ValueError("appearance handoff requires a bounded nonempty match list")
+        matches = []
+        for value in values:
+            _fields(value, {"similarity", "hit", *_FLAGS}, "appearance match")
+            _non_authorizing(value)
+            matches.append(AppearanceMatch(payload["probe_observation_id"], _hit(value["hit"])[1],
+                                           value["similarity"]))
+        _validate_matches(tuple(matches))
+    else:
+        raise ValueError("unsupported forensic result kind")
+
+
+def _unique_fields(pairs: list[tuple[str, Any]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("serialized forensic result contains duplicate fields")
+        result[key] = value
+    return result
 
 
 @dataclass(frozen=True)
@@ -26,17 +141,23 @@ class ForensicResultEnvelope:
             raise ValueError("unsupported forensic result schema")
         if not isinstance(self.payload, dict):
             raise ValueError("payload must be a dictionary")
-        if self.payload.get("identity_claim") is not False:
-            raise ValueError("serialized forensic result must not claim identity")
-        if self.payload.get("authorizes_action") is not False:
-            raise ValueError("serialized forensic result must remain non-authorizing")
+        try:
+            _validate_payload(self.payload)
+        except (TypeError, OverflowError) as exc:
+            raise ValueError("serialized forensic result has invalid field values") from exc
 
     def to_json(self) -> str:
-        return json.dumps(
+        # A frozen dataclass does not freeze its nested dictionaries/lists.
+        self.__post_init__()
+        raw = json.dumps(
             {"schema": self.schema, "payload": self.payload},
             sort_keys=True,
             separators=(",", ":"),
+            allow_nan=False,
         )
+        if len(raw.encode("utf-8")) > _MAX_JSON_BYTES:
+            raise ValueError("serialized forensic result is too large")
+        return raw
 
 
 def _hit_payload(hit: ForensicOperatorHit) -> dict[str, Any]:
@@ -86,13 +207,7 @@ def envelope_for_trail(result: ForensicTrailResult) -> ForensicResultEnvelope:
     return ForensicResultEnvelope(schema=_SCHEMA, payload=payload)
 
 
-def envelope_for_appearance_matches(
-    matches: tuple[AppearanceMatch, ...],
-    *,
-    pre_roll_ms: int = 5_000,
-    post_roll_ms: int = 5_000,
-) -> ForensicResultEnvelope:
-    """Serialize ordered non-biometric appearance matches for K5/VMS."""
+def _validate_matches(matches: tuple[AppearanceMatch, ...]) -> None:
     if type(matches) is not tuple or not matches:
         raise ValueError("appearance handoff requires a nonempty immutable match tuple")
     if len(matches) > 1000:
@@ -121,6 +236,15 @@ def envelope_for_appearance_matches(
     if ordered != matches:
         raise ValueError("appearance handoff matches must preserve deterministic ranking order")
 
+
+def envelope_for_appearance_matches(
+    matches: tuple[AppearanceMatch, ...],
+    *,
+    pre_roll_ms: int = 5_000,
+    post_roll_ms: int = 5_000,
+) -> ForensicResultEnvelope:
+    """Serialize ordered non-biometric appearance matches for K5/VMS."""
+    _validate_matches(matches)
     serialized_matches = []
     for item in matches:
         hit = operator_hit_from_record(
@@ -150,11 +274,11 @@ def envelope_for_appearance_matches(
 
 
 def parse_envelope_json(raw: str) -> ForensicResultEnvelope:
-    if not isinstance(raw, str) or len(raw.encode("utf-8")) > 1_000_000:
+    if not isinstance(raw, str) or len(raw.encode("utf-8")) > _MAX_JSON_BYTES:
         raise ValueError("serialized forensic result is invalid or too large")
     try:
-        decoded = json.loads(raw)
-    except json.JSONDecodeError as exc:
+        decoded = json.loads(raw, object_pairs_hook=_unique_fields)
+    except (json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("serialized forensic result is invalid JSON") from exc
     if not isinstance(decoded, dict):
         raise ValueError("serialized forensic result must be an object")

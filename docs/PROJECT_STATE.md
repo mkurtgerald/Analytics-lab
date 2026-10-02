@@ -20,6 +20,31 @@ The next appearance-search gate measures the current model-free in-memory descri
 
 Appearance ranking results use the already-accepted `analytics.forensic-result.v1` envelope rather than a parallel transport. An appearance payload identifies the probe observation, fixed descriptor schema/kind, deterministic ordered similarity scores, and evidence-linked operator hits/playback pointers for each candidate. The payload is bounded to at most 1000 matches, requires one shared probe observation, unique candidate observation IDs, exact deterministic ranking order, and preserves `identity_claim=false` / `authorizes_action=false` at the envelope, match and hit levels.
 
+### October 2 serialized-handoff regression repair
+
+The consumer parser previously validated only the envelope's outer fields and
+flags. Generated valid producer payloads could therefore be changed to contain a
+nested authority/identity claim, an unversioned field, or playback pointing at
+another source, timestamp or evidence event and still parse successfully. This
+is a validation gap; no unauthorized product execution has been demonstrated.
+
+The handoff now validates the closed hit/trail/appearance shapes using the
+existing metadata, evidence, playback and trail contracts. It rejects duplicate
+JSON fields, preserves source/evidence binding and appearance ranking bounds,
+rechecks mutable payloads before serialization, and applies the same 1,000,000
+byte ceiling to serialized output and input. Existing valid producer bytes and
+the versioned schema remain unchanged. No dependencies, workflows, authority
+rules, models or media paths changed.
+
+Local generated-metadata verification reproduced 88 failing subcases on the
+unchanged base. The repaired suite ran 605 tests with three existing optional
+OpenCV skips; guardrails, the synthetic person-down replay and bytecode
+compilation passed. Independent review passed 108 focused forensic tests and
+confirmed 32 additional valid producer boundary cases remain byte-identical.
+Next executable step: review and exact-head hosted Linux/Windows qualification.
+This closes neither the product-owned authenticated consumer adapter nor actual
+VMS/Neural UI integration; commercial and real-media acceptance remain separate.
+
 ## Appearance benchmark — deterministic engineering metrics active
 
 The first appearance benchmark is project-authored fixture evaluation only, not person/object identity ground truth and not a commercial accuracy claim. It measures deterministic model-free ranking with precision@K, recall@K, reciprocal rank and top-1 fixture relevance over evidence-linked synthetic/model-free descriptor cases. Cases require exact category/schema/dimension compatibility, unique candidate IDs, explicit fixture-relevant candidate IDs, bounded K and bounded case counts. Benchmark results and summaries remain `identity_claim=false` and `authorizes_action=false`.
