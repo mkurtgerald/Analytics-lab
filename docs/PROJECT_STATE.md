@@ -45,6 +45,23 @@ Next executable step: review and exact-head hosted Linux/Windows qualification.
 This closes neither the product-owned authenticated consumer adapter nor actual
 VMS/Neural UI integration; commercial and real-media acceptance remain separate.
 
+### October 3 appearance-score handoff regression repair
+
+Valid color-histogram descriptors allow L1 normalization error up to `1e-9`,
+but matching two such descriptors could produce a similarity just above `1.0`
+and fail before the existing operator handoff. The scorer now bounds only that
+accepted rounding excess to `1.0`; descriptor admission, explicit wire-score
+validation, ordinary scores, and non-authorizing/non-identity flags are unchanged.
+Saturated scores use the existing deterministic tie order.
+
+Generated-metadata regressions reproduced four failing cases on unchanged main
+and now exercise descriptor -> ranking -> forensic envelope -> parser with full
+evidence/time retention, plus invalid-input rejection. Local verification ran
+610 tests with three existing optional OpenCV skips; guardrails, synthetic replay
+and compilation passed. Next step is independent review and exact-head hosted
+Linux/Windows qualification. This repairs a library producer-to-operator boundary;
+it does not establish installed Neural/VMS UI integration or real-media accuracy.
+
 ## Appearance benchmark — deterministic engineering metrics active
 
 The first appearance benchmark is project-authored fixture evaluation only, not person/object identity ground truth and not a commercial accuracy claim. It measures deterministic model-free ranking with precision@K, recall@K, reciprocal rank and top-1 fixture relevance over evidence-linked synthetic/model-free descriptor cases. Cases require exact category/schema/dimension compatibility, unique candidate IDs, explicit fixture-relevant candidate IDs, bounded K and bounded case counts. Benchmark results and summaries remain `identity_claim=false` and `authorizes_action=false`.
