@@ -127,6 +127,9 @@ def rank_appearance_similarity(
         if len(item.values) != len(probe.values):
             raise ValueError("appearance descriptor dimension mismatch")
         score = histogram_intersection(probe.values, item.values)
+        # Descriptor admission allows L1 rounding error; the wire score does not.
+        if score > 1.0 and math.isclose(score, 1.0, rel_tol=0.0, abs_tol=1e-9):
+            score = 1.0
         if score < threshold and not math.isclose(score, threshold, rel_tol=0.0, abs_tol=1e-9):
             continue
         matches.append(
