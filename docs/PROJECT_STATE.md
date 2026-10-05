@@ -12,6 +12,53 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## Generated-pixel appearance producer — source boundary prepared
+
+`forensic_histogram.extract_bgr24_histogram` computes the existing model-free
+appearance descriptor from actual caller-supplied BGR24 pixel bytes and the exact
+evidence-linked record ROI. It reads no camera, file or network source. Input must
+be immutable `bytes`, at most 16 MiB, with dimensions in 1..8192, an exact
+top-down row stride at least `width * 3`, and an independently supplied full-buffer
+SHA-256 including padding. Source ID, event ID, UTC time and normalized bbox must
+match the original `ForensicRecord`; frame index is explicit and bounded. Missing
+record evidence/bbox, mutable or mis-sized buffers, changed pixels, invalid
+coordinates, rounded-empty pixel crops and face/license-plate records fail closed.
+Even positive normalized intervals can collapse under floating-point pixel
+rounding; these are rejected rather than silently expanded.
+
+The fixed algorithm uses 4 bins per RGB channel and index
+`16*(R >> 6) + 4*(G >> 6) + (B >> 6)`. Crop bounds are floor(left/top) and
+ceil(right/bottom), with exclusive upper pixel bounds. Each axis samples
+`min(extent, 64)` cell centers using integer arithmetic, so no more than 4096
+pixels contribute. Only actual selected pixels count; row padding does not.
+Counts divided by sample count yield the 64-dimensional L1 descriptor. The exact
+canonical configuration JSON and its computed SHA-256 are available separately.
+No learned model, new dependency, face recognition or identity inference is added.
+
+`HistogramExtraction` retains metadata only: a defensive copy of the original
+record/descriptor, exact frame/layout/ROI metadata, crop/sample facts, extraction
+config SHA-256, and a digest binding all of those fields. Original detector/source
+event, producer/version/revision, configuration/model hashes, bbox and attributes
+are unchanged. The extraction hash never replaces a detector configuration hash.
+Source attribute counts and normalized-text lengths are bounded before copying
+or whitespace normalization, including manually mutated input objects.
+`descriptor_for_ranking()` revalidates the metadata binding before returning an
+independent descriptor. That digest detects inconsistent/tampered claims; it is
+not an authenticity signature. The caller must independently establish the frame
+and event association; a fabricated but internally consistent caller declaration
+cannot be authenticated by this pixel function.
+
+Generated-pixel tests cover bin/channel boundaries, crop rounding, stride/padding,
+sampling bounds, determinism, metadata/source tampering, preserved provenance,
+ranking and the existing forensic envelope. These are engineering fixtures, not
+detector/appearance accuracy or production authentication evidence. Work is bounded
+by 16 MiB of hashing plus 4096 sampled pixels; no runtime latency SLA is claimed.
+Existing wire envelopes remain unchanged and do not carry the separate extraction
+binding. Product work must preserve it in an explicitly versioned atomic
+event/descriptor store before authenticated two-event comparison is wired.
+Edge worker staging, paired authorization, Neural source packaging and the
+operator Compare UI remain open; no real-media execution or product repin occurs.
+
 ## Appearance scale probe — vector-need measurement prepared
 
 The next appearance-search gate measures the current model-free in-memory descriptor scan before any vector infrastructure is adopted. The probe uses deterministic synthetic metadata descriptors only, measures ranking-call elapsed time separately from descriptor generation, supports 1..10000 candidates, 2..512 dimensions and 1..5 iterations, and records median/max runner timing plus result count. Probe output is runner-specific engineering evidence only with `identity_claim=false`, `authorizes_action=false` and `performance_claim=false`; it is not an SLA or release-performance claim. Vector infrastructure must not be adopted until this measured baseline shows a real need.
