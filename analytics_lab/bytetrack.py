@@ -12,7 +12,7 @@ Track IDs are session-local association identifiers, never identities.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable, Iterable
 
 from .tracking import DetectionCandidate, NormalizedBox, TrackedDetection
@@ -188,15 +188,17 @@ class ByteTrackAssociationBackend:
         if len(detections) > self.config.max_tracks:
             raise RuntimeError("candidate count exceeds ByteTrack association capacity")
 
-        if self._first_frame is None:
-            self._first_frame = frame_index
+        # Stage independent track objects and counters. A capacity or output
+        # validation failure must not consume the frame or change retry results.
+        first_frame = frame_index if self._first_frame is None else self._first_frame
+        next_id = self._next_id
 
         # Unconfirmed tracks are allowed exactly one following frame, matching
         # the donor's short probation path. Lost tracks must remain eligible for
         # the current frame's first association before age-based removal; the
         # donor removes an over-age lost track only after that recovery chance.
-        self._tracks = {
-            track_id: track for track_id, track in self._tracks.items()
+        tracks = {
+            track_id: replace(track) for track_id, track in self._tracks.items()
             if not (track.state == "unconfirmed" and frame_index - track.last_frame > 1)
         }
 
@@ -205,7 +207,7 @@ class ByteTrackAssociationBackend:
 
         confirmed = tuple(
             sorted(
-                (track for track in self._tracks.values() if track.state in {"tracked", "lost"}),
+                (track for track in tracks.values() if track.state in {"tracked", "lost"}),
                 key=lambda track: track.numeric_id,
             )
         )
@@ -242,7 +244,7 @@ class ByteTrackAssociationBackend:
 
         remaining_high = tuple(high[index] for index in unmatched_high_indexes)
         unconfirmed = tuple(
-            sorted((track for track in self._tracks.values() if track.state == "unconfirmed"), key=lambda track: track.numeric_id)
+            sorted((track for track in tracks.values() if track.state == "unconfirmed"), key=lambda track: track.numeric_id)
         )
         matches_new, unmatched_unconfirmed, unmatched_remaining_high = _associate(
             unconfirmed,
@@ -253,18 +255,25 @@ class ByteTrackAssociationBackend:
         for track_index, detection_index in matches_new:
             self._update_track(unconfirmed[track_index], remaining_high[detection_index], frame_index)
         for track_index in unmatched_unconfirmed:
-            self._tracks.pop(unconfirmed[track_index].numeric_id, None)
+            tracks.pop(unconfirmed[track_index].numeric_id, None)
+
+        # Keep the donor's recovery opportunity before age-based removal. Tracks
+        # still lost beyond their budget no longer occupy new-track capacity.
+        tracks = {
+            track_id: track for track_id, track in tracks.items()
+            if not (track.state == "lost" and frame_index - track.last_frame > self.config.track_buffer_frames)
+        }
 
         for detection_index in unmatched_remaining_high:
             detection = remaining_high[detection_index]
             if detection.confidence < self.config.new_track_threshold:
                 continue
-            if len(self._tracks) >= self.config.max_tracks:
+            if len(tracks) >= self.config.max_tracks:
                 raise RuntimeError("track capacity exceeded")
-            numeric_id = self._next_id
-            self._next_id += 1
-            state = "tracked" if frame_index == self._first_frame else "unconfirmed"
-            self._tracks[numeric_id] = _Track(
+            numeric_id = next_id
+            next_id += 1
+            state = "tracked" if frame_index == first_frame else "unconfirmed"
+            tracks[numeric_id] = _Track(
                 numeric_id=numeric_id,
                 category=detection.category,
                 confidence=detection.confidence,
@@ -275,19 +284,11 @@ class ByteTrackAssociationBackend:
                 state=state,
             )
 
-        # Match upstream lost-buffer order: only now remove tracks that remained
-        # lost beyond the configured frame budget.
-        self._tracks = {
-            track_id: track for track_id, track in self._tracks.items()
-            if not (track.state == "lost" and frame_index - track.last_frame > self.config.track_buffer_frames)
-        }
-
-        self._last_frame = frame_index
         current = sorted(
-            (track for track in self._tracks.values() if track.state == "tracked" and track.last_frame == frame_index),
+            (track for track in tracks.values() if track.state == "tracked" and track.last_frame == frame_index),
             key=lambda track: track.numeric_id,
         )
-        return tuple(
+        result = tuple(
             TrackedDetection(
                 track.track_id,
                 track.category,
@@ -297,3 +298,8 @@ class ByteTrackAssociationBackend:
             )
             for track in current
         )
+        self._tracks = tracks
+        self._next_id = next_id
+        self._first_frame = first_frame
+        self._last_frame = frame_index
+        return result

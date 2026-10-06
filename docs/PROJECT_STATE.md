@@ -132,6 +132,33 @@ PR #122 exact-head run #304 and post-merge main run #305 are green, closing immu
 PR #126 exact-head run #313 and post-merge main run #314 are green, closing operator-safe forensic result projections with metadata-only playback references, immutable evidence binding, bounded pre/post-roll, `identity_claim=false`, and `authorizes_action=false`. The active next forensic gate is a versioned serialized handoff for K5/VMS consumption. The first schema is `analytics.forensic-result.v1`; serialization must be deterministic JSON, bounded to 1 MB on parse, contain only the already-approved metadata/evidence/playback-pointer fields, preserve non-authorizing/non-identity semantics, and reject unknown schema versions or unexpected top-level fields.
 
 ## Detection + tracking — frozen at first real-video acceptance gate
+
+### October 6 ByteTrack capacity-transition regression repair
+
+Generated detection sequences demonstrated two failures in the existing portable
+ByteTrack backend. A rejected over-capacity frame changed retained track state,
+so a valid same-frame low-confidence retry could lose its prior association.
+Also, an expired lost track still occupied capacity until after new-track
+admission, repeatedly rejecting a replacement even beyond the lost-frame budget.
+
+The backend now stages independent track objects and counters, preserves every
+existing association/recovery opportunity, expires still-lost over-age tracks
+before new-track admission, and commits only after output validation succeeds.
+Genuine capacity excess still raises; configured bounds, confidence thresholds,
+association ordering, confirmation behavior and session-local ID allocation are
+unchanged. No detections are silently dropped to bypass capacity.
+
+Six new generated-only regression methods reproduced five failures and three
+expiry-subcase errors against unchanged source. All 13 ByteTrack tests now pass,
+covering high/low-confidence mutation, unconfirmed removal, staged ID rollback,
+same-frame retry, expired replacement, preserved recovery and output failure.
+The full local suite ran 633 tests with three existing optional OpenCV/NumPy
+skips; guardrails, synthetic person-down replay and source compilation passed.
+Next step: independent exact-candidate review and hosted Linux/Windows
+qualification. This repairs the supported source contract only; it adds no
+tracker machinery, model/media path or installed-product claim and does not
+reopen the stopped real-video evidence hypothesis below.
+
 Tracking remains stopped at the policy's three-session threshold. The retained boundary includes the detector-neutral tracking contract, portable ByteTrack slice pinned to `FoundationVision/ByteTrack@d1bf0191adff59bc8fcfeaa0b33d3d1642552a99` (MIT), bounded evaluator, rights/evidence admission, pre-registered Wikimedia CC0 frames 150-174, canonical RGB24 frame identities, exhaustive ground-truth package binding, frozen simple-IoU control, and first-attempt head-to-head runner.
 
 The fixed frame-manifest SHA-256 is `52f00a4fc1e013d9c0cae9647cb386369441f005a970d6d42c449cbd0269a031`; benchmark-plan SHA-256 is `eb7995a389a22f3528b9bfca97d64f9d8e3c515ebf1c764cf25b68fbdcc3479c`.
