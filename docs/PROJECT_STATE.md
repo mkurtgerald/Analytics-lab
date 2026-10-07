@@ -133,6 +133,33 @@ PR #126 exact-head run #313 and post-merge main run #314 are green, closing oper
 
 ## Detection + tracking — frozen at first real-video acceptance gate
 
+### October 7 tracking-session iterator-bound regression repair
+
+`TrackingSession` previously materialized detector inputs and backend outputs
+with `tuple` before enforcing their configured counts. An overlong producer
+could therefore run indefinitely or allocate beyond the configured frame limit;
+an untrusted `__len__` or `__length_hint__` could also trigger premature allocation
+or an unrelated conversion error. Both boundaries now collect explicitly, retain
+at most the configured limit, and reject on the first excess item without reading
+another item or consulting producer length hints. Overflow still raises instead
+of truncating, before item/duplicate validation; accepted values preserve order
+and the tuple contract. Existing iterable-error conversion and session frame/time
+commit-after-validation semantics remain unchanged. Backend-owned state rollback
+is still the backend's responsibility.
+
+Ten new generated-only regression methods reproduced 14 failing and 12 error
+subcases against unchanged source. An additional compatibility regression covers
+arbitrarily large valid configured bounds. All 16 tracking tests and all 632
+permitted source-suite tests now pass under an isolated execution guard. Nine subprocess
+tests and five optional OpenCV/NumPy tests were explicitly excluded from this
+source-only run, not reported as passing. Forty stdlib SQLite opens used only
+disposable generated fixtures; no prohibited execution events occurred.
+Repository guardrails, the in-process synthetic person-down replay and compilation
+of all 180 analytics/test source files passed. Next step: independent exact-candidate
+review and full applicable hosted Linux/Windows qualification. No model, media,
+dependency, workflow or installed-product claim is added, and the stopped
+real-video evidence hypothesis remains unchanged.
+
 ### October 6 ByteTrack capacity-transition regression repair
 
 Generated detection sequences demonstrated two failures in the existing portable

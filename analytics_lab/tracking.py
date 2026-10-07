@@ -9,9 +9,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Iterable, Protocol
+from typing import Iterable, Protocol, TypeVar
 
 _MAX_TIMESTAMP_MS = 253402300799999
+_Item = TypeVar("_Item")
+
+
+def _bounded_tuple(values: Iterable[_Item], limit: int, overflow: str) -> tuple[_Item, ...]:
+    """Collect at most limit items, reading only one excess item to reject overflow."""
+    collected: list[_Item] = []
+    # Iterate explicitly: tuple/list constructors may trust an unbounded length hint.
+    for item in values:
+        if len(collected) == limit:
+            raise RuntimeError(overflow)
+        collected.append(item)
+    return tuple(collected)
 
 
 def _finite(value: float, name: str) -> float:
@@ -153,11 +165,12 @@ class TrackingSession:
             raise ValueError("frames and timestamps must be strictly increasing")
 
         try:
-            values = tuple(detections)
+            values = _bounded_tuple(
+                detections, self.config.max_detections_per_frame,
+                "detection count exceeds configured bound",
+            )
         except TypeError as exc:
             raise ValueError("detections must be iterable") from exc
-        if len(values) > self.config.max_detections_per_frame:
-            raise RuntimeError("detection count exceeds configured bound")
         if any(not isinstance(item, DetectionCandidate) for item in values):
             raise ValueError("detections must contain DetectionCandidate values")
 
@@ -165,11 +178,12 @@ class TrackingSession:
         if raw is None:
             raise ValueError("tracking backend must return an iterable, not None")
         try:
-            tracks = tuple(raw)
+            tracks = _bounded_tuple(
+                raw, self.config.max_tracks_per_frame,
+                "track count exceeds configured bound",
+            )
         except TypeError as exc:
             raise ValueError("tracking backend must return an iterable") from exc
-        if len(tracks) > self.config.max_tracks_per_frame:
-            raise RuntimeError("track count exceeds configured bound")
         if any(not isinstance(item, TrackedDetection) for item in tracks):
             raise ValueError("tracking backend returned an unsupported value")
         ids = [item.track_id for item in tracks]
