@@ -228,16 +228,20 @@ class GuardrailsTests(unittest.TestCase):
             generic[0]['if'],
         )
 
-    def test_weapons_oid_fpn_discovery_is_isolated_and_metadata_only(self):
+    def test_weapons_oid_fpn_native_evidence_is_isolated_and_hash_locked(self):
         linux = self.workflow['jobs']['linux']['steps']
         steps = [step for step in linux if step.get('name') == 'Bounded Weapons OIDv4 FPN donor evidence']
         self.assertEqual(len(steps), 1)
         step = steps[0]
         self.assertIn("github.event_name == 'pull_request'", step['if'])
         self.assertIn("evidence/weapons-oidv4-fpn-", step['if'])
-        self.assertIn("analytics_lab.weapons_oid_fpn_discovery", step['run'])
+        self.assertIn("analytics_lab.weapons_oid_fpn_evidence", step['run'])
+        self.assertIn("tests.test_weapons_oid_fpn_admission", step['run'])
+        self.assertIn("tests.test_weapons_oid_fpn_evidence", step['run'])
         self.assertIn("timeout --signal=TERM 210s", step['run'])
-        self.assertNotIn('pip install', step['run'])
+        self.assertIn('pip install --no-cache-dir --only-binary=:all: --require-hashes', step['run'])
+        self.assertIn('requirements/oidv4-object-smoke-linux.txt', step['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-weapons-oid-fpn', step['run'])
         generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
         self.assertEqual(len(generic), 1)
         self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-oidv4-fpn-')", generic[0]['if'])

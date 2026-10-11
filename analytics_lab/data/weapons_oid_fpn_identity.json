@@ -1,0 +1,247 @@
+{
+  "accuracy_claim": false,
+  "archive_identity_pinned": false,
+  "archive_root": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20",
+  "archive_sha256": "b0fe7ae2a91a29ced95e564141d2a8aadfd6da2d7da9565395c4841011d4ea75",
+  "archive_size": 638212759,
+  "archive_url": "https://storage.googleapis.com/download.tensorflow.org/models/object_detection/ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20.tar.gz",
+  "artifact_admitted": false,
+  "artifact_retained": false,
+  "evidence": "weapons-oid-fpn-discovery-v1",
+  "expanded_size": 710701056,
+  "graph": {
+    "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/frozen_inference_graph.pb",
+    "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/frozen_inference_graph.pb",
+    "sha256": "0c9269fff044e0126bd43c3496c738d3445603ffb7fe07905a3d1149fc6446d3",
+    "size": 235714499,
+    "type": "file"
+  },
+  "inference_run": false,
+  "member_count": 20,
+  "members": [
+    {
+      "fields": {
+        "mtime": "1548178193.679631",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20",
+      "metadata_applied": false,
+      "name": "PaxHeader/ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20",
+      "original_name": "PaxHeader/ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178193.679631\n",
+      "sha256": "f6efcb209724c3e57c1e80ca96db90a1dd4008bfaca515da56757c4c2a535828",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/",
+      "size": 0,
+      "type": "directory"
+    },
+    {
+      "fields": {
+        "mtime": "1548178199.291565",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/frozen_inference_graph.pb",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/frozen_inference_graph.pb",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/frozen_inference_graph.pb",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178199.291565\n",
+      "sha256": "b0c69554a7d7a72d5e2734c7b538be01de70dcc9f87df966f3509e642599e87e",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/frozen_inference_graph.pb",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/frozen_inference_graph.pb",
+      "sha256": "0c9269fff044e0126bd43c3496c738d3445603ffb7fe07905a3d1149fc6446d3",
+      "size": 235714499,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178182.727759",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.meta",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.meta",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.meta",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178182.727759\n",
+      "sha256": "2baf8b35d7fa10d0f1fc6aa41984fbbe4a20ecc37f5d561d2b5d453681d9a0ba",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.meta",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.meta",
+      "sha256": "a071980151459a261ebba3354fbd8c1ff8a473165719fa801eb0c68e5170087e",
+      "size": 9604764,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178191.635655",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/variables",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/PaxHeader/variables",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/PaxHeader/variables",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178191.635655\n",
+      "sha256": "6280e0247f7358963b7d88c691e0a10e12e7faa6e087c329ae0f6c83c40c5526",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/variables",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/variables/",
+      "size": 0,
+      "type": "directory"
+    },
+    {
+      "fields": {
+        "mtime": "1548178181.135778",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/checkpoint",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/checkpoint",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/checkpoint",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178181.135778\n",
+      "sha256": "288312665e7af442d22c29d529ef5e7a3b0412a87881ab75191f23481e1c2889",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/checkpoint",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/checkpoint",
+      "sha256": "dd1b025d2e155283f5e300ce95bf6d5b6bc0f7fe010db73daa6975eb896ab9cb",
+      "size": 77,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178181.135778",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.index",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.index",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.index",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178181.135778\n",
+      "sha256": "288312665e7af442d22c29d529ef5e7a3b0412a87881ab75191f23481e1c2889",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.index",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.index",
+      "sha256": "88cdc639f3ce9d3ccfa461d7419a58e3bd98b6769141552e9b3639a0f09b52a6",
+      "size": 28206,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178193.679631",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/pipeline.config",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/pipeline.config",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/pipeline.config",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178193.679631\n",
+      "sha256": "f6efcb209724c3e57c1e80ca96db90a1dd4008bfaca515da56757c4c2a535828",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/pipeline.config",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/pipeline.config",
+      "sha256": "5898eb7d03d6bcecbc368372c910842e9f19f6f9ac5510f15b18b1da92ef9d13",
+      "size": 4354,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178193.487633",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/saved_model.pb",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/PaxHeader/saved_model.pb",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/PaxHeader/saved_model.pb",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178193.487633\n",
+      "sha256": "a47cc623b2367fd8d2ac7df98bca4830fe36a6049b8938af250f6d9d97fbcfe8",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/saved_model.pb",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/saved_model.pb",
+      "sha256": "44bcbd7550bdf9a31245446c37afab98a6b775970961a49b6bbd7620ed2406f9",
+      "size": 236096016,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178181.135778",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.data-00000-of-00001",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.data-00000-of-00001",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/model.ckpt.data-00000-of-00001",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178181.135778\n",
+      "sha256": "288312665e7af442d22c29d529ef5e7a3b0412a87881ab75191f23481e1c2889",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.data-00000-of-00001",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/model.ckpt.data-00000-of-00001",
+      "sha256": "df04dbce055f0cac2df52072739da47dd3e8b6a4c20029e5488f0de115d69825",
+      "size": 229234648,
+      "type": "file"
+    },
+    {
+      "fields": {
+        "mtime": "1548178193.347635",
+        "uid": "345018"
+      },
+      "following_member": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model",
+      "metadata_applied": false,
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/saved_model",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/PaxHeader/saved_model",
+      "payload_utf8": "14 uid=345018\n27 mtime=1548178193.347635\n",
+      "sha256": "50161829418f20f7635d32517a92148abf747f5e93ddaa38bf05948f532d5399",
+      "size": 41,
+      "type": "pax_metadata"
+    },
+    {
+      "name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model",
+      "original_name": "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20/saved_model/",
+      "size": 0,
+      "type": "directory"
+    }
+  ],
+  "model_constructed": false,
+  "native_installed": false,
+  "oid_v4_label_map_blob": "643b9e8ed5d9239a3248b895fb32f3b51caa92f3",
+  "oid_v4_label_map_path": "research/object_detection/data/oid_v4_label_map.pbtxt",
+  "open_images_license_caveat": "annotations CC BY 4.0; images listed CC BY 2.0; Google makes no representations or warranties regarding each image's license status and requires users to verify each image license themselves",
+  "pipeline": {
+    "image_resizer": {
+      "height": 512,
+      "type": "fixed_shape_resizer",
+      "width": 512
+    },
+    "num_classes": 601
+  },
+  "readiness_claim": false,
+  "tensorflow_models_license": "Apache-2.0",
+  "tensorflow_models_license_blob": "43fcf7bf1f1f9f824a1debf05d6ced45bf5810aa",
+  "tensorflow_models_revision": "0558408514dacf2fe2860cd72ac56cbdf62a24c0"
+}

@@ -14,86 +14,84 @@ Person-down and slip/fall remain required deliverables and are secondary only in
 
 ## October 11 approved Weapons pretrained-donor qualification
 
-The owner authorized downloading and testing the selected 638 MB OIDv4 SSD
-ResNet101-FPN donor on free hosted CPU runners. The 250 MB ceiling described in
-the earlier notes belongs to the old MobileNet-specific discovery lane; it is
-not a universal model limit. The new narrow `evidence/weapons-oidv4-fpn-*` lane
-retains the existing read-only hosted Linux/Windows workflow, five-minute Linux
-ceiling and required quality gate. It excludes unrelated real-video evidence.
-No paid spending, GPU, training or production release is added.
+The owner authorized downloading and testing the pretrained OIDv4 SSD
+ResNet101-FPN donor on free hosted CPU runners, then explicitly approved two
+additional CI runs after the first two deterministic archive-format failures.
+This same work item has a four-request ceiling: runs #342/#343 failed before
+model loading; discovery run #344 passed; one native qualification request
+remains. Existing five-minute job limits and required Linux/Windows/quality
+checks remain unchanged. The default policy still limits ordinary work to two
+requests; this is a recorded owner exception, not a policy reset.
 
-First-head discovery streams only the official Google archive, with exact
-expected size 638,212,759 bytes, compressed capacity 650,000,000 bytes, expanded
-capacity 2,000,000,000 bytes and a bounded download/inspection deadline. It hashes
-the complete compressed entity and every safe regular tar member, rejects
-malformed/unsafe archives before payload allocation, and inspects only the
-bounded pipeline configuration. No archive/member is retained or extracted,
-and no runtime is installed or executed by discovery.
+PR #140 remains the only active implementation PR. Its discovery head
+`16a2fe9dab9e12480103a5af03ea1a35437257ce` passed hosted run #344
+(`38181892160`) on Linux, Windows and the Analytics quality gate. All 704
+regressions passed (four existing optional hosted dependency skips), and the
+27 discovery tests passed without skips. Complete streaming inspection verified:
 
-Source qualification now passes all 27 generated-archive tests without skips
-and all 704 full-suite tests with three existing optional OpenCV skips.
-Guardrails, compilation and person-down replay passed. Independent review
-covered stdlib HTTPResponse framing, byte/deadline bounds, gzip/hash accounting,
-layout/name preservation, ignored PAX metadata and semantic-override rejection.
-The hosted command has an external 210-second timeout covering DNS/headers.
+- Archive: 638,212,759 compressed bytes, SHA-256
+  `b0fe7ae2a91a29ced95e564141d2a8aadfd6da2d7da9565395c4841011d4ea75`.
+- Frozen graph: 235,714,499 bytes, SHA-256
+  `0c9269fff044e0126bd43c3496c738d3445603ffb7fe07905a3d1149fc6446d3`.
+- Pipeline configuration: 4,354 bytes, SHA-256
+  `5898eb7d03d6bcecbc368372c910842e9f19f6f9ac5510f15b18b1da92ef9d13`;
+  601 classes and graph-owned fixed 512x512 resizing.
+- Expanded archive: 710,701,056 bytes; 20 physical records, including 10
+  bounded ignored UID/timestamp PAX controls. The complete ordered records,
+  member hashes, original paths and PAX associations are hard-pinned in
+  `analytics_lab/data/weapons_oid_fpn_identity.json` for the next head.
 
-Hosted runs #342 and #343 passed their Linux regression/focused tests but
-stopped before model loading: the first rejected the PAX pseudoheader's path,
-and the second rejected its unsupported x control type. The earlier inference
-that the model directory differed from the filename was incorrect. A bounded
-read-only local diagnosis consumed only a 32 KiB compressed prefix, expanded at
-most 4096 bytes, and identified a 41-byte local PAX ownership/timestamp record
-(uid and mtime) before the exact expected model directory. This is diagnostic
-metadata, not complete archive identity or hosted artifact admission.
+The first two hosted attempts rejected valid local PAX metadata before a model
+was loaded. A bounded 32 KiB prefix diagnosis identified the exact 41-byte
+UID/timestamp record. The repair accepts only ignored ownership/time fields,
+4096 bytes per PAX control and 128 KiB total; semantic path/size/link/sparse
+changes and other controls remain rejected. Archive bounds, CRC, full compressed
+and member hashes, 128-header limit, per-receive deadline and outer 210-second
+timeout remain intact. The earlier directory-name diagnosis was incorrect; the
+actual root matches the archive filename.
 
-The prepared repair accepts only ignored uid/gid/uname/gname/mtime/atime/ctime
-PAX x fields, at most 4096 bytes per header and 128 KiB total, with physical
-controls counted toward 128 headers. It hashes/records their complete payloads
-and binds each to the following regular/directory member. Semantic path/size/
-link/sparse overrides, unknown/duplicate keys, malformed framing, consecutive/
-orphan controls and all other control types remain rejected. Actual file paths,
-layout, regular-member hashes, CRC and resource limits are unchanged. The exact
-observed UID/mtime record now passes a generated archive regression.
+The pinned qualification head prepares native execution, not a donor replacement.
+All 734 local regression tests passed with three existing optional OpenCV skips;
+57 focused discovery/admission/runtime/evidence tests passed without skips.
+Independent review verified identity closure, endpoint order, bounded candidates
+and cleanup, and caught/fixed input aliasing for negative-channel-stride views.
+The final native observations and hosted qualification outcome must be read from
+[PR #140](https://github.com/mkurtgerald/Analytics-lab/pull/140) and its exact-head
+CI evidence; these source notes deliberately make no pre-execution prediction. Admission
+must reverify the complete archive and every pinned record before yielding only
+the temporary frozen graph beneath RUNNER_TEMP. On failure or exit, remove all
+staged graph material. No archive, model, image or frame artifact is retained
+or uploaded.
 
-Both CI requests for this owner-approved invocation have been consumed; no
-unchanged retry or further dispatch occurs here. The reviewed repair is prepared
-as the next commit on this same PR, without advancing the PR ref or triggering
-another run. Next eligible invocation must verify live head/base/counters,
-advance that prepared commit, complete hosted archive/member/config discovery,
-then hard-pin those identities before the native qualification head. The
-owner's download/test approval persists. The complete model has not been
-verified or loaded, and no accuracy improvement is claimed.
+The model-specific TensorFlow FrontEnd adapter overrides the ordered endpoints
+`detection_boxes:0`, `detection_scores:0`, `detection_classes:0`, and
+`num_detections:0`, and checks converted Result identities, types and shapes
+before compiling once for CPU. It feeds original-size RGB uint8 NHWC input with
+shape `[1,-1,-1,3]`, allowing the donor graph to perform its own fixed512
+resizing. It performs no external square resize or mean subtraction. Dynamic
+CPU support remains an execution question. Scores/classes have equal shapes,
+so endpoint order must be verified independently. Every admitted candidate from
+at most 100 model proposals is preserved; the baseline's 64-candidate slice is
+not applied to this donor.
 
-Provenance remains pinned to `tensorflow/models@0558408514dacf2fe2860cd72ac56cbdf62a24c0`,
+Only the existing hash-locked OpenVINO/OpenCV/NumPy/telemetry runtime set is
+permitted. The qualification performs exactly three sequential frozen-0.50
+observations: a deterministic generated tensor, the already-admitted CC0 rifle,
+and the already-admitted CC0 chair. It records identities, immutable input,
+all candidate outputs, compile/inference counts and bounded phases. Source roles
+remain selection metadata: no independent annotations means no TP/FP/FN,
+precision/recall, accuracy improvement or commercial-readiness claim.
+
+Provenance remains `tensorflow/models@0558408514dacf2fe2860cd72ac56cbdf62a24c0`,
 Apache-2.0 LICENSE blob `43fcf7bf1f1f9f824a1debf05d6ced45bf5810aa`, model-zoo
 blob `fd5642ae06ccb2c53b484868d6811188c16151da` and corrected OIDv4 label-map
-blob `643b9e8ed5d9239a3248b895fb32f3b51caa92f3`. The upstream whole-dataset
-score does not establish a Weapons gain. Open Images per-image rights caveats
-remain separate from model lineage and the already-admitted CC0 test sources.
-
-After hosted archive/member identity discovery, review and hard-pin those
-identities on the same PR before native execution. The later head can reuse the
-existing hash-locked OpenVINO/OpenCV runtime set, compile once and make at most
-three frozen-0.50 calls through a model-specific adapter: one generated tensor
-and the already-admitted rifle/chair sources. Actual archived preprocessing and
-converted port names must be verified; the existing MobileNet adapter's 300x300
-input and internal tensor aliases cannot be assumed for this graph. Preserve
-all candidate outputs and input immutability, then remove temporary graph
-material. Independent annotations remain required before assigning real-image
-TP/FP/FN or claiming improved accuracy.
-
-Runtime source review selects the native TensorFlow FrontEnd's explicit ordered
-endpoint override (`detection_boxes:0`, `detection_scores:0`,
-`detection_classes:0`, `num_detections:0`), input shape `[1,512,512,3]`, and a
-check of converted Result friendly names before compile. OpenVINO's generic
-converter compares output sets and may skip requested reordering, so its output
-list alone is insufficient to distinguish scores from classes. Primary-source
-evidence at OpenVINO `759c5a6ab8c066af5f4bc5ebd04643706012a37d` includes input-model
-blob `7634e87b5ceabbc37f7dbb02cef6081c6fb8a79e`, translation blob
-`28647180d18c55f263afa0a8b0c136b2fc11e816` and compiled-output blob
-`d46f27f1963d05ef8391cb591612edc2562f3c36`. No TensorFlow runtime installation
-is needed. This is the prepared conversion approach; native compatibility
-remains untested until an exact pinned-artifact execution head passes.
+blob `643b9e8ed5d9239a3248b895fb32f3b51caa92f3`. OpenVINO source review uses
+`759c5a6ab8c066af5f4bc5ebd04643706012a37d`; endpoint override/order behavior is
+bound by input-model blob `7634e87b5ceabbc37f7dbb02cef6081c6fb8a79e`, translation
+blob `28647180d18c55f263afa0a8b0c136b2fc11e816` and compiled-output blob
+`d46f27f1963d05ef8391cb591612edc2562f3c36`. Open Images image rights remain
+separate from the two individually admitted CC0 sources. No TensorFlow runtime,
+training, spending, GPU, new donor search or production release is added.
 
 ## October 11 donor-first acceleration — Weapons comparison
 

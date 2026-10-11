@@ -199,7 +199,7 @@ def _pipeline(data: bytes) -> dict:
     return {"num_classes": _number(ssd, "num_classes"), "image_resizer": resizer}
 
 
-def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
+def _members(expanded: _Expanded, *, graph_sink: Callable | None = None) -> tuple[list, bytes, str, dict]:
     members, seen, config = [], set(), None
     pending_pax, pax_total = False, 0
     while True:
@@ -253,6 +253,8 @@ def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
                 if not data:
                     raise RuntimeError("truncated regular tar member")
                 digest.update(data)
+                if graph_sink is not None and PurePosixPath(member.name).name == "frozen_inference_graph.pb":
+                    graph_sink(dict(record), data)
                 if is_config:
                     captured.extend(data)
                 remaining -= len(data)
@@ -278,7 +280,7 @@ def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
     return members, config, root, required[0]
 
 
-def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
+def _run(*, opener: Callable | None = None, clock: Callable = monotonic, graph_sink: Callable | None = None) -> dict:
     deadline = clock() + _TIME_LIMIT
     open_url = opener or build_opener(_NoRedirect()).open
     request = Request(_ARCHIVE_URL, headers={"User-Agent": "Analytics-lab-weapons-fpn-discovery/1",
@@ -296,7 +298,7 @@ def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
         try:
             with gzip.GzipFile(fileobj=compressed, mode="rb") as stream:
                 expanded = _Expanded(stream, deadline, clock)
-                members, config, root, graph = _members(expanded)
+                members, config, root, graph = _members(expanded, graph_sink=graph_sink)
             while compressed.read(_CHUNK):
                 pass
         except TimeoutError:
@@ -323,6 +325,11 @@ def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
                 "open_images_license_caveat": provenance._OPEN_IMAGES_LICENSE_CAVEAT,
                 "native_installed": False, "model_constructed": False, "inference_run": False,
                 "artifact_retained": False, "accuracy_claim": False, "readiness_claim": False}
+
+
+def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
+    """Metadata-only public discovery; graph sinks belong to the pinned admission lane."""
+    return _run(opener=opener, clock=clock)
 
 
 def main() -> int:

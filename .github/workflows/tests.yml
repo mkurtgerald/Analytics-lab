@@ -198,7 +198,10 @@
         {
           "name": "Bounded Weapons OIDv4 FPN donor evidence",
           "if": "${{ steps.scope.outputs.run_full_tests == 'true' && github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/weapons-oidv4-fpn-') }}",
-          "run": "set -euo pipefail\npython -m unittest tests.test_weapons_oid_fpn_discovery -v\ntimeout --signal=TERM 210s python -m analytics_lab.weapons_oid_fpn_discovery\n"
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements/oidv4-object-smoke-linux.txt\npython -m unittest tests.test_weapons_oid_fpn_discovery tests.test_weapons_oid_fpn_admission tests.test_weapons_oid_fpn tests.test_weapons_oid_fpn_evidence -v\ntimeout --signal=TERM 210s python -m analytics_lab.weapons_oid_fpn_evidence --work-dir \"$RUNNER_TEMP/analytics-weapons-oid-fpn\"\n",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          }
         },
         {
           "name": "Bounded real-video CPU evidence",
