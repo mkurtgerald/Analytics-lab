@@ -225,5 +225,156 @@ class ForensicSearchTests(unittest.TestCase):
             ForensicQuery(start_ms=20, end_ms=10)
 
 
+class ForensicBatchBoundTests(unittest.TestCase):
+    @staticmethod
+    def record(name="one"):
+        return ForensicRecord(name, "camera-1", 1, "person", 0.8,
+                              evidence=_evidence("event-" + name))
+
+    @staticmethod
+    def producer(values, *, stop_after=None):
+        class FiniteProducer:
+            def __init__(self):
+                self.calls = 0
+                self.values = iter(values)
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                self.calls += 1
+                if stop_after is not None and self.calls > stop_after:
+                    raise AssertionError("finite producer read beyond overflow boundary")
+                return next(self.values)
+
+        return FiniteProducer()
+
+    def test_overflow_reads_only_one_excess_item_before_any_add(self):
+        for capacity in (1, 2, 4):
+            with self.subTest(capacity=capacity):
+                index = ForensicIndex(max_records=capacity)
+                existing = self.record()
+                index.add(existing)
+                values = self.producer((existing,) * (capacity + 4))
+                with self.assertRaisesRegex(RuntimeError, "input batch exceeds forensic index capacity"):
+                    index.extend(values)
+                self.assertEqual(values.calls, capacity + 1)
+                self.assertEqual(index.search(ForensicQuery()), (existing,))
+
+    def test_finite_overflow_does_not_reach_a_later_producer_failure(self):
+        index = ForensicIndex(max_records=2)
+        values = self.producer((self.record(),) * 4, stop_after=3)
+        with self.assertRaisesRegex(RuntimeError, "input batch exceeds forensic index capacity"):
+            index.extend(values)
+        self.assertEqual(values.calls, 3)
+        self.assertEqual(index.search(ForensicQuery()), ())
+
+    def test_length_hints_are_not_consulted(self):
+        for method in ("__len__", "__length_hint__"):
+            with self.subTest(method=method):
+                values = self.producer((self.record(),))
+
+                def forbidden_hint(self):
+                    raise AssertionError("producer length hint was consulted")
+
+                setattr(type(values), method, forbidden_hint)
+                index = ForensicIndex(max_records=2)
+                index.extend(values)
+                self.assertEqual(values.calls, 2)
+                self.assertEqual(index.search(ForensicQuery()), (self.record(),))
+
+    def test_empty_under_and_exact_capacity_batches(self):
+        for capacity in (1, 2, 4):
+            for count in range(capacity + 1):
+                with self.subTest(capacity=capacity, count=count):
+                    records = tuple(self.record(str(i)) for i in range(count))
+                    values = self.producer(records)
+                    index = ForensicIndex(max_records=capacity)
+                    index.extend(values)
+                    self.assertEqual(values.calls, count + 1)
+                    self.assertEqual(index.search(ForensicQuery()), records)
+
+    def test_configured_capacity_bounds_without_large_allocation(self):
+        for capacity in (0, -1, True, 1.0, 1_000_001):
+            with self.subTest(capacity=capacity), self.assertRaises(ValueError):
+                ForensicIndex(max_records=capacity)
+        index = ForensicIndex(max_records=1_000_000)
+        values = self.producer((self.record(),))
+        index.extend(values)
+        self.assertEqual(values.calls, 2)
+        self.assertEqual(index.search(ForensicQuery()), (self.record(),))
+
+    def test_duplicate_replay_at_capacity_and_conflict_semantics(self):
+        index = ForensicIndex(max_records=1)
+        first = self.record()
+        index.add(first)
+        index.extend(self.producer((first,)))
+        self.assertEqual(index.search(ForensicQuery()), (first,))
+        conflict = ForensicRecord("one", "camera-2", 1, "person", 0.8,
+                                  evidence=_evidence("event-one"))
+        with self.assertRaisesRegex(ValueError, "observation_id conflicts with existing record"):
+            index.extend(self.producer((conflict,)))
+        self.assertEqual(index.search(ForensicQuery()), (first,))
+
+    def test_malformed_and_capacity_add_failures_keep_existing_partial_add_behavior(self):
+        first, second = self.record("one"), self.record("two")
+        no_evidence = ForensicRecord("missing", "camera-1", 1, "person", 0.8)
+        for invalid, message in ((object(), "record must be ForensicRecord"),
+                                 (no_evidence, "requires immutable evidence provenance")):
+            with self.subTest(message=message):
+                index = ForensicIndex(max_records=2)
+                with self.assertRaisesRegex(ValueError, message):
+                    index.extend(self.producer((first, invalid)))
+                self.assertEqual(index.search(ForensicQuery()), (first,))
+        index = ForensicIndex(max_records=2)
+        index.add(first)
+        with self.assertRaisesRegex(RuntimeError, "forensic index capacity exceeded"):
+            index.extend(self.producer((second, self.record("three"))))
+        self.assertEqual(index.search(ForensicQuery()), (first, second))
+
+    def test_overflow_still_precedes_item_validation(self):
+        index = ForensicIndex(max_records=1)
+        values = self.producer((object(), object(), object()))
+        with self.assertRaisesRegex(RuntimeError, "input batch exceeds forensic index capacity"):
+            index.extend(values)
+        self.assertEqual(values.calls, 2)
+        self.assertEqual(index.search(ForensicQuery()), ())
+
+    def test_raising_producers_preserve_state_and_public_error_behavior(self):
+        for error in (ValueError("producer fault"), RuntimeError("producer fault"),
+                      TypeError("producer type fault")):
+            with self.subTest(error=type(error).__name__):
+                index = ForensicIndex(max_records=4)
+                existing = self.record()
+                index.add(existing)
+
+                def finite_raising():
+                    yield self.record("two")
+                    raise error
+
+                expected = ValueError if isinstance(error, TypeError) else type(error)
+                message = "records must be iterable" if isinstance(error, TypeError) else "producer fault"
+                with self.assertRaisesRegex(expected, message) as raised:
+                    index.extend(finite_raising())
+                if isinstance(error, TypeError):
+                    self.assertIs(raised.exception.__cause__, error)
+                else:
+                    self.assertIs(raised.exception, error)
+                self.assertEqual(index.search(ForensicQuery()), (existing,))
+
+    def test_noniterable_and_raising_iter_keep_public_error_behavior(self):
+        class BadIterable:
+            def __iter__(self):
+                raise TypeError("iteration unavailable")
+
+        for values in (None, 3, BadIterable()):
+            with self.subTest(values=type(values).__name__):
+                index = ForensicIndex(max_records=1)
+                with self.assertRaisesRegex(ValueError, "records must be iterable") as raised:
+                    index.extend(values)
+                self.assertIsInstance(raised.exception.__cause__, TypeError)
+                self.assertEqual(index.search(ForensicQuery()), ())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,31 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## October 11 forensic batch-ingestion bound repair
+
+`ForensicIndex.extend` previously exhausted its input with `tuple(records)` before
+checking the configured batch bound. A finite oversized producer was therefore
+fully consumed, and producer length hints were consulted before iteration. The
+collector now retains at most `max_records` items and consumes only one additional
+item to reject overflow, without consulting a producer length hint.
+
+Collection still finishes before any record is added. Batch overflow retains the
+existing error and precedes per-record validation. Producer failures before the
+bound leave existing records unchanged; `TypeError` retains its public `ValueError`
+translation. The later add phase retains exact duplicate idempotency, conflicting
+duplicate rejection and its existing partial-add behavior. The bound is on item
+consumption/reference storage, not the execution time of an individual producer
+call, object size, concurrent mutation or backend persistence.
+
+Finite generated-metadata regressions reproduced seven failing baseline subcases.
+The repaired source passed 140 forensic tests and 642 permitted source tests under
+a process/network/native-load guard, with zero skipped tests or guard violations.
+Nine subprocess tests and five optional native/media tests were explicitly
+deferred locally. Exact-head hosted Linux/Windows qualification and independent
+review remain required. Consumer pins, packages, schemas, authorization and
+operator UI are unchanged; this is component resource-safety progress, not
+installed or integrated forensic-search acceptance.
+
 ## Generated-pixel appearance producer — source boundary prepared
 
 `forensic_histogram.extract_bgr24_histogram` computes the existing model-free
