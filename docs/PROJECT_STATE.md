@@ -12,6 +12,49 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## October 11 approved Weapons pretrained-donor qualification
+
+The owner authorized downloading and testing the selected 638 MB OIDv4 SSD
+ResNet101-FPN donor on free hosted CPU runners. The 250 MB ceiling described in
+the earlier notes belongs to the old MobileNet-specific discovery lane; it is
+not a universal model limit. The new narrow `evidence/weapons-oidv4-fpn-*` lane
+retains the existing read-only hosted Linux/Windows workflow, five-minute Linux
+ceiling and required quality gate. It excludes unrelated real-video evidence.
+No paid spending, GPU, training or production release is added.
+
+First-head discovery streams only the official Google archive, with exact
+expected size 638,212,759 bytes, compressed capacity 650,000,000 bytes, expanded
+capacity 2,000,000,000 bytes and a bounded download/inspection deadline. It hashes
+the complete compressed entity and every safe regular tar member, rejects
+malformed/unsafe archives before payload allocation, and inspects only the
+bounded pipeline configuration. No archive/member is retained or extracted,
+and no runtime is installed or executed by discovery.
+
+Source qualification passed all 16 generated-archive tests without skips and
+all 693 full-suite tests with three existing optional OpenCV skips. Guardrails,
+compilation and person-down replay passed. Independent review exercised real
+stdlib HTTPResponse framing over generated sockets, full gzip/hash accounting
+and hidden-content rejection. The hosted command also has an external 210-second
+timeout covering initial DNS/headers. Exact hosted discovery remains pending.
+
+Provenance remains pinned to `tensorflow/models@0558408514dacf2fe2860cd72ac56cbdf62a24c0`,
+Apache-2.0 LICENSE blob `43fcf7bf1f1f9f824a1debf05d6ced45bf5810aa`, model-zoo
+blob `fd5642ae06ccb2c53b484868d6811188c16151da` and corrected OIDv4 label-map
+blob `643b9e8ed5d9239a3248b895fb32f3b51caa92f3`. The upstream whole-dataset
+score does not establish a Weapons gain. Open Images per-image rights caveats
+remain separate from model lineage and the already-admitted CC0 test sources.
+
+After hosted archive/member identity discovery, review and hard-pin those
+identities on the same PR before native execution. The later head can reuse the
+existing hash-locked OpenVINO/OpenCV runtime set, compile once and make at most
+three frozen-0.50 calls through a model-specific adapter: one generated tensor
+and the already-admitted rifle/chair sources. Actual archived preprocessing and
+converted port names must be verified; the existing MobileNet adapter's 300x300
+input and internal tensor aliases cannot be assumed for this graph. Preserve
+all candidate outputs and input immutability, then remove temporary graph
+material. Independent annotations remain required before assigning real-image
+TP/FP/FN or claiming improved accuracy.
+
 ## October 11 donor-first acceleration — Weapons comparison
 
 The owner selected **stronger weapons detection** as the active donor-first

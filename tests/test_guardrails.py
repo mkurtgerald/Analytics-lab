@@ -228,6 +228,20 @@ class GuardrailsTests(unittest.TestCase):
             generic[0]['if'],
         )
 
+    def test_weapons_oid_fpn_discovery_is_isolated_and_metadata_only(self):
+        linux = self.workflow['jobs']['linux']['steps']
+        steps = [step for step in linux if step.get('name') == 'Bounded Weapons OIDv4 FPN donor evidence']
+        self.assertEqual(len(steps), 1)
+        step = steps[0]
+        self.assertIn("github.event_name == 'pull_request'", step['if'])
+        self.assertIn("evidence/weapons-oidv4-fpn-", step['if'])
+        self.assertIn("analytics_lab.weapons_oid_fpn_discovery", step['run'])
+        self.assertIn("timeout --signal=TERM 210s", step['run'])
+        self.assertNotIn('pip install', step['run'])
+        generic = [item for item in linux if item.get('name') == 'Bounded real-video CPU evidence']
+        self.assertEqual(len(generic), 1)
+        self.assertIn("!startsWith(github.head_ref, 'evidence/weapons-oidv4-fpn-')", generic[0]['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):
