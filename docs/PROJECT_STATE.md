@@ -12,6 +12,73 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## October 11 donor-first acceleration — Weapons comparison
+
+The owner selected **stronger weapons detection** as the active donor-first
+priority. Retain the already-admitted OIDv4 SSD/OpenVINO stack as the runnable
+baseline and reuse its neutral `DetectionCandidate` contract and seven-class
+taxonomy. The earlier rifle-selected CC0 observation produced zero candidates;
+it remains unscored because source selection metadata is not detector ground
+truth. The admitted RF-DETR Nano path contains architecture source only, with
+`pretrain_weights=None`; weightless construction cannot establish stronger
+weapon detection. This direction prioritizes a usable pretrained replacement
+and measured comparison before project-owned training.
+
+The new `analytics_lab.weapons_evaluation` boundary binds actual normalized
+annotation boxes to an existing held-out `WeaponTrainingAsset`, its exact media
+identity/dimensions, annotation identity/hash, class/count summary and declared
+evaluation rights. Train rows, identifiable people, uncleared rights and
+inconsistent annotation declarations are rejected. Inputs are defensively copied,
+with at most 256 cases and 64 labels/predictions per case. Each asset retains
+the manifest's one declared positive class or explicit true-negative summary;
+mixed-class assets require a separately extended manifest. No source image,
+video, learned weights or native runtime is acquired or executed.
+Annotation hashes prove internal binding, not independent authorship or the
+truth of caller-supplied labels/rights. Those remain an evidence-review obligation.
+
+The frozen engineering protocol uses confidence >= 0.50 and class-exact,
+one-to-one maximum-cardinality IoU >= 0.50 matching. It reports per-class and
+aggregate TP/FP/FN, precision/recall with undefined denominators represented
+explicitly, positive-image misses and negative-image false positives. This is
+not COCO/Open Images AP, a threat assessment or an automatic promotion decision.
+The dataset digest binds held-out media, annotations and rights independently
+of predictions, enabling a candidate/baseline comparison that rejects changed
+data or protocol and preserves both donors' code/model/config/runtime identities.
+
+`python -m analytics_lab.weapons_evaluation --synthetic-demo` exercises the
+annotation-to-comparison path with generated metadata. The baseline misses one
+rifle and emits no false positives; the candidate recovers that fixture rifle
+but emits one handgun false positive on a true negative. The report preserves
+both changes so a recall gain cannot hide a negative-image regression. This
+fixture is not a measured improvement from an executed model.
+
+All 22 focused generated-metadata tests passed without skips. The full suite
+ran 676 tests successfully with three existing optional OpenCV skips; repository
+guardrails, compilation, the existing person-down replay and the comparison CLI
+also passed. Independent review verified all 512 possible 3x3 matching graphs,
+tiny/extreme-aspect IoU, defensive mutation revalidation and repaired aggregate
+count invariants, with no remaining concrete blockers. Hosted exact-head
+Linux/Windows qualification remains the merge gate. No model, media, runtime
+dependency, workflow or control file changed.
+
+One additional pretrained candidate was inspected from the already-pinned
+TensorFlow model-zoo lineage: OIDv4 SSD ResNet101-FPN 512x512. The official Google
+storage server returned a Content-Length of 638,212,759 bytes for
+`ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20.tar.gz`
+on October 11. Only HTTP HEAD metadata was read; no archive, model or media was
+downloaded. This exceeds the existing 250,000,000-byte bounded discovery lane.
+The candidate is not admitted, and its upstream whole-dataset score is not
+Weapons accuracy evidence. The donor screen remains limited to the retained
+OIDv4 baseline, existing RF-DETR architecture and this additional candidate.
+
+After exact-head hosted qualification and merge, the next executable gate is
+independently authored held-out Weapon labels
+and a separately bounded exact-weight/runtime admission for the replacement.
+The existing compile-once runtime, admitted CC0 identities and inference output
+contract can be reused for that comparison. No stopped tracking, OCR glyph or
+FaceSSD experiment is restarted, and no commercial or downstream deployment is
+made by this work.
+
 ## October 11 forensic batch-ingestion bound repair
 
 `ForensicIndex.extend` previously exhausted its input with `tuple(records)` before

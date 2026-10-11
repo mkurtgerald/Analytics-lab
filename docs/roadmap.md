@@ -2,6 +2,16 @@
 
 This roadmap prioritizes analytics that create differentiated situational understanding rather than commodity object detection.
 
+## Current delivery direction — October 11, 2026
+
+The owner selected stronger weapons detection as the first donor-first acceleration target. Reuse the existing OpenVINO runtime, neutral detection contract and seven-class taxonomy. Retain the admitted OIDv4 SSD as the comparison baseline; its zero output on the rifle-selected engineering source remains an unscored observation.
+
+Qualify replacements on the same independently authored, rights-cleared held-out annotations with frozen confidence and IoU thresholds. Report per-class misses and false positives, including negative-image alerts, alongside the exact donor/data identities. An architecture source admission or weightless RF-DETR construction is not a trained weapons detector. Prefer admitted pretrained weights before considering project-owned training.
+
+The first executable slice is the bounded annotation-to-donor comparison. Next, acquire independent annotations and close exact weight/runtime/resource admission for a replacement, then run a preregistered baseline comparison. The reviewed OIDv4 ResNet101-FPN archive is 638,212,759 bytes by an official-server metadata response; it has not been downloaded or admitted and exceeds the existing bounded model-discovery lane. No broader donor search or training run starts from this change.
+
+The locally tested scene-change experiment remains unpublished while Weapons is the active work item. Historical stopped tracking, OCR glyph and FaceSSD hypotheses remain stopped.
+
 ## Phase 0 — Foundation
 
 - Standard event schema
