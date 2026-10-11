@@ -255,12 +255,16 @@ class ForensicIndex:
         self._records[record.observation_id] = record
 
     def extend(self, records: Iterable[ForensicRecord]) -> None:
+        values: list[ForensicRecord] = []
+        capacity = self.max_records
         try:
-            values = tuple(records)
+            # Collect before adding, without trusting producer length hints.
+            for item in records:
+                if len(values) == capacity:
+                    raise RuntimeError("input batch exceeds forensic index capacity")
+                values.append(item)
         except TypeError as exc:
             raise ValueError("records must be iterable") from exc
-        if len(values) > self.max_records:
-            raise RuntimeError("input batch exceeds forensic index capacity")
         for item in values:
             self.add(item)
 
