@@ -2,8 +2,9 @@
 
 No native dependency, model construction, inference, extraction or file retention
 occurs. Only pipeline.config (at most 64 KiB) is buffered; every other member is
-hashed in chunks. Fixed tar headers reject extended/sparse/link metadata before
-payload allocation. Discovery identities require a later independent pinning gate.
+hashed in chunks. Fixed headers accept only bounded non-semantic local PAX
+identity/time metadata; path/size/link/sparse overrides and other extensions fail.
+Discovery identities require a later independent pinning gate.
 """
 from __future__ import annotations
 
@@ -28,6 +29,9 @@ _MAX_EXPANDED = 2_000_000_000
 _MAX_REGULAR = 700_000_000
 _MAX_MEMBERS = 128
 _MAX_CONFIG = 64 * 1024
+_MAX_PAX = 4096
+_MAX_PAX_TOTAL = 128 * 1024
+_PAX_KEYS = frozenset({"uid", "gid", "uname", "gname", "mtime", "atime", "ctime"})
 _CHUNK = 64 * 1024
 _TIME_LIMIT = 210
 _READ_TIMEOUT = 30
@@ -95,7 +99,7 @@ class _Expanded:
         return data
 
     def exact(self, size: int) -> bytes:
-        # Used only for 512-byte headers and <=511-byte padding.
+        # Used only for headers/padding and bounded <=4096-byte PAX controls.
         parts = []
         remaining = size
         while remaining:
@@ -123,13 +127,35 @@ def _safe_header(block: bytes):
             or "\\" in name or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)
             or ".." in path.parts or name == "." and member.type != tarfile.DIRTYPE):
         raise RuntimeError("unsafe or noncanonical relative tar path")
-    if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE) or member.linkname:
+    if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE, tarfile.XHDTYPE) or member.linkname:
         raise RuntimeError("unsupported extended/link/sparse/special tar header")
     if (type(member.size) is not int or member.size < 0 or member.size > _MAX_REGULAR
             or member.type == tarfile.DIRTYPE and member.size != 0):
         raise RuntimeError("tar member size/type exceeds its boundary")
     member.name = name
     return member, original
+
+
+def _pax(payload: bytes) -> dict:
+    fields, offset = {}, 0
+    while offset < len(payload):
+        space = payload.find(b" ", offset, offset + 6)
+        if space < 0 or re.fullmatch(rb"[1-9][0-9]{0,3}", payload[offset:space]) is None:
+            raise RuntimeError("invalid PAX record length framing")
+        end = offset + int(payload[offset:space])
+        if end > len(payload) or end <= space + 3 or payload[end-1:end] != b"\n":
+            raise RuntimeError("truncated/malformed PAX record")
+        body = payload[space+1:end-1].decode("utf-8", "strict")
+        if "=" not in body:
+            raise RuntimeError("PAX record lacks key/value")
+        key, value = body.split("=", 1)
+        if key not in _PAX_KEYS or key in fields or not value or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in value):
+            raise RuntimeError("unsupported, duplicate or control-valued PAX key")
+        fields[key] = value
+        offset = end
+    if not fields:
+        raise RuntimeError("empty PAX metadata")
+    return fields
 
 
 def _block(text: str, name: str) -> str:
@@ -175,9 +201,12 @@ def _pipeline(data: bytes) -> dict:
 
 def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
     members, seen, config = [], set(), None
+    pending_pax, pax_total = False, 0
     while True:
         block = expanded.exact(512)
         if block == bytes(512):
+            if pending_pax:
+                raise RuntimeError("orphan PAX control header")
             if expanded.exact(512) != bytes(512):
                 raise RuntimeError("tar requires two zero end blocks")
             while True:
@@ -190,6 +219,23 @@ def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
         if len(members) == _MAX_MEMBERS:
             raise RuntimeError("tar member count exceeds its ceiling")
         member, original = _safe_header(block)
+        if member.type == tarfile.XHDTYPE:
+            if pending_pax or not 1 <= member.size <= _MAX_PAX or pax_total + member.size > _MAX_PAX_TOTAL:
+                raise RuntimeError("consecutive or over-capacity PAX control")
+            payload = expanded.exact(member.size)
+            fields = _pax(payload)
+            if any(expanded.exact((-member.size) % 512)):
+                raise RuntimeError("nonzero PAX padding")
+            members.append({"name": member.name, "original_name": original, "type": "pax_metadata",
+                            "size": member.size, "sha256": hashlib.sha256(payload).hexdigest(),
+                            "payload_utf8": payload.decode("utf-8", "strict"), "fields": fields,
+                            "metadata_applied": False})
+            pax_total += member.size
+            pending_pax = True
+            continue
+        if pending_pax:
+            members[-1]["following_member"] = member.name
+        pending_pax = False
         if member.name in seen:
             raise RuntimeError("duplicate tar path")
         seen.add(member.name)
@@ -226,7 +272,7 @@ def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
     if (str(PurePosixPath(required[1]["name"]).parent) != root
             or root != "." and (len(PurePosixPath(root).parts) != 1 or not root.startswith(_WRAPPER_PREFIX))):
         raise RuntimeError("graph/config must share the flat or one approved wrapping root")
-    if root != "." and any(m["name"] != "." and not (m["name"].startswith(root + "/")
+    if root != "." and any(m["type"] != "pax_metadata" and m["name"] != "." and not (m["name"].startswith(root + "/")
                                                       or m["name"] == root and m["type"] == "directory") for m in members):
         raise RuntimeError("archive member lies outside its discovered wrapping root")
     return members, config, root, required[0]

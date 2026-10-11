@@ -30,24 +30,39 @@ malformed/unsafe archives before payload allocation, and inspects only the
 bounded pipeline configuration. No archive/member is retained or extracted,
 and no runtime is installed or executed by discovery.
 
-Source qualification passed all 16 generated-archive tests without skips and
-all 693 full-suite tests with three existing optional OpenCV skips. Guardrails,
-compilation and person-down replay passed. Independent review exercised real
-stdlib HTTPResponse framing over generated sockets, full gzip/hash accounting
-and hidden-content rejection. The hosted command also has an external 210-second
-timeout covering initial DNS/headers. First hosted run #342 passed Linux's 693
-regressions (four hosted optional skips) and all 16 focused tests, but discovery
-stopped at the directory-layout check before a model was loaded. The directory
-name was incorrectly inferred from the archive filename. The changed head must
-discover a safe flat or single-directory layout from the unique graph/config
-pair, keep their original and canonical paths, reject mixed roots and aliases,
-and retain every byte/type/deadline/corruption check. No unchanged retry is used.
-The repaired source passes 21 focused tests without skips and 698 full-suite
-tests with three existing optional OpenCV skips. Independent review also passed
-16 layout/name-preservation cases and rejected 12 unsafe/mixed/alias cases.
-The same PR receives the changed-head discovery request; this is the second of
-two CI requests for the owner-approved invocation. Native execution remains a
-later pinned-artifact head, not part of this unpinned discovery run.
+Source qualification now passes all 27 generated-archive tests without skips
+and all 704 full-suite tests with three existing optional OpenCV skips.
+Guardrails, compilation and person-down replay passed. Independent review
+covered stdlib HTTPResponse framing, byte/deadline bounds, gzip/hash accounting,
+layout/name preservation, ignored PAX metadata and semantic-override rejection.
+The hosted command has an external 210-second timeout covering DNS/headers.
+
+Hosted runs #342 and #343 passed their Linux regression/focused tests but
+stopped before model loading: the first rejected the PAX pseudoheader's path,
+and the second rejected its unsupported x control type. The earlier inference
+that the model directory differed from the filename was incorrect. A bounded
+read-only local diagnosis consumed only a 32 KiB compressed prefix, expanded at
+most 4096 bytes, and identified a 41-byte local PAX ownership/timestamp record
+(uid and mtime) before the exact expected model directory. This is diagnostic
+metadata, not complete archive identity or hosted artifact admission.
+
+The prepared repair accepts only ignored uid/gid/uname/gname/mtime/atime/ctime
+PAX x fields, at most 4096 bytes per header and 128 KiB total, with physical
+controls counted toward 128 headers. It hashes/records their complete payloads
+and binds each to the following regular/directory member. Semantic path/size/
+link/sparse overrides, unknown/duplicate keys, malformed framing, consecutive/
+orphan controls and all other control types remain rejected. Actual file paths,
+layout, regular-member hashes, CRC and resource limits are unchanged. The exact
+observed UID/mtime record now passes a generated archive regression.
+
+Both CI requests for this owner-approved invocation have been consumed; no
+unchanged retry or further dispatch occurs here. The reviewed repair is prepared
+as the next commit on this same PR, without advancing the PR ref or triggering
+another run. Next eligible invocation must verify live head/base/counters,
+advance that prepared commit, complete hosted archive/member/config discovery,
+then hard-pin those identities before the native qualification head. The
+owner's download/test approval persists. The complete model has not been
+verified or loaded, and no accuracy improvement is claimed.
 
 Provenance remains pinned to `tensorflow/models@0558408514dacf2fe2860cd72ac56cbdf62a24c0`,
 Apache-2.0 LICENSE blob `43fcf7bf1f1f9f824a1debf05d6ced45bf5810aa`, model-zoo

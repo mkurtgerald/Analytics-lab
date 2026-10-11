@@ -19,6 +19,21 @@ CONFIG = b'''model { ssd {
 train_input_reader { input_path: "num_classes: 999 image_resizer { spoof }" }
 # num_classes: 123
 '''
+OBSERVED_PAX = b"14 uid=345018\n27 mtime=1548178193.679631\n"
+
+
+def pax_record(key, value):
+    body = (key + "=" + value + "\n").encode("utf-8")
+    length = len(body) + 2
+    while len(str(length)) + 1 + len(body) != length:
+        length = len(str(length)) + 1 + len(body)
+    return str(length).encode() + b" " + body
+
+
+def pax_control(payload):
+    info = tarfile.TarInfo("PaxHeader/" + discovery._ROOT)
+    info.type, info.size = tarfile.XHDTYPE, len(payload)
+    return info.tobuf(format=tarfile.USTAR_FORMAT) + payload + bytes((-len(payload)) % 512)
 
 
 def archive(entries=None):
@@ -137,6 +152,68 @@ class DiscoveryTests(unittest.TestCase):
         result, _, _ = self.run_fixture(archive(((discovery._ROOT + "/frozen_inference_graph.pb", b"g"),
                                                 (discovery._ROOT + "/pipeline.config", config))))
         self.assertEqual(result["pipeline"]["image_resizer"], {"type": "fixed_shape_resizer", "height": 512, "width": 512})
+
+    def test_exact_observed_uid_mtime_control_before_root_directory(self):
+        self.assertEqual(len(OBSERVED_PAX), 41)
+        raw = pax_control(OBSERVED_PAX) + archive()
+        result, _, _ = self.run_fixture(raw)
+        self.assertEqual(result["member_count"], 4)
+        self.assertEqual(result["archive_root"], discovery._ROOT)
+        control = result["members"][0]
+        self.assertEqual(control["type"], "pax_metadata")
+        self.assertEqual(control["name"], "PaxHeader/" + discovery._ROOT)
+        self.assertEqual(control["size"], 41)
+        self.assertEqual(control["sha256"], hashlib.sha256(OBSERVED_PAX).hexdigest())
+        self.assertEqual(control["payload_utf8"], OBSERVED_PAX.decode())
+        self.assertEqual(control["fields"], {"uid": "345018", "mtime": "1548178193.679631"})
+        self.assertFalse(control["metadata_applied"])
+        self.assertEqual(control["following_member"], discovery._ROOT)
+        self.assertEqual(result["archive_sha256"], hashlib.sha256(gzip.compress(raw, mtime=0)).hexdigest())
+
+    def test_pax_whitelist_and_utf8_byte_length(self):
+        payload = b"".join(pax_record(key, value) for key, value in
+                           (("uid", "1"), ("gid", "2"), ("uname", "Müller"), ("gname", "group"),
+                            ("mtime", "1.1"), ("atime", "2.2"), ("ctime", "3.3")))
+        result, _, _ = self.run_fixture(pax_control(payload) + archive())
+        self.assertEqual(result["members"][0]["fields"]["uname"], "Müller")
+        self.assertEqual(set(result["members"][0]["fields"]), discovery._PAX_KEYS)
+
+    def test_pax_override_sparse_and_unknown_keys_rejected(self):
+        for key in ("path", "size", "linkpath", "GNU.sparse.map", "GNU.sparse.size", "SCHILY.filetype", "comment"):
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                self.run_fixture(pax_control(pax_record(key, "1")) + archive())
+
+    def test_pax_malformed_framing_duplicates_and_control_values_rejected(self):
+        malformed = (b"", b"0 uid=x\n", b"01 uid=x\n", b"10000 uid=x\n", b"8 uid x\n", b"7 uid=\n",
+                     OBSERVED_PAX[:-1], OBSERVED_PAX.replace(b"14 uid", b"15 uid", 1),
+                     pax_record("uid", "1") + pax_record("uid", "2"),
+                     pax_record("uname", "x\ny"), pax_record("uname", "x\ty"), pax_record("uname", "x\x7fy"),
+                     pax_record("uname", "x\x85y"), b"9 uname=\xff\n")
+        for payload in malformed:
+            with self.subTest(payload=payload), self.assertRaises(RuntimeError):
+                self.run_fixture(pax_control(payload) + archive())
+
+    def test_pax_consecutive_orphan_and_nonzero_padding_rejected(self):
+        control = pax_control(OBSERVED_PAX)
+        for raw in (control + control + archive(), control + bytes(1024)):
+            with self.subTest(length=len(raw)), self.assertRaises(RuntimeError):
+                self.run_fixture(raw)
+        bad_padding = bytearray(control)
+        bad_padding[512 + len(OBSERVED_PAX)] = 1
+        with self.assertRaises(RuntimeError):
+            self.run_fixture(bytes(bad_padding) + archive())
+
+    def test_pax_header_total_and_physical_member_caps(self):
+        raw_archive = archive()
+        first, second = pax_control(OBSERVED_PAX), pax_control(pax_record("gid", "123"))
+        raw = first + raw_archive[:512] + second + raw_archive[512:]
+        total = len(OBSERVED_PAX) + len(pax_record("gid", "123"))
+        result, _, _ = self.run_fixture(raw, changes={"_MAX_PAX": len(OBSERVED_PAX), "_MAX_PAX_TOTAL": total, "_MAX_MEMBERS": 5})
+        self.assertEqual(result["member_count"], 5)
+        self.assertEqual(result["members"][2]["following_member"], discovery._ROOT + "/frozen_inference_graph.pb")
+        for changes in ({"_MAX_PAX": len(OBSERVED_PAX)-1}, {"_MAX_PAX_TOTAL": total-1}, {"_MAX_MEMBERS": 4}):
+            with self.subTest(changes=changes), self.assertRaises(RuntimeError):
+                self.run_fixture(raw, changes=changes)
 
     def test_observed_wrapper_can_differ_from_archive_filename(self):
         root = discovery._WRAPPER_PREFIX + "_oid_v4"
