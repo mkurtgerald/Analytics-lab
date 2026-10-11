@@ -108,6 +108,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result["archive_sha256"], hashlib.sha256(compressed).hexdigest())
         self.assertEqual(result["expanded_size"], len(raw))
         self.assertEqual(result["member_count"], 3)
+        self.assertEqual(result["archive_root"], discovery._ROOT)
         self.assertEqual(result["graph"]["sha256"], hashlib.sha256(b"generated-graph-bytes"*50).hexdigest())
         config = next(item for item in result["members"] if item["name"].endswith("pipeline.config"))
         self.assertEqual(config["sha256"], hashlib.sha256(CONFIG).hexdigest())
@@ -136,6 +137,61 @@ class DiscoveryTests(unittest.TestCase):
         result, _, _ = self.run_fixture(archive(((discovery._ROOT + "/frozen_inference_graph.pb", b"g"),
                                                 (discovery._ROOT + "/pipeline.config", config))))
         self.assertEqual(result["pipeline"]["image_resizer"], {"type": "fixed_shape_resizer", "height": 512, "width": 512})
+
+    def test_observed_wrapper_can_differ_from_archive_filename(self):
+        root = discovery._WRAPPER_PREFIX + "_oid_v4"
+        raw = archive(((root, None), (root + "/frozen_inference_graph.pb", b"generated-g"),
+                       (root + "/pipeline.config", CONFIG), (root + "/saved_model", None),
+                       (root + "/saved_model/saved_model.pb", b"generated-s")))
+        result, _, calls = self.run_fixture(raw)
+        self.assertEqual(result["archive_root"], root)
+        self.assertEqual(result["graph"]["name"], root + "/frozen_inference_graph.pb")
+        self.assertEqual(calls[0][0].full_url, discovery._ARCHIVE_URL)
+        self.assertEqual(result["archive_sha256"], hashlib.sha256(gzip.compress(raw, mtime=0)).hexdigest())
+
+    def test_one_leading_dot_slash_and_container_preserve_original_names(self):
+        root = discovery._WRAPPER_PREFIX + "_oid_v4"
+        result, _, _ = self.run_fixture(archive(((".", None), ("./" + root, None),
+                                                ("./" + root + "/frozen_inference_graph.pb", b"g"),
+                                                ("./" + root + "/pipeline.config", CONFIG))))
+        self.assertEqual(result["archive_root"], root)
+        self.assertEqual(result["members"][0]["name"], ".")
+        self.assertEqual(result["members"][0]["original_name"], "./")
+        self.assertEqual(result["graph"]["original_name"], "./" + root + "/frozen_inference_graph.pb")
+        self.assertEqual(result["graph"]["name"], root + "/frozen_inference_graph.pb")
+        self.assertEqual(result["members"][1]["original_name"], "./" + root + "/")
+
+    def test_flat_root_and_dot_container(self):
+        result, _, _ = self.run_fixture(archive(((".", None), ("./frozen_inference_graph.pb", b"g"),
+                                                ("pipeline.config", CONFIG), ("saved_model", None),
+                                                ("saved_model/saved_model.pb", b"s"))))
+        self.assertEqual(result["archive_root"], ".")
+        self.assertEqual(result["graph"]["name"], "frozen_inference_graph.pb")
+        self.assertEqual(result["graph"]["original_name"], "./frozen_inference_graph.pb")
+
+    def test_normalized_duplicates_and_double_dot_prefix_rejected(self):
+        root = discovery._WRAPPER_PREFIX + "_oid_v4"
+        cases = (((root + "/weights", b"a"), ("./" + root + "/weights", b"b")),
+                 ((root, None), ("./" + root, None)),
+                 (("././" + root + "/weights", b"a"),), ((root + "//", None),))
+        for entries in cases:
+            with self.subTest(entries=entries), self.assertRaises(RuntimeError):
+                self.run_fixture(archive(entries))
+
+    def test_mixed_outside_unapproved_or_nested_roots_and_ambiguous_pairs_rejected(self):
+        root = discovery._WRAPPER_PREFIX + "_oid_v4"
+        other = discovery._WRAPPER_PREFIX + "_other"
+        graph = (root + "/frozen_inference_graph.pb", b"g")
+        config = (root + "/pipeline.config", CONFIG)
+        cases = ((graph, (other + "/pipeline.config", CONFIG)),
+                 (graph, config, ("outside/weights", b"w")),
+                 ((root + "/nested/frozen_inference_graph.pb", b"g"), (root + "/nested/pipeline.config", CONFIG)),
+                 (("unapproved/frozen_inference_graph.pb", b"g"), ("unapproved/pipeline.config", CONFIG)),
+                 (graph, config, (root + "/nested/frozen_inference_graph.pb", b"second-g")),
+                 (graph, config, (root + "/nested/pipeline.config", CONFIG)))
+        for entries in cases:
+            with self.subTest(entries=entries), self.assertRaises(RuntimeError):
+                self.run_fixture(archive(entries))
 
     def test_each_byte_and_member_ceiling_fails_closed(self):
         raw = archive()

@@ -20,6 +20,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from . import face_donor_oid_ssd_admission as provenance
 
 _ROOT = "ssd_resnet101_v1_fpn_shared_box_predictor_oid_512x512_sync_2019_01_20"
+_WRAPPER_PREFIX = "ssd_resnet101_v1_fpn_shared_box_predictor"
 _ARCHIVE_URL = "https://storage.googleapis.com/download.tensorflow.org/models/object_detection/" + _ROOT + ".tar.gz"
 _EXPECTED_SIZE = 638_212_759  # Prior HEAD observation, not a content-identity admission.
 _MAX_COMPRESSED = 650_000_000
@@ -108,19 +109,27 @@ class _Expanded:
 
 def _safe_header(block: bytes):
     member = tarfile.TarInfo.frombuf(block, "utf-8", "strict")
-    name = member.name
+    original = block[:100].split(b"\0", 1)[0].decode("utf-8", "strict")
+    prefix = block[345:500].split(b"\0", 1)[0].decode("utf-8", "strict")
+    if prefix:
+        original = prefix + "/" + original
+    name = original[2:] if original.startswith("./") else original
+    if member.type == tarfile.DIRTYPE and name.endswith("/"):
+        name = name[:-1]
+    if member.type == tarfile.DIRTYPE and original in (".", "./"):
+        name = "."
     path = PurePosixPath(name)
     if (not name or len(name) > 256 or name != path.as_posix() or path.is_absolute()
             or "\\" in name or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)
-            or ".." in path.parts or not (name == _ROOT or name.startswith(_ROOT + "/"))):
-        raise RuntimeError("unsafe or unexpected-root tar path")
+            or ".." in path.parts or name == "." and member.type != tarfile.DIRTYPE):
+        raise RuntimeError("unsafe or noncanonical relative tar path")
     if member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE, tarfile.DIRTYPE) or member.linkname:
         raise RuntimeError("unsupported extended/link/sparse/special tar header")
     if (type(member.size) is not int or member.size < 0 or member.size > _MAX_REGULAR
-            or member.type == tarfile.DIRTYPE and member.size != 0
-            or member.type != tarfile.DIRTYPE and name == _ROOT):
+            or member.type == tarfile.DIRTYPE and member.size != 0):
         raise RuntimeError("tar member size/type exceeds its boundary")
-    return member
+    member.name = name
+    return member, original
 
 
 def _block(text: str, name: str) -> str:
@@ -164,7 +173,7 @@ def _pipeline(data: bytes) -> dict:
     return {"num_classes": _number(ssd, "num_classes"), "image_resizer": resizer}
 
 
-def _members(expanded: _Expanded) -> tuple[list, bytes]:
+def _members(expanded: _Expanded) -> tuple[list, bytes, str, dict]:
     members, seen, config = [], set(), None
     while True:
         block = expanded.exact(512)
@@ -180,13 +189,16 @@ def _members(expanded: _Expanded) -> tuple[list, bytes]:
             break
         if len(members) == _MAX_MEMBERS:
             raise RuntimeError("tar member count exceeds its ceiling")
-        member = _safe_header(block)
+        member, original = _safe_header(block)
         if member.name in seen:
             raise RuntimeError("duplicate tar path")
         seen.add(member.name)
-        record = {"name": member.name, "type": "directory" if member.isdir() else "file", "size": member.size}
+        record = {"name": member.name, "original_name": original,
+                  "type": "directory" if member.isdir() else "file", "size": member.size}
         if not member.isdir():
-            is_config = member.name == _ROOT + "/pipeline.config"
+            is_config = PurePosixPath(member.name).name == "pipeline.config"
+            if is_config and config is not None:
+                raise RuntimeError("pipeline config basename is ambiguous")
             if is_config and member.size > _MAX_CONFIG:
                 raise RuntimeError("pipeline config exceeds its capture ceiling")
             digest, remaining, captured = hashlib.sha256(), member.size, bytearray()
@@ -204,11 +216,20 @@ def _members(expanded: _Expanded) -> tuple[list, bytes]:
             if any(expanded.exact((-member.size) % 512)):
                 raise RuntimeError("nonzero regular-member padding")
         members.append(record)
-    required = (_ROOT + "/frozen_inference_graph.pb", _ROOT + "/pipeline.config")
-    if config is None or any(not any(m["name"] == name and m["type"] == "file" and m["size"] > 0
-                                    for m in members) for name in required):
-        raise RuntimeError("required frozen graph/pipeline config is missing or empty")
-    return members, config
+    required = []
+    for basename in ("frozen_inference_graph.pb", "pipeline.config"):
+        files = [m for m in members if m["type"] == "file" and PurePosixPath(m["name"]).name == basename]
+        if len(files) != 1 or files[0]["size"] <= 0:
+            raise RuntimeError("required graph/config basename is missing, empty or ambiguous")
+        required.append(files[0])
+    root = str(PurePosixPath(required[0]["name"]).parent)
+    if (str(PurePosixPath(required[1]["name"]).parent) != root
+            or root != "." and (len(PurePosixPath(root).parts) != 1 or not root.startswith(_WRAPPER_PREFIX))):
+        raise RuntimeError("graph/config must share the flat or one approved wrapping root")
+    if root != "." and any(m["name"] != "." and not (m["name"].startswith(root + "/")
+                                                      or m["name"] == root and m["type"] == "directory") for m in members):
+        raise RuntimeError("archive member lies outside its discovered wrapping root")
+    return members, config, root, required[0]
 
 
 def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
@@ -229,7 +250,7 @@ def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
         try:
             with gzip.GzipFile(fileobj=compressed, mode="rb") as stream:
                 expanded = _Expanded(stream, deadline, clock)
-                members, config = _members(expanded)
+                members, config, root, graph = _members(expanded)
             while compressed.read(_CHUNK):
                 pass
         except TimeoutError:
@@ -246,7 +267,7 @@ def run(*, opener: Callable | None = None, clock: Callable = monotonic) -> dict:
         return {"evidence": "weapons-oid-fpn-discovery-v1", "archive_url": _ARCHIVE_URL,
                 "archive_size": compressed.count, "archive_sha256": compressed.digest.hexdigest(),
                 "expanded_size": expanded.count, "members": members, "member_count": len(members),
-                "graph": next(item for item in members if item["name"] == _ROOT + "/frozen_inference_graph.pb"),
+                "archive_root": root, "graph": graph,
                 "pipeline": pipeline, "archive_identity_pinned": False, "artifact_admitted": False,
                 "tensorflow_models_revision": provenance._TF_MODELS_REVISION,
                 "tensorflow_models_license": provenance._TF_MODELS_LICENSE,

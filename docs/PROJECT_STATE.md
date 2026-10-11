@@ -35,7 +35,19 @@ all 693 full-suite tests with three existing optional OpenCV skips. Guardrails,
 compilation and person-down replay passed. Independent review exercised real
 stdlib HTTPResponse framing over generated sockets, full gzip/hash accounting
 and hidden-content rejection. The hosted command also has an external 210-second
-timeout covering initial DNS/headers. Exact hosted discovery remains pending.
+timeout covering initial DNS/headers. First hosted run #342 passed Linux's 693
+regressions (four hosted optional skips) and all 16 focused tests, but discovery
+stopped at the directory-layout check before a model was loaded. The directory
+name was incorrectly inferred from the archive filename. The changed head must
+discover a safe flat or single-directory layout from the unique graph/config
+pair, keep their original and canonical paths, reject mixed roots and aliases,
+and retain every byte/type/deadline/corruption check. No unchanged retry is used.
+The repaired source passes 21 focused tests without skips and 698 full-suite
+tests with three existing optional OpenCV skips. Independent review also passed
+16 layout/name-preservation cases and rejected 12 unsafe/mixed/alias cases.
+The same PR receives the changed-head discovery request; this is the second of
+two CI requests for the owner-approved invocation. Native execution remains a
+later pinned-artifact head, not part of this unpinned discovery run.
 
 Provenance remains pinned to `tensorflow/models@0558408514dacf2fe2860cd72ac56cbdf62a24c0`,
 Apache-2.0 LICENSE blob `43fcf7bf1f1f9f824a1debf05d6ced45bf5810aa`, model-zoo
@@ -54,6 +66,19 @@ input and internal tensor aliases cannot be assumed for this graph. Preserve
 all candidate outputs and input immutability, then remove temporary graph
 material. Independent annotations remain required before assigning real-image
 TP/FP/FN or claiming improved accuracy.
+
+Runtime source review selects the native TensorFlow FrontEnd's explicit ordered
+endpoint override (`detection_boxes:0`, `detection_scores:0`,
+`detection_classes:0`, `num_detections:0`), input shape `[1,512,512,3]`, and a
+check of converted Result friendly names before compile. OpenVINO's generic
+converter compares output sets and may skip requested reordering, so its output
+list alone is insufficient to distinguish scores from classes. Primary-source
+evidence at OpenVINO `759c5a6ab8c066af5f4bc5ebd04643706012a37d` includes input-model
+blob `7634e87b5ceabbc37f7dbb02cef6081c6fb8a79e`, translation blob
+`28647180d18c55f263afa0a8b0c136b2fc11e816` and compiled-output blob
+`d46f27f1963d05ef8391cb591612edc2562f3c36`. No TensorFlow runtime installation
+is needed. This is the prepared conversion approach; native compatibility
+remains untested until an exact pinned-artifact execution head passes.
 
 ## October 11 donor-first acceleration — Weapons comparison
 
