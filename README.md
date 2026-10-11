@@ -6,7 +6,7 @@ Its purpose is to prototype, benchmark, and mature new analytics using clean mod
 ## Goals
 
 - Develop genuinely new video analytics rather than duplicate commodity rules.
-- Use permissively licensed donor code only where it accelerates development.
+- Start with reviewed donor detectors, trackers, runtimes and weights, then add project-owned analytic and integration logic.
 - Keep donor-code provenance and licensing visible and auditable.
 - Standardize analytic outputs so proven modules can later integrate with K5 Vision.
 - Maintain reproducible benchmarks, test clips, and evaluation criteria.
@@ -23,7 +23,17 @@ Its purpose is to prototype, benchmark, and mature new analytics using clean mod
 
 ## Repository status
 
-Early-stage research scaffold.
+The library contains detection/tracking, LPR/OCR, face detection/privacy, seven-class weapons detection, person-down candidates and forensic metadata/appearance search. These are engineering components with separate real-media and product-integration acceptance gates.
+
+The current donor-first priority is stronger weapons detection. The retained Open Images V4 SSD is the runnable baseline; RF-DETR currently supplies architecture source only. A bounded Weapons comparison evaluates exact-class box matches, misses and false positives on the same evidence-bound held-out annotations before selecting a replacement donor.
+
+Run the generated-metadata comparison:
+
+```bash
+python -m analytics_lab.weapons_evaluation --synthetic-demo
+```
+
+The demo deliberately trades a recovered rifle detection for a false positive on a negative fixture. It verifies the evaluation path and makes no real-world accuracy claim.
 
 ## Licensing
 
