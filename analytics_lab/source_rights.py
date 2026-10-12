@@ -94,8 +94,11 @@ GMDCSA24 = DataSourceRights(
     source_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/tree/5abac7693229900cf80f722e878fbb119211fc1c",
     license_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/blob/5abac7693229900cf80f722e878fbb119211fc1c/LICENSE",
     provenance_ref="doi:10.5281/zenodo.13354453;paper:10.1016/j.dib.2024.110892",
-    commercial_training=True,
-    commercial_evaluation=True,
+    # The pinned MIT notice expressly grants rights in Software, not
+    # independently documented commercial rights to human-subject footage.
+    # Require a separate exact-media rights grant before re-admission.
+    commercial_training=False,
+    commercial_evaluation=False,
     attribution_required=True,
 )
 

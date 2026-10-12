@@ -390,3 +390,20 @@ python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
+
+## October 12 fall-video media rights fail-closed gate (staging; unqualified)
+
+The pinned GMDCSA24 upstream MIT notice speaks to “Software”; no independent,
+asset-specific grant of commercial training/evaluation rights for the human-subject
+video files has been documented. The source registry therefore refuses both
+commercial training and evaluation until authoritative media-specific permission
+and exact asset identities are reviewed. The GitHub repository's MIT license
+identifier is retained as an upstream notice, **not** asserted as commercial
+media permission. This does not claim the videos are prohibited for commercial use.
+
+The five exact-source rights-registry tests pass locally, including denial of both
+uses and preservation of the existing eligible sources. That focused suite and
+Python compilation do not qualify the change for merge, real-video evaluation,
+or accuracy. Full repository regressions, cross-platform hosted CI and separate
+rights evidence remain outstanding. No media, pretrained weights or runtime
+were acquired, trained on, redistributed or promoted.
