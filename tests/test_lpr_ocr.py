@@ -63,6 +63,55 @@ class LPROCRTests(unittest.TestCase):
         self.assertTrue(encoded.startswith(b"P6\n2 2\n255\n"))
         self.assertTrue(encoded.endswith(bytes((3, 2, 1, 6, 5, 4, 9, 8, 7, 12, 11, 10))))
 
+
+    def test_oversize_crop_checks_bytes_before_any_pixel_read(self) -> None:
+        class NoRead:
+            shape = (4096, 4096, 3)
+
+            def __getitem__(self, y):
+                raise AssertionError("oversized crop read pixel data")
+
+        with self.assertRaisesRegex(ValueError, "plate crop exceeds bounded OCR input"):
+            encode_plate_crop_ppm(NoRead(), PlateDetection(0.9, 0, 0, 1, 1))
+
+    def test_header_counts_toward_ocr_crop_ceiling(self) -> None:
+        class NoRead:
+            shape = (5_592_402, 1, 3)
+
+            def __getitem__(self, y):
+                raise AssertionError("PPM header overflow read pixel data")
+
+        with self.assertRaisesRegex(ValueError, "plate crop exceeds bounded OCR input"):
+            encode_plate_crop_ppm(NoRead(), PlateDetection(0.9, 0, 0, 1, 1))
+
+    def test_large_source_with_tiny_crop_still_encodes(self) -> None:
+        class Sparse:
+            shape = (4096, 4096, 3)
+
+            def __getitem__(self, y):
+                if y != 0:
+                    raise AssertionError("unexpected row read")
+                return {0: (1, 2, 3)}
+
+        output = encode_plate_crop_ppm(
+            Sparse(), PlateDetection(0.9, 0, 0, 1 / 4096, 1 / 4096)
+        )
+        self.assertEqual(output, b"P6\\n1 1\\n255\\n" + bytes((3, 2, 1)))
+
+    def test_crop_bytes_boundary_accepts_below_limit_rejects_above(self) -> None:
+        class Sparse:
+            def __init__(self, height):
+                self.shape = (height, 1, 3)
+
+            def __getitem__(self, y):
+                raise AssertionError("bounded crop entered pixel traversal")
+
+        plate = PlateDetection(0.9, 0, 0, 1, 1)
+        with self.assertRaisesRegex(AssertionError, "entered pixel traversal"):
+            encode_plate_crop_ppm(Sparse(5_592_399), plate)
+        with self.assertRaisesRegex(ValueError, "plate crop exceeds bounded OCR input"):
+            encode_plate_crop_ppm(Sparse(5_592_400), plate)
+
     def test_tesseract_tsv_normalizes_plate_text_and_confidence(self) -> None:
         tsv = (
             "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"

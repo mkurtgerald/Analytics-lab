@@ -29,6 +29,7 @@ _TESSDATA_ENG_SIZE = 4_113_088
 _TESSDATA_ENG_GIT_BLOB_SHA1 = "bbef4675053b5b468cdb477053e28b1c698ba08e"
 _SAFE_BINARY = re.compile(r"[A-Za-z0-9_./:\\-]{1,512}\Z")
 _SAFE_TEXT = re.compile(r"[A-Z0-9]{1,16}\Z")
+_MAX_OCR_CROP_BYTES = 16 * 1024 * 1024
 
 
 def _finite(value: Any, name: str) -> float:
@@ -211,6 +212,12 @@ def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
     top = max(0, min(height - 1, int(math.floor(plate.y1 * height))))
     right = max(left + 1, min(width, int(math.ceil(plate.x2 * width))))
     bottom = max(top + 1, min(height, int(math.ceil(plate.y2 * height))))
+    crop_width = right - left
+    crop_height = bottom - top
+    header = f"P6\n{crop_width} {crop_height}\n255\n".encode("ascii")
+    # Check the complete encoded size before traversing any source pixels.
+    if len(header) + crop_width * crop_height * 3 > _MAX_OCR_CROP_BYTES:
+        raise ValueError("plate crop exceeds bounded OCR input")
     pixels = bytearray()
     for y in range(top, bottom):
         for x in range(left, right):
@@ -224,9 +231,7 @@ def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
             if any(value < 0 or value > 255 for value in (b, g, r)):
                 raise ValueError("image channels must be bytes")
             pixels.extend((r, g, b))
-    crop_width = right - left
-    crop_height = bottom - top
-    return f"P6\n{crop_width} {crop_height}\n255\n".encode("ascii") + bytes(pixels)
+    return header + bytes(pixels)
 
 
 def normalize_plate_text(value: str) -> str:
@@ -336,7 +341,7 @@ class TesseractPlateRecognizer:
     def __call__(self, ppm_crop: bytes) -> OCRText | None:
         if not isinstance(ppm_crop, bytes) or not ppm_crop.startswith(b"P6\n"):
             raise ValueError("recognizer input must be a binary PPM crop")
-        if len(ppm_crop) > 16 * 1024 * 1024:
+        if len(ppm_crop) > _MAX_OCR_CROP_BYTES:
             raise ValueError("plate crop exceeds bounded OCR input")
         self._check_version()
         command = [
