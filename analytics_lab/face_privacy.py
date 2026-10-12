@@ -361,14 +361,20 @@ def apply_face_privacy(
     raw = detector.detect(frame_bgr)
     if raw is None:
         raise ValueError("detector must return an iterable")
+    # Bound untrusted detector iteration before it can exhaust memory or
+    # consult an attacker-controlled collection length hint.
     try:
-        detections = tuple(raw)
+        iterator = iter(raw)
     except TypeError as exc:
         raise ValueError("detector must return an iterable") from exc
-    if len(detections) > settings.max_faces:
-        raise RuntimeError("face count exceeds configured bound")
-    if any(not isinstance(item, FaceDetection) for item in detections):
-        raise ValueError("detector returned unsupported face value")
+    bounded: list[FaceDetection] = []
+    for item in iterator:
+        if len(bounded) == settings.max_faces:
+            raise RuntimeError("face count exceeds configured bound")
+        if not isinstance(item, FaceDetection):
+            raise ValueError("detector returned unsupported face value")
+        bounded.append(item)
+    detections = tuple(bounded)
 
     if request_unblur:
         if authorized_unblur and settings.allow_authorized_unblur:

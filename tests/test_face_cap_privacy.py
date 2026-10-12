@@ -13,7 +13,8 @@ from analytics_lab.face_oid_ssd import (
     OpenVINOOIDSSDDetector, parse_oid_v4_detections,
 )
 from analytics_lab.face_privacy import (
-    FacePrivacyConfig, OpenCVYuNetDetector, apply_face_privacy, parse_yunet_rows,
+    FaceDetection, FacePrivacyConfig, OpenCVYuNetDetector,
+    apply_face_privacy, parse_yunet_rows,
 )
 from analytics_lab.tracking import NormalizedBox
 
@@ -167,6 +168,76 @@ class FaceCapPrivacyTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "face count exceeds configured bound"):
             parse_yunet_rows(rows(), width=300, height=300, max_faces=2)
+
+
+class FacePrivacyDirectIteratorCapTests(unittest.TestCase):
+    """The public detector protocol must enforce the cap before output."""
+
+    def test_untrusted_stream_overflow_stops_at_first_excess_on_every_privacy_path(self):
+        face = FaceDetection(0.98, NormalizedBox(0.1, 0.1, 0.2, 0.2))
+        cap = 2
+
+        class Witness:
+            consumed = 0
+
+            def __iter__(self):
+                return self
+
+            def __length_hint__(self):
+                raise AssertionError("untrusted detector length hint was consulted")
+
+            def __next__(self):
+                if self.consumed > cap:
+                    raise AssertionError("read beyond first overflow")
+                self.consumed += 1
+                return face
+
+        for request_unblur, authorized_unblur in (
+            (False, False), (True, False), (True, True),
+        ):
+            with self.subTest(request_unblur=request_unblur, authorized_unblur=authorized_unblur):
+                witness = Witness()
+                frame = SyntheticFrame()
+                detector = SimpleNamespace(detect=lambda _frame: witness)
+                with patch("analytics_lab.face_privacy._blur_regions") as blur:
+                    with self.assertRaisesRegex(RuntimeError, "face count exceeds configured bound"):
+                        apply_face_privacy(
+                            frame, detector, config=FacePrivacyConfig(max_faces=cap),
+                            request_unblur=request_unblur,
+                            authorized_unblur=authorized_unblur,
+                        )
+                self.assertEqual(witness.consumed, cap + 1)
+                blur.assert_not_called()
+                frame.copy.assert_not_called()
+
+    def test_exact_cap_generator_preserves_all_faces(self):
+        face = FaceDetection(0.98, NormalizedBox(0.1, 0.1, 0.2, 0.2))
+        frame = SyntheticFrame()
+        detector = SimpleNamespace(detect=lambda _frame: iter((face, face)))
+        config = FacePrivacyConfig(max_faces=2)
+        with patch("analytics_lab.face_privacy._blur_regions") as blur:
+            result = apply_face_privacy(frame, detector, config=config)
+        blur.assert_called_once_with(frame, (face, face), config)
+        self.assertEqual(result.audit.face_count, 2)
+        self.assertEqual(result.detections, (face, face))
+
+    def test_malformed_first_detection_stops_before_frame_copy_or_blur(self):
+        seen = []
+
+        def malformed():
+            seen.append(1)
+            yield object()
+            seen.append(2)
+            raise AssertionError("consumed after invalid detection")
+
+        frame = SyntheticFrame()
+        detector = SimpleNamespace(detect=lambda _frame: malformed())
+        with patch("analytics_lab.face_privacy._blur_regions") as blur:
+            with self.assertRaisesRegex(ValueError, "unsupported face value"):
+                apply_face_privacy(frame, detector, config=FacePrivacyConfig(max_faces=2))
+        blur.assert_not_called()
+        self.assertEqual(seen, [1])
+        frame.copy.assert_not_called()
 
 
 if __name__ == "__main__":
