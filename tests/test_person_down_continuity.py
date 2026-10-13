@@ -21,7 +21,7 @@ from analytics_lab.video import Frame
 class PersonDownContinuityTests(unittest.TestCase):
     modules = (e2e, orientation)
 
-    def _scan(self, module, rows, *, unknown_times=(), labels=()):
+    def _scan(self, module, rows, *, unknown_times=(), labels=(), declared_start=None, declared_end=None):
         config = Config(min_confidence=.1, max_unknown_gap_ms=750, max_tracks=1)
         events = []
         live_engines = weakref.WeakSet()
@@ -85,7 +85,10 @@ class PersonDownContinuityTests(unittest.TestCase):
             path.write_bytes(payload)
             sample = ValidationSampleSpec(
                 "generated-continuity", "generated-site", "generated-camera", "synthetic-fixture",
-                path, hashlib.sha256(payload).hexdigest(), rows[0][0], rows[-1][0], tuple(labels),
+                path, hashlib.sha256(payload).hexdigest(),
+                rows[0][0] if declared_start is None else declared_start,
+                rows[-1][0] if declared_end is None else declared_end,
+                tuple(labels),
             )
             with patch.object(module, "OpenCVVideoFileSource", return_value=Frames()), \
                     patch.object(module, "_person_detections", side_effect=detections), \
@@ -94,16 +97,16 @@ class PersonDownContinuityTests(unittest.TestCase):
                     patch.object(module, "_measured_temporal_config", return_value=config):
                 args = (sample, detector, Runtime(), lambda *_: ((), ()))
                 if module is e2e:
-                    report, _ = module._scan_sample(*args, config)
+                    report, evaluated = module._scan_sample(*args, config)
                 else:
-                    report, _ = module._scan_sample(*args)
-        return report, events, counts
+                    report, evaluated = module._scan_sample(*args)
+        return report, events, counts, evaluated
 
     def test_disconnected_short_episodes_cannot_share_duration(self):
         rows = [(t, 0.0 if t <= 1000 else .75) for t in range(0, 3001, 500)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, _ = self._scan(module, rows)
+                report, events, _, _ = self._scan(module, rows)
                 self.assertEqual(events, [])
                 self.assertEqual(report["evaluation"]["false_alerts"], 0)
                 self.assertEqual(report["continuity"]["resets"], 1)
@@ -116,7 +119,7 @@ class PersonDownContinuityTests(unittest.TestCase):
         rows = [(t, None if t == 1250 else (0.0 if t <= 1000 else .75)) for t in range(0, 3001, 250)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, _ = self._scan(module, rows)
+                report, events, _, _ = self._scan(module, rows)
                 self.assertEqual(events, [])
                 self.assertEqual(report["continuity"]["resets"], 0)  # Preserve the existing statistics.
                 self.assertEqual(report["temporal_trace"]["bridged_unknown_frames"], 0)
@@ -126,7 +129,7 @@ class PersonDownContinuityTests(unittest.TestCase):
         rows = [(t, 0.0) for t in range(0, 3001, 500)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, counts = self._scan(module, rows, labels=(LabeledPersonDown(0, 3000, "generated-down"),))
+                report, events, counts, _ = self._scan(module, rows, labels=(LabeledPersonDown(0, 3000, "generated-down"),))
                 self.assertEqual(len(events), 1)
                 self.assertEqual(events[0]["evidence"][0]["start_timestamp_ms"], 0)
                 self.assertEqual(report["evaluation"]["matched_events"], 1)
@@ -137,7 +140,7 @@ class PersonDownContinuityTests(unittest.TestCase):
         rows = [(t, 0.0) for t in range(0, 3001, 250)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, counts = self._scan(module, rows, unknown_times=(1250, 1500))
+                report, events, counts, _ = self._scan(module, rows, unknown_times=(1250, 1500))
                 self.assertEqual(len(events), 1)
                 self.assertEqual(events[0]["evidence"][0]["start_timestamp_ms"], 0)
                 self.assertEqual(report["temporal_trace"]["bridged_unknown_frames"], 2)
@@ -148,7 +151,7 @@ class PersonDownContinuityTests(unittest.TestCase):
         rows = [(t, 0.0 if t <= 1000 else .75) for t in range(0, 4501, 500)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, counts = self._scan(module, rows, labels=(LabeledPersonDown(1500, 4500, "generated-new-down"),))
+                report, events, counts, _ = self._scan(module, rows, labels=(LabeledPersonDown(1500, 4500, "generated-new-down"),))
                 self.assertEqual(len(events), 1)
                 window = events[0]["evidence"][0]
                 self.assertEqual((window["start_timestamp_ms"], window["end_timestamp_ms"]), (1500, 4500))
@@ -163,12 +166,72 @@ class PersonDownContinuityTests(unittest.TestCase):
         rows = [(t, 0.0 if t % 2 else .75) for t in range(1100)]
         for module in self.modules:
             with self.subTest(module=module.__name__):
-                report, events, counts = self._scan(module, rows)
+                report, events, counts, _ = self._scan(module, rows)
                 self.assertEqual(events, [])
                 self.assertEqual(counts["engines"], len(rows))
                 self.assertLessEqual(counts["max_live_engines"], 1)
                 self.assertEqual(counts["max_active_tracks"], 1)
                 self.assertEqual(report["temporal_trace"]["longest_qualified_down_run_ms"], 0)
+
+    def test_decoded_span_cannot_expand_to_declared_one_hour(self):
+        rows = [(0, 0.0), (500, 0.0), (1000, 0.0)]
+        for module in self.modules:
+            with self.subTest(module=module.__name__):
+                report, events, _, evaluated = self._scan(module, rows, declared_end=3_600_000)
+                self.assertEqual(events, [])
+                self.assertEqual(report["decoded_start_timestamp_ms"], 0)
+                self.assertEqual(report["decoded_end_timestamp_ms"], 1000)
+                self.assertEqual(report["decoded_duration_ms"], 1000)
+                self.assertEqual(report["evaluation"]["duration_ms"], 1000)
+                self.assertEqual((evaluated.start_timestamp_ms, evaluated.end_timestamp_ms), (0, 1000))
+
+    def test_false_alert_rate_uses_decoded_camera_time(self):
+        rows = [(t, 0.0) for t in range(0, 3001, 500)]
+        for module in self.modules:
+            with self.subTest(module=module.__name__):
+                report, events, _, evaluated = self._scan(module, rows, declared_end=3_600_000)
+                self.assertEqual(len(events), 1)
+                self.assertEqual(report["evaluation"]["false_alerts"], 1)
+                self.assertEqual(report["evaluation"]["false_alerts_per_camera_hour"], 1200.0)
+                self.assertEqual(evaluated.result.duration_ms, 3000)
+
+    def test_uncovered_labels_fail_closed_without_clipping(self):
+        rows = [(0, 0.0), (500, 0.0), (1000, 0.0)]
+        labels = (
+            LabeledPersonDown(500, 2000, "partly-uncovered"),
+            LabeledPersonDown(3000, 4000, "fully-uncovered"),
+        )
+        for module in self.modules:
+            for label in labels:
+                with self.subTest(module=module.__name__, label=label.label_id):
+                    with self.assertRaisesRegex(ValueError, "label lies outside the evaluated video interval"):
+                        self._scan(module, rows, labels=(label,), declared_end=5000)
+
+    def test_one_frame_has_no_measurable_decoded_duration(self):
+        for module in self.modules:
+            with self.subTest(module=module.__name__):
+                with self.assertRaisesRegex(RuntimeError, "must span more than one decoded timestamp"):
+                    self._scan(module, [(0, 0.0)], declared_end=1000)
+
+    def test_decoded_start_must_match_declared_start(self):
+        for module in self.modules:
+            for actual_start in (0, 1500):
+                rows = [(actual_start + t, 0.0) for t in (0, 500, 1000)]
+                with self.subTest(module=module.__name__, actual_start=actual_start):
+                    with self.assertRaisesRegex(RuntimeError, "decoded video start does not match the declared sample start"):
+                        self._scan(module, rows, declared_start=1000, declared_end=5000)
+
+    def test_decoded_end_may_exceed_nominal_end_with_covered_positive(self):
+        rows = [(t, 0.0) for t in range(0, 3501, 500)]
+        labels = (LabeledPersonDown(0, 3000, "covered-down"),)
+        for module in self.modules:
+            with self.subTest(module=module.__name__):
+                report, events, _, evaluated = self._scan(module, rows, labels=labels, declared_end=3000)
+                self.assertEqual(len(events), 1)
+                self.assertEqual(report["evaluation"]["matched_events"], 1)
+                self.assertEqual(report["evaluation"]["missed_episodes"], 0)
+                self.assertEqual(report["decoded_duration_ms"], 3500)
+                self.assertEqual(evaluated.end_timestamp_ms, 3500)
 
 
 if __name__ == "__main__":

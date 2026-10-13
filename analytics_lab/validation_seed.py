@@ -5,8 +5,11 @@ pinned for reproducibility. The active evidence subset is now a second
 untouched cross-view robustness pair from Subject 2: a night side-view backward
 fall and a floor-to-standing normal activity. This is deliberately NOT
 new-subject evidence; all four GMDCSA-24 subjects have already been exercised.
+An explicit ``subject4-regression`` selector replays the pinned historical
+Subject-4 fall/push-up pair without changing the active subset or claiming
+untouched held-out evidence.
 The module is opt-in and never invoked by ordinary repository CI. It fetches
-only the active two clips plus the four already-reviewed Open Model Zoo
+only the selected two clips plus the four already-reviewed Open Model Zoo
 artifacts, verifies exact upstream identities, computes local media SHA-256
 values, and emits a validation manifest. It does not install OpenVINO, retain
 decoded frames, or make any accuracy claim.
@@ -311,11 +314,14 @@ def _download_exact(
         raise
 
 
-def _download_media(root: Path, *, opener: Callable[..., Any]) -> dict[str, str]:
+def _download_media(
+    root: Path, *, opener: Callable[..., Any], specs: tuple[SeedMediaSpec, ...] | None = None,
+) -> dict[str, str]:
+    selected = GMDCSA24_SEED if specs is None else specs
     media_root = root / "media" / "gmdcsa24"
     media_root.mkdir(parents=True, exist_ok=True)
     identities: dict[str, str] = {}
-    for spec in GMDCSA24_SEED:
+    for spec in selected:
         target = _target(media_root, spec.relative_path)
         _download_exact(spec.source_url, target, expected_size=spec.size_bytes, opener=opener)
         identities[spec.sample_id] = verify_seed_media(target, spec)
@@ -332,10 +338,13 @@ def _download_models(root: Path, *, opener: Callable[..., Any]) -> Path:
     return artifact_root
 
 
-def _manifest(identities: dict[str, str]) -> dict[str, Any]:
+def _manifest(
+    identities: dict[str, str], specs: tuple[SeedMediaSpec, ...] | None = None,
+) -> dict[str, Any]:
     require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
+    selected = GMDCSA24_SEED if specs is None else specs
     samples = []
-    for spec in GMDCSA24_SEED:
+    for spec in selected:
         labels = []
         if spec.label_id is not None:
             labels.append({
@@ -365,14 +374,14 @@ def _manifest(identities: dict[str, str]) -> dict[str, Any]:
         "config": {
             "max_samples": len(samples),
             "required_device": "CPU",
-            "max_total_video_bytes": sum(item.size_bytes for item in GMDCSA24_SEED),
+            "max_total_video_bytes": sum(item.size_bytes for item in selected),
         },
     }
 
 
-def _attribution_text() -> str:
+def _attribution_text(specs: tuple[SeedMediaSpec, ...] | None = None) -> str:
     source = require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
-    selected = "; ".join(spec.relative_path for spec in GMDCSA24_SEED)
+    selected = "; ".join(spec.relative_path for spec in (GMDCSA24_SEED if specs is None else specs))
     return (
         f"{source.title}\n"
         f"Version: {source.version}\n"
@@ -383,15 +392,21 @@ def _attribution_text() -> str:
     )
 
 
-def prepare_seed(output_dir: str | Path, *, opener: Callable[..., Any] = urllib.request.urlopen) -> Path:
-    """Acquire and verify the active two-clip subset plus reviewed OMZ artifacts."""
+def prepare_seed(
+    output_dir: str | Path, *, subset: str = "active",
+    opener: Callable[..., Any] = urllib.request.urlopen,
+) -> Path:
+    """Prepare only the active seed or the pinned historical Subject-4 regression."""
+    if type(subset) is not str or subset not in ("active", "subject4-regression"):
+        raise ValueError("unsupported validation seed subset")
+    selected = GMDCSA24_SEED if subset == "active" else GMDCSA24_HELDOUT_S4
     root = _ensure_root(Path(output_dir))
-    identities = _download_media(root, opener=opener)
+    identities = _download_media(root, opener=opener, specs=selected)
     _download_models(root, opener=opener)
-    document = _manifest(identities)
+    document = _manifest(identities, selected)
     manifest = root / "validation-manifest.json"
     manifest.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    (root / "ATTRIBUTION.txt").write_text(_attribution_text(), encoding="utf-8")
+    (root / "ATTRIBUTION.txt").write_text(_attribution_text(selected), encoding="utf-8")
     return manifest
 
 
@@ -399,9 +414,10 @@ def main(argv: list[str] | None = None) -> int:
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--subset", choices=("active", "subject4-regression"), default="active")
     args = parser.parse_args(argv)
     try:
-        manifest = prepare_seed(args.output_dir)
+        manifest = prepare_seed(args.output_dir, subset=args.subset)
     except (OSError, ValueError, RuntimeError) as exc:
         print(f"Validation seed preparation rejected ({type(exc).__name__}).", file=sys.stderr)
         return 2
