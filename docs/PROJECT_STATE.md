@@ -12,6 +12,69 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## October 13 perception integration phase
+
+PR #142 merged as `4e37fdfd1c7f0f9fa24da834d6e85d50a4204aaa`; corrected
+exact-head run #349 and automatic main run #350 passed every required job.
+The owner requested the next phase after its measured positive miss.
+
+The four observations over 200 fall-clip frames are detector admissions:
+each accepted SSD person box yields a pose candidate and an observation even
+when posture is unknown. Generated end-to-end checks retain 200 observations
+for 200 high-confidence detections with zero or 0.69 pose peaks; changing the
+detector score to 0.49 removes them at the fixed 0.50 cutoff. These checks
+localize the sparse input without blaming or loosening temporal thresholds.
+
+A separate coordinate defect is repaired before donor integration: native pose
+inference rounded/clamped a fractional detector box to integer pixel bounds,
+but keypoints mapped back through the fractional extent. A shared crop-bounds
+helper now supplies the exact inferred crop transform; the original detector
+box and confidence remain unchanged for tracking. Three generated fractional/
+boundary subcases failed before this repair and pass after it; the integral
+case remains unchanged. The repair does not itself recover missing detections.
+
+The already reviewed `person-detection-0200` donor is now an explicit option in
+the reusable OMZ backend. The exact XML/BIN pair is shared with the existing
+catalogue; pinned upstream README/model.yml confirm 1x3x256x256 BGR input and
+person class 0. Model selection binds artifact identity, input shape and class
+semantics together. Unknown profiles reject before file/runtime work. The
+retail-0013 profile remains the default, and every detector/posture/tracker/
+temporal cutoff stays fixed. The simplified cropped-heatmap pose path is common
+to both arms; this does not substitute the retained 0.10/orientation/PAF path.
+Validation records the actually selected detector artifacts instead of always
+claiming the retail pair.
+
+The isolated `evidence/person-down-detector-compare-*` hosted Linux lane prepares
+the same reviewed Subject-4 sources and publisher annotations once, verifies
+six unique existing model files (14,321,809 bytes total), and executes one
+baseline suite plus one 0200 suite on the same host/settings. Both use the
+corrected crop transform, 0.50 detector cutoff and 1,000-frame ceiling. Each
+suite shares its compiled backend across the two clips and creates fresh
+tracking/temporal state. The paired report binds media/model/annotation/config/
+runtime/hardware identities, frame counts and actual decoded exposure, plus
+observation, event, activity-match and miss deltas. It discloses that a decoded
+frame digest is unavailable. Unannotated tails cannot supply scored negative
+event counts/rates or a clinical false-alert gate; all assets are deleted on
+success/failure, with aggregate metadata only. Both other real-video lanes are
+excluded; no model shopping, training, new framework or parameter sweep is added.
+
+This is an optional engineering integration and retrospective activity
+comparison. It cannot promote a default or prove deployment accuracy. Native
+results are pending when this implementation snapshot is authored; preserved
+PR #142 measurements use the older crop mapping and are not the paired control.
+PR #142's two-request budget and PR #140's four-request budget remain exhausted
+for their completed/parked work; this new crop/profile integration has no CI
+requests yet and does not reset either counter.
+
+Local verification passed 751 full tests with three existing optional OpenCV
+skips. The nine profile regressions and 18 generated-byte comparison regressions
+pass without skips; the paired configs differ only in the detector selector,
+and generated tail/result/source drift remains fail-closed. Guardrails,
+compilation, deterministic replay and diff checks pass. The pinned upstream
+0200 README and model manifest were re-read to verify class, shape, bytes and
+SHA-384; no model/media/runtime was acquired or executed locally. Exact-head
+hosted Linux/Windows and the paired native result remain required before merge.
+
 ## October 13 real-data regression phase
 
 The preceding false-acceptance and temporal-continuity repair merged as PR #141

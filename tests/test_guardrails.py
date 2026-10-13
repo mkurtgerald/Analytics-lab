@@ -247,6 +247,18 @@ class GuardrailsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             g.validate_workflow(self.workflow, self.policy)
 
+    def test_person_detector_comparison_runs_only_its_bounded_paired_wrapper(self):
+        steps = self.workflow['jobs']['linux']['steps']
+        lane = next(step for step in steps if step.get('name') == 'Bounded paired person-detector comparison')
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn("evidence/person-down-detector-compare-", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-person-detector-compare', lane['run'])
+        self.assertEqual(lane['run'].count('python -m analytics_lab.'), 1)
+        self.assertIn('analytics_lab.person_down_detector_comparison', lane['run'])
+        generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-detector-compare-')", generic['if'])
+
     def test_aggregate_gate_always_checks(self):
         self.workflow['jobs']['quality-gate']['if'] = '${{ success() }}'
         with self.assertRaises(ValueError):
