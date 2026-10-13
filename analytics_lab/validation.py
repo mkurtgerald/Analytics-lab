@@ -16,7 +16,7 @@ import re
 import time
 from typing import Any, Callable, Iterable
 
-from .artifacts import OPENVINO_OMZ_2023_FP16
+from .artifacts import omz_artifacts_for_detector
 from .evaluation import (
     EvaluationAggregate,
     EvaluationConfig,
@@ -174,10 +174,10 @@ class ValidationSuiteResult:
     preparation_elapsed_ms: float = 0.0
 
 
-def _artifact_identity() -> tuple[ModelArtifactIdentity, ...]:
+def _artifact_identity(detector_model: str = "person-detection-retail-0013") -> tuple[ModelArtifactIdentity, ...]:
     return tuple(
         ModelArtifactIdentity(spec.component, spec.relative_path, spec.size_bytes, spec.sha384, spec.license_id)
-        for spec in OPENVINO_OMZ_2023_FP16
+        for spec in omz_artifacts_for_detector(detector_model)
     )
 
 
@@ -368,7 +368,7 @@ def run_validation_suite(
     return ValidationSuiteResult(
         runtime_version=expected_runtime,
         device=suite_cfg.required_device,
-        model_artifacts=_artifact_identity(),
+        model_artifacts=_artifact_identity(prepared_config.openvino.detector_model),
         sample_runs=tuple(sample_runs),
         aggregate=aggregate,
         total_elapsed_ms=total_elapsed_ms,

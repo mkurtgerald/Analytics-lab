@@ -1,8 +1,8 @@
-"""Optional OpenVINO/Open Model Zoo detector + pose backend.
+"""Optional reviewed OpenVINO/Open Model Zoo detector + pose profiles.
 
 No network access or model download occurs here. The backend verifies the exact
 locally provisioned Open Model Zoo artifacts before constructing a runtime. It
-uses the reviewed person detector to isolate one person per crop and extracts
+uses the selected reviewed person detector to isolate one person per crop and extracts
 only shoulder/hip peaks from the reviewed OpenPose-style heatmaps. The latter
 is deliberately conservative and does not claim the full upstream PAF decoder's
 accuracy; it is an integration baseline for measured video evaluation.
@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 from typing import Any, Callable, Iterable, Protocol, Sequence
 
-from .artifacts import OPENVINO_OMZ_2023_FP16, VerifiedArtifact, verify_artifact_set
+from .artifacts import VerifiedArtifact, omz_artifacts_for_detector, verify_artifact_set
 from .perception import BBox, Keypoint, PoseCandidate
 
 _DETECTOR_XML = "person-detection-retail-0013/FP16/person-detection-retail-0013.xml"
@@ -55,8 +55,10 @@ class OpenVINOOMZConfig:
     max_people: int = 32
     device: str = "CPU"
     runtime_version_prefix: str = "2026.3.1"
+    detector_model: str = "person-detection-retail-0013"
 
     def __post_init__(self) -> None:
+        omz_artifacts_for_detector(self.detector_model)
         _score(self.detection_threshold, "detection_threshold")
         if self.detection_threshold <= 0:
             raise ValueError("detection_threshold must be > 0")
@@ -87,11 +89,14 @@ def parse_person_detections(
     image_height: int,
     threshold: float,
     max_people: int,
+    person_label: int = 1,
 ) -> tuple[PersonDetection, ...]:
     """Parse OMZ SSD rows `[image_id,label,confidence,x1,y1,x2,y2]`."""
     if type(image_width) is not int or type(image_height) is not int or image_width < 1 or image_height < 1:
         raise ValueError("image dimensions must be positive integers")
     cutoff = _score(threshold, "threshold")
+    if type(person_label) is not int or person_label not in (0, 1):
+        raise ValueError("person_label must match a reviewed SSD person class")
     if type(max_people) is not int or not 1 <= max_people <= 256:
         raise ValueError("max_people must be an integer in [1, 256]")
     result: list[PersonDetection] = []
@@ -112,7 +117,7 @@ def parse_person_detections(
         confidence = _score(confidence, "detector confidence")
         if image_id < 0:
             break
-        if label != 1 or confidence < cutoff:
+        if label != person_label or confidence < cutoff:
             continue
         left = min(1.0, max(0.0, x1))
         top = min(1.0, max(0.0, y1))
@@ -163,10 +168,15 @@ def _heatmap_peak(matrix: Any) -> tuple[float, float, float]:
     return x, y, min(1.0, max(0.0, best_score))
 
 
-def pose_candidate_from_heatmaps(heatmaps: Any, detection: PersonDetection) -> PoseCandidate:
-    """Extract the four posture keypoints from one detector-isolated pose crop."""
+def pose_candidate_from_heatmaps(
+    heatmaps: Any, detection: PersonDetection, *, crop_bbox: BBox | None = None,
+) -> PoseCandidate:
+    """Map posture keypoints through the inferred crop; retain the detection box."""
     if not isinstance(detection, PersonDetection):
         raise ValueError("detection must be a PersonDetection")
+    if crop_bbox is not None and not isinstance(crop_bbox, BBox):
+        raise ValueError("crop_bbox must be a BBox")
+    mapping_bbox = detection.bbox if crop_bbox is None else crop_bbox
     try:
         channels = len(heatmaps)
     except TypeError as exc:
@@ -178,8 +188,8 @@ def pose_candidate_from_heatmaps(heatmaps: Any, detection: PersonDetection) -> P
         matrix = heatmaps[channel]
         height, width = _matrix_shape(matrix)
         x, y, confidence = _heatmap_peak(matrix)
-        px = detection.bbox.x1 + ((x + 0.5) / width) * detection.bbox.width
-        py = detection.bbox.y1 + ((y + 0.5) / height) * detection.bbox.height
+        px = mapping_bbox.x1 + ((x + 0.5) / width) * mapping_bbox.width
+        py = mapping_bbox.y1 + ((y + 0.5) / height) * mapping_bbox.height
         keypoints.append(Keypoint(name, px, py, confidence))
     return PoseCandidate(detection.bbox, tuple(keypoints), detection.confidence)
 
@@ -194,6 +204,20 @@ def _image_size(image: Any) -> tuple[int, int]:
     if len(shape) >= 3 and int(shape[2]) != 3:
         raise ValueError("Open Model Zoo baseline requires a three-channel BGR image")
     return width, height
+
+
+def _pose_crop_bounds(image_width: int, image_height: int, bbox: BBox) -> tuple[int, int, int, int]:
+    """Return the exact nonempty integer pixel extent used for pose inference."""
+    if (type(image_width) is not int or type(image_height) is not int
+            or image_width < 1 or image_height < 1):
+        raise ValueError("image dimensions must be positive integers")
+    if not isinstance(bbox, BBox):
+        raise ValueError("bbox must be a BBox")
+    left = max(0, min(image_width - 1, math.floor(bbox.x1)))
+    top = max(0, min(image_height - 1, math.floor(bbox.y1)))
+    right = max(left + 1, min(image_width, math.ceil(bbox.x2)))
+    bottom = max(top + 1, min(image_height, math.ceil(bbox.y2)))
+    return left, top, right, bottom
 
 
 class OMZRuntime(Protocol):
@@ -218,15 +242,23 @@ class _OpenVINORuntime:
         self._np = np
         self.runtime_version = str(getattr(ov, "__version__", "unknown"))
         paths = {item.spec.relative_path: item.path for item in artifacts}
-        for required in (_DETECTOR_XML, _DETECTOR_BIN, _POSE_XML, _POSE_BIN):
+        detector_names = [name for name in ("person-detection-retail-0013", "person-detection-0200")
+                          if f"{name}/FP16/{name}.xml" in paths]
+        if len(detector_names) != 1:
+            raise ValueError("verified detector artifact selection is missing or ambiguous")
+        name = detector_names[0]
+        detector_xml = f"{name}/FP16/{name}.xml"
+        detector_bin = f"{name}/FP16/{name}.bin"
+        self._detector_size = (544, 320) if name == "person-detection-retail-0013" else (256, 256)
+        for required in (detector_xml, detector_bin, _POSE_XML, _POSE_BIN):
             if required not in paths:
                 raise ValueError("verified artifact set is incomplete")
         core = ov.Core()
-        detector_model = core.read_model(model=str(paths[_DETECTOR_XML]), weights=str(paths[_DETECTOR_BIN]))
+        detector_model = core.read_model(model=str(paths[detector_xml]), weights=str(paths[detector_bin]))
         pose_model = core.read_model(model=str(paths[_POSE_XML]), weights=str(paths[_POSE_BIN]))
         self._detector = core.compile_model(detector_model, device)
         self._pose = core.compile_model(pose_model, device)
-        self._validate_model(self._detector, (1, 3, 320, 544), "detector")
+        self._validate_model(self._detector, (1, 3, self._detector_size[1], self._detector_size[0]), "detector")
         self._validate_model(self._pose, (1, 3, 256, 456), "pose")
         pose_outputs = tuple(self._pose.outputs)
         heatmap_outputs = [port for port in pose_outputs if tuple(int(v) for v in port.shape)[1:] == (19, 32, 57)]
@@ -249,7 +281,7 @@ class _OpenVINORuntime:
         return self._np.ascontiguousarray(resized.transpose((2, 0, 1))[None], dtype=self._np.float32)
 
     def detect_rows(self, image: Any) -> Iterable[Sequence[float]]:
-        blob = self._blob(image, 544, 320)
+        blob = self._blob(image, *self._detector_size)
         results = self._detector([blob])
         output = self._np.asarray(results[self._detector.output(0)])
         if output.size % 7:
@@ -258,10 +290,7 @@ class _OpenVINORuntime:
 
     def pose_heatmaps(self, image: Any, bbox: BBox) -> Any:
         width, height = _image_size(image)
-        left = max(0, min(width - 1, int(math.floor(bbox.x1))))
-        top = max(0, min(height - 1, int(math.floor(bbox.y1))))
-        right = max(left + 1, min(width, int(math.ceil(bbox.x2))))
-        bottom = max(top + 1, min(height, int(math.ceil(bbox.y2))))
+        left, top, right, bottom = _pose_crop_bounds(width, height, bbox)
         crop = image[top:bottom, left:right]
         if getattr(crop, "size", 0) == 0:
             raise RuntimeError("detector crop is empty")
@@ -289,7 +318,7 @@ class OpenVINOOMZPoseBackend:
         self.config = config or OpenVINOOMZConfig()
         if not isinstance(self.config, OpenVINOOMZConfig):
             raise ValueError("config must be an OpenVINOOMZConfig")
-        verified = verify_artifact_set(artifact_root, OPENVINO_OMZ_2023_FP16)
+        verified = verify_artifact_set(artifact_root, omz_artifacts_for_detector(self.config.detector_model))
         factory = runtime_factory or _OpenVINORuntime
         if not callable(factory):
             raise ValueError("runtime_factory must be callable")
@@ -310,8 +339,12 @@ class OpenVINOOMZPoseBackend:
         detections = parse_person_detections(
             self._runtime.detect_rows(image), image_width=width, image_height=height,
             threshold=self.config.detection_threshold, max_people=self.config.max_people,
+            person_label=1 if self.config.detector_model == "person-detection-retail-0013" else 0,
         )
         return tuple(
-            pose_candidate_from_heatmaps(self._runtime.pose_heatmaps(image, detection.bbox), detection)
+            pose_candidate_from_heatmaps(
+                self._runtime.pose_heatmaps(image, detection.bbox), detection,
+                crop_bbox=BBox(*_pose_crop_bounds(width, height, detection.bbox)),
+            )
             for detection in detections
         )

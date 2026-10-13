@@ -148,3 +148,38 @@ OPENVINO_OMZ_2023_FP16 = (
         license_url=_OMZ_LICENSE,
     ),
 )
+
+# The already reviewed detector-shootout/retained diagnostic donor. Keep its
+# immutable identities in the shared admission boundary so reusable backends
+# do not depend on an evidence-only downloader or candidate-selection code.
+OPENVINO_OMZ_PERSON_0200_FP16 = (
+    ArtifactSpec(
+        component="open-model-zoo/person-detection-0200/fp16",
+        relative_path="person-detection-0200/FP16/person-detection-0200.xml",
+        size_bytes=254619,
+        sha384="654a515935f6dffc0440cffdeeb6a889bc25bf5d64e425ce2337070cdbcce1b1fbbcf42e4b2761265eb65ec07c1cd6f7",
+        source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-detection-0200/FP16/person-detection-0200.xml",
+        license_id="Apache-2.0",
+        license_url=_OMZ_LICENSE,
+    ),
+    ArtifactSpec(
+        component="open-model-zoo/person-detection-0200/fp16",
+        relative_path="person-detection-0200/FP16/person-detection-0200.bin",
+        size_bytes=3634654,
+        sha384="10b6f79b495ad1ef13748938c452379c6b6cd825d11426ffa68be3eeed6c48a0af04e0b913c843e6e7431aa1c13f5471",
+        source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-detection-0200/FP16/person-detection-0200.bin",
+        license_id="Apache-2.0",
+        license_url=_OMZ_LICENSE,
+    ),
+    *OPENVINO_OMZ_2023_FP16[2:],
+)
+
+
+def omz_artifacts_for_detector(detector_model: str) -> tuple[ArtifactSpec, ...]:
+    """Return an inseparable reviewed detector/pose manifest, without acquisition."""
+    if type(detector_model) is str:
+        if detector_model == "person-detection-retail-0013":
+            return OPENVINO_OMZ_2023_FP16
+        if detector_model == "person-detection-0200":
+            return OPENVINO_OMZ_PERSON_0200_FP16
+    raise ValueError("unsupported reviewed OMZ person detector")

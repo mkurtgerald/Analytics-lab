@@ -6,7 +6,7 @@ import unittest
 
 from analytics_lab.openvino_omz import (
     OpenVINOOMZConfig, OpenVINOOMZPoseBackend, PersonDetection,
-    parse_person_detections, pose_candidate_from_heatmaps,
+    _OpenVINORuntime, parse_person_detections, pose_candidate_from_heatmaps,
 )
 from analytics_lab.perception import BBox
 
@@ -29,6 +29,35 @@ class FakeRuntime:
         for channel, (y, x, score) in {2: (1, 1, .8), 5: (1, 2, .7), 8: (3, 1, .9), 11: (3, 2, .85)}.items():
             maps[channel][y][x] = score
         return maps
+
+
+class SlicingImage:
+    """Pixel-layout metadata only; records the exact native crop selection."""
+
+    shape = (10, 10, 3)
+
+    def __init__(self):
+        self.crops = []
+
+    def __getitem__(self, slices):
+        vertical, horizontal = slices
+        bounds = (horizontal.start, vertical.start, horizontal.stop, vertical.stop)
+        self.crops.append(bounds)
+        return SimpleNamespace(size=(horizontal.stop - horizontal.start) * (vertical.stop - vertical.start) * 3)
+
+
+class HeatmapTensor:
+    shape = (1, 19, 32, 57)
+
+    def __init__(self):
+        self.maps = [[[0.0] * 57 for _ in range(32)] for _ in range(19)]
+        for channel in (2, 5, 8, 11):
+            self.maps[channel][0][0] = .85
+
+    def __getitem__(self, index):
+        if index != 0:
+            raise IndexError(index)
+        return self.maps
 
 
 class Tests(unittest.TestCase):
@@ -76,6 +105,46 @@ class Tests(unittest.TestCase):
         bad[2] = [[0], [0, 1]]
         with self.assertRaises(ValueError):
             pose_candidate_from_heatmaps(bad, detection)
+
+    @mock.patch("analytics_lab.openvino_omz.verify_artifact_set", return_value=())
+    def test_native_crop_and_backend_keypoint_mapping_share_actual_pixel_extent(self, verify):
+        cases = (
+            ((.19, .11, .81, .89), (1, 1, 9, 9)),
+            ((-.05, .05, .015, 1.05), (0, 0, 1, 10)),
+            ((.985, .925, 1.05, 1.05), (9, 9, 10, 10)),
+            ((.2, .1, .8, .9), (2, 1, 8, 9)),
+        )
+        for coordinates, expected_crop in cases:
+            with self.subTest(coordinates=coordinates):
+                tensor = HeatmapTensor()
+                # Bypass optional imports/construction, but execute the actual
+                # runtime crop method and the complete backend mapping path.
+                runtime = object.__new__(_OpenVINORuntime)
+                runtime.runtime_version = "2026.3.1-test"
+                runtime.detect_rows = lambda image: ((0, 1, .95, *coordinates),)
+                runtime._np = SimpleNamespace(asarray=lambda value: value)
+                runtime._pose_heatmap_port = "heatmaps"
+                runtime._pose = mock.Mock(return_value={"heatmaps": tensor})
+                runtime._blob = mock.Mock(side_effect=lambda crop, width, height: crop)
+                image = SlicingImage()
+                backend = OpenVINOOMZPoseBackend("/models", runtime_factory=lambda *_: runtime)
+                poses = backend(image, 0, 0)
+                self.assertEqual(image.crops, [expected_crop])
+                runtime._pose.assert_called_once()
+                self.assertEqual(runtime._blob.call_args.args[1:], (456, 256))
+                self.assertEqual(len(poses), 1)
+                pose = poses[0]
+                original = parse_person_detections(
+                    ((0, 1, .95, *coordinates),), image_width=10, image_height=10,
+                    threshold=.5, max_people=32,
+                )[0]
+                self.assertEqual(pose.bbox, original.bbox)
+                self.assertEqual(pose.confidence, .95)
+                left, top, right, bottom = expected_crop
+                for point in pose.keypoints:
+                    self.assertAlmostEqual(point.x, left + .5 / 57 * (right - left))
+                    self.assertAlmostEqual(point.y, top + .5 / 32 * (bottom - top))
+                    self.assertEqual(point.confidence, .85)
 
     def test_config_is_bounded(self):
         OpenVINOOMZConfig()

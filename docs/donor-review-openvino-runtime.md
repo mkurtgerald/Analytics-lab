@@ -32,9 +32,19 @@ The selected IR inputs and output shapes are checked against the already reviewe
 The selected Open Model Zoo models are pinned separately at commit `6697dead54ed1cdd664b0313189c2cb52ee6335e`.
 
 - `person-detection-retail-0013` supplies normalized SSD rows for class `1` (person).
+- The already reviewed `person-detection-0200` is an explicit optional profile
+  with input `1x3x256x256` BGR and person class `0`. Artifact identities, input
+  shape and class semantics are bound together; the original retail profile
+  remains the default. This reuses the detector-shootout donor, not a new model
+  search or threshold change. The pinned model README and `model.yml` at OMZ
+  commit `6697dead54ed1cdd664b0313189c2cb52ee6335e` confirm these contracts.
 - `human-pose-estimation-0001` supplies 19 heatmap channels and 38 PAF channels.
 - Analytics Lab initially uses detector-isolated person crops and only shoulder/hip heatmap peaks needed by its posture classifier.
 - Keypoint channel IDs and the small quarter-pixel peak refinement are adapted from the Apache-2.0 Open Model Zoo `open_pose.py` decoder at the pinned OMZ commit.
+- The inferred pose crop uses rounded/clamped integer pixel bounds. Decoded
+  keypoints must map through that exact crop extent; the original fractional
+  detection box remains the tracking box. Both comparison profiles use the
+  corrected transform with the same existing heatmap-center convention.
 - The full PAF grouping algorithm is not vendored in this baseline. This simplification is explicitly unvalidated and must be compared against labeled video before promotion.
 
 ## What is not approved yet
