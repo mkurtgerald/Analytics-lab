@@ -2,15 +2,55 @@
 
 This roadmap prioritizes analytics that create differentiated situational understanding rather than commodity object detection.
 
-## Current delivery direction — October 11, 2026
+## Current delivery direction — October 13, 2026
 
-The owner selected stronger weapons detection as the first donor-first acceleration target. Reuse the existing OpenVINO runtime, neutral detection contract and seven-class taxonomy. Retain the admitted OIDv4 SSD as the comparison baseline; its zero output on the rifle-selected engineering source remains an unscored observation.
+The owner prioritizes no false positives across the analytics. The immediate
+work repairs demonstrated false-acceptance paths, then measures false alerts on
+independently annotated held-out negatives alongside retained positive detection.
+Donor integrations and synthetic regressions are engineering evidence; neither
+proves real-world reliability.
 
-Qualify replacements on the same independently authored, rights-cleared held-out annotations with frozen confidence and IoU thresholds. Report per-class misses and false positives, including negative-image alerts, alongside the exact donor/data identities. An architecture source admission or weightless RF-DETR construction is not a trained weapons detector. Prefer admitted pretrained weights before considering project-owned training.
+Use these acceptance conditions for alarm-producing analytics:
 
-The first executable slice is the bounded annotation-to-donor comparison. Next, acquire independent annotations and close exact weight/runtime/resource admission for a replacement, then run a preregistered baseline comparison. The reviewed OIDv4 ResNet101-FPN archive is 638,212,759 bytes by an official-server metadata response; it has not been downloaded or admitted and exceeds the existing bounded model-discovery lane. No broader donor search or training run starts from this change.
+1. Freeze the model, preprocessing, thresholds, temporal rules and supported
+   operating conditions before evaluation; reserve the test set from tuning.
+2. Evaluate representative hard negatives and independently labeled positive
+   events. Include look-alike objects, normal actions, glare, shadows, occlusion,
+   camera motion and poor-quality or uncertain inputs where applicable.
+3. Require zero observed false alerts in the declared held-out negative exposure.
+   Record negative camera-hours, per-camera/site failures and duplicate alerts;
+   still-image detector counts must not be described as camera-hour alarm rates.
+4. Report missed incidents and per-class recall. A detector that emits nothing,
+   lacks positive/negative coverage, or trades recall gains for false alarms does
+   not satisfy this direction. Declare minimum recall before evaluation.
+5. Preserve raw candidate evidence and abstention/failure states. Confidence
+   scores require calibration before they are called probabilities; candidates
+   do not become confirmed incidents through a naming or threshold change.
 
-The locally tested scene-change experiment remains unpublished while Weapons is the active work item. Historical stopped tracking, OCR glyph and FaceSSD hypotheses remain stopped.
+Zero observed false positives over a finite sample is the test target, not a
+universal deployment guarantee. Face privacy retains its default-on blur and
+failure-withholding behavior; reducing extra blurring must not silently expose
+missed faces as an alarm-precision shortcut.
+
+The first executable fix stops OCR from manufacturing complete plate identifiers:
+reject invalid confidence and unsupported glyphs, never truncate a long serial,
+abstain on uncertain/incomplete word sequences, and use the weakest word score.
+Valid complete reads and supported space/hyphen separators remain covered.
+A second reproduced false-candidate path joins down-posture time from unrelated
+detection segments. Both retained diagnostic scan paths must start a fresh
+temporal episode after a spatial reacquisition or detection loss; uninterrupted
+positive persistence and the explicit linked-pose unknown bridge remain covered.
+No global confidence threshold is tuned from the existing three wrong OCR
+positives. Next, build the independently reviewed positive/hard-negative evidence
+needed to assess genuine false-accept and missed-read rates.
+
+The no-gain ResNet101-FPN experiment is parked in PR #140, preserving all four
+CI requests, native observations and the unmerged Windows metadata repair.
+Its two real sources both returned zero weapon candidates, matching the baseline;
+that does not establish accuracy. No further donor search, model download,
+training or inference loop starts from this change. The stopped tracking, OCR
+image-specific and FaceSSD paths remain stopped unless a new evidence boundary
+justifies reopening them.
 
 ## Phase 0 — Foundation
 

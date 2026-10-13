@@ -232,18 +232,28 @@ def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
 def normalize_plate_text(value: str) -> str:
     if not isinstance(value, str):
         raise ValueError("OCR text must be a string")
-    return "".join(character for character in value.upper() if "A" <= character <= "Z" or "0" <= character <= "9")[:16]
+    # Validate before uppercasing: Unicode case expansion (for example ß -> SS)
+    # must not manufacture ASCII characters in an exact plate read.
+    if any(not ("A" <= character <= "Z" or "a" <= character <= "z"
+                or "0" <= character <= "9" or character in " -") for character in value):
+        raise ValueError("OCR text contains an unsupported plate character")
+    normalized = value.replace(" ", "").replace("-", "").upper()
+    if len(normalized) > 16:
+        raise ValueError("OCR text exceeds the complete plate length bound")
+    return normalized
 
 
 def parse_tesseract_tsv(tsv: str, *, min_confidence: float = 0.0) -> OCRText | None:
-    """Collapse Tesseract TSV word rows into one bounded plate text result."""
+    """Return a complete bounded plate read or abstain on any uncertain word."""
     cutoff = _finite(min_confidence, "min_confidence")
     if not 0.0 <= cutoff <= 1.0:
         raise ValueError("min_confidence must be in [0, 1]")
     if not isinstance(tsv, str) or len(tsv) > 1_000_000:
         raise ValueError("Tesseract TSV must be bounded text")
-    lines = tsv.splitlines()
-    if not lines:
+    # Tesseract uses LF/CRLF. Other Unicode line separators inside OCR text
+    # remain visible to validation instead of manufacturing additional rows.
+    lines = tsv.replace("\r\n", "\n").split("\n")
+    if not tsv:
         return None
     required = ("level", "conf", "text")
     header_index: int | None = None
@@ -255,6 +265,9 @@ def parse_tesseract_tsv(tsv: str, *, min_confidence: float = 0.0) -> OCRText | N
     for index, line in enumerate(lines[:32]):
         columns = line.split("\t")
         if all(name in columns for name in required):
+            if (len(set(columns)) != len(columns)
+                    or any(not name or name != name.strip() for name in columns)):
+                return None
             header_index = index
             header = columns
             break
@@ -264,28 +277,49 @@ def parse_tesseract_tsv(tsv: str, *, min_confidence: float = 0.0) -> OCRText | N
     words: list[str] = []
     confidences: list[float] = []
     for line in lines[header_index + 1:]:
+        if not line:
+            continue
         columns = line.split("\t")
-        if len(columns) <= max(indexes.values()):
-            continue
+        if len(columns) != len(header):
+            return None
+        level_text, confidence_text = columns[indexes["level"]], columns[indexes["conf"]]
+        # Python numeric conversion also accepts underscores, Unicode digits
+        # and whitespace. Tesseract's TSV fields are literal ASCII decimals.
+        if (re.fullmatch(r"[1-5]", level_text) is None
+                or re.fullmatch(r"-?[0-9]+(?:\.[0-9]+)?", confidence_text) is None):
+            return None
         try:
-            level = int(columns[indexes["level"]])
-            confidence = float(columns[indexes["conf"]])
+            level = int(level_text)
+            confidence = float(confidence_text)
         except ValueError:
+            return None
+        text = columns[indexes["text"]]
+        if not 1 <= level <= 5 or not math.isfinite(confidence):
+            return None
+        if level != 5:
+            # Tesseract emits empty page/block/paragraph/line rows with -1
+            # confidence. They carry no word and cannot strengthen the read.
+            if text or not (confidence == -1.0 or 0.0 <= confidence <= 100.0):
+                return None
             continue
-        if level != 5 or not math.isfinite(confidence) or confidence < 0.0:
-            continue
-        normalized = normalize_plate_text(columns[indexes["text"]])
-        if not normalized:
-            continue
-        confidence01 = min(1.0, max(0.0, confidence / 100.0))
+        if not text or not 0.0 <= confidence <= 100.0:
+            return None
+        try:
+            normalized = normalize_plate_text(text)
+        except ValueError:
+            return None
+        confidence01 = confidence / 100.0
         if confidence01 < cutoff:
-            continue
+            return None
         words.append(normalized)
         confidences.append(confidence01)
-    text = normalize_plate_text("".join(words))
+    try:
+        text = normalize_plate_text("".join(words))
+    except ValueError:
+        return None
     if not text:
         return None
-    return OCRText(text, sum(confidences) / len(confidences))
+    return OCRText(text, min(confidences))
 
 
 Runner = Callable[..., subprocess.CompletedProcess[Any]]

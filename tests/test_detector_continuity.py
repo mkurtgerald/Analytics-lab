@@ -2,6 +2,7 @@ import unittest
 
 from analytics_lab.detector_continuity import (
     ContinuityAccumulator,
+    ContinuityDecision,
     DetectionBox,
     box_iou,
     select_detection,
@@ -54,6 +55,26 @@ class DetectorContinuityTests(unittest.TestCase):
             DetectionBox(0.5, 1.0, 0.0, 1.0, 1.0)
         with self.assertRaises(ValueError):
             ContinuityAccumulator(min_link_iou=-0.1)
+
+    def test_segment_decision_distinguishes_start_link_loss_and_reacquisition(self):
+        acc = ContinuityAccumulator()
+        first = DetectionBox(.9, 0, .1, .2, .2)
+        other = DetectionBox(.9, .75, .1, .95, .2)
+        self.assertEqual(acc.last_decision, ContinuityDecision(None, False, False, False))
+        acc.add((first,))
+        self.assertEqual(acc.last_decision, ContinuityDecision(first, False, True, False))
+        acc.add((first,))
+        self.assertEqual(acc.last_decision, ContinuityDecision(first, True, False, False))
+        acc.add((other,))
+        self.assertEqual(acc.last_decision, ContinuityDecision(other, False, True, True))
+        acc.add(())
+        self.assertEqual(acc.last_decision, ContinuityDecision(None, False, False, True))
+        acc.add(())
+        self.assertEqual(acc.last_decision, ContinuityDecision(None, False, False, False))
+        acc.add((first,))
+        self.assertEqual(acc.last_decision, ContinuityDecision(first, False, True, False))
+        totals = acc.freeze()
+        self.assertEqual((totals.transitions, totals.linked_transitions, totals.resets), (2, 1, 1))
 
 
 if __name__ == "__main__":
