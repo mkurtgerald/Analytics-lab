@@ -474,3 +474,9 @@ python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
+
+## October 13 — P0 tracking observation export candidate
+
+The new source-only producer boundary `analytics_lab/observation_handoff.py` serializes actual `TrackingSession` outputs as `analytics.tracked-frame.v1` JSON. It includes opaque source/stream/session and UTC/PTS/timebase context, producer/config/model revision and digest provenance, normalized XYXY coordinates, and explicit uncalibrated score semantics. Track IDs are session-local association identifiers, never identities or authenticated scope grants. Empty valid frames differ from analytic-unavailable frames. The parser rejects unknown or duplicate fields, invalid scores/boxes, authorizing semantics, duplicate tracks and unsupported schema versions. Serialization is bounded to 512 tracks and 256 KiB with no untrusted length hints.
+
+Nineteen isolated synthetic tests passed using the exact `analytics_lab/tracking.py` Git blob `d1558f2f41e17720eb52ff14321f52db42a69e96`, including golden byte hashes from real `TrackingSession.update` results and unavailable frames. This is producer-side fixture evidence only, not a tested consuming application, runtime packaging, measured tracking accuracy or commercial approval. Consumer ownership includes authenticated source binding, duplicate/replay persistence, output backpressure, module registration and exact-version compatibility qualification. The existing independently labeled positive/negative evidence gap remains unresolved. No donor assets, pretrained weights, media, runtime downloads, dependencies or permissions were introduced.
