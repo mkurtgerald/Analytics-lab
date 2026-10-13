@@ -63,6 +63,20 @@ class LPROCRTests(unittest.TestCase):
         self.assertTrue(encoded.startswith(b"P6\n2 2\n255\n"))
         self.assertTrue(encoded.endswith(bytes((3, 2, 1, 6, 5, 4, 9, 8, 7, 12, 11, 10))))
 
+    def test_crop_pixel_budget_rejects_before_touching_oversize_frame(self) -> None:
+        class LargeImage:
+            shape = (4096, 4096, 3)
+            reads = 0
+
+            def __getitem__(self, index):
+                self.reads += 1
+                raise AssertionError("pixel access before PPM size admission")
+
+        image = LargeImage()
+        with self.assertRaisesRegex(ValueError, "plate crop exceeds bounded OCR input"):
+            encode_plate_crop_ppm(image, PlateDetection(0.9, 0.0, 0.0, 1.0, 1.0))
+        self.assertEqual(image.reads, 0)
+
     def test_tesseract_tsv_normalizes_plate_text_and_confidence(self) -> None:
         tsv = (
             "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"

@@ -1,5 +1,16 @@
 # Project state — 2026-09-24
 
+## October 14 LPR crop preallocation budget
+
+The PPM encoder previously iterated/allocated plate crop bytes before its
+downstream OCR adapter enforced a 16 MiB limit. A 4096x4096 generated image
+reproduces pixel access before rejection. The encoder now preflights the exact
+PPM header and RGB pixel budget before reading pixels, leaving small crops
+byte-identical. Four isolated synthetic regressions pass (including the exact
+boundary); exact-head full CI remains pending. No model, media, cutoff,
+dependency, rights, or release policy changes. This is memory-safety hardening,
+not a plate-reading accuracy improvement.
+
 ## Product direction
 Analytics Lab develops platform-independent video analytics for paid integration into the owner's products. It remains separate from K5-Vision and EdgeVMS. No production release, cross-repository write, customer/home-camera use, paid compute, GPU workload, license change, or commercial release is authorized by this repository workflow.
 
