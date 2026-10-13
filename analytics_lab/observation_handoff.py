@@ -212,7 +212,12 @@ def parse_tracking_frame_json(raw: str) -> TrackingFrameEnvelope:
     _closed(payload, _TOP_FIELDS, "tracking frame")
     if payload["schema"] != SCHEMA:
         raise ValueError("unsupported tracking frame schema")
-    if payload["semantics"] != _SEMANTICS:
+    # Numeric 0/1 compare equal to JSON false/true in Python; require exact
+    # types so untrusted payloads cannot impersonate the contract's booleans.
+    semantics = payload["semantics"]
+    if (type(semantics) is not dict or set(semantics) != set(_SEMANTICS)
+            or any(type(semantics[key]) is not type(expected) or semantics[key] != expected
+                   for key, expected in _SEMANTICS.items())):
         raise ValueError("unsupported or authorizing tracking semantics")
     frame = _closed(payload["frame"], _FRAME_FIELDS, "frame")
     producer = _closed(payload["producer"], _PRODUCER_FIELDS, "producer")

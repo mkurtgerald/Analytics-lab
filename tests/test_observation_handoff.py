@@ -89,6 +89,16 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_tracking_frame_json(json.dumps(payload))
 
+    def test_semantics_flags_reject_numeric_boolean_impersonation(self):
+        original = json.loads(real_session_frame().to_json())
+        for field in ("identity_claim", "authorizes_action", "source_scope_authorized"):
+            for value in (0, 0.0, 1, 1.0):
+                with self.subTest(field=field, value=value):
+                    payload = json.loads(json.dumps(original))
+                    payload["semantics"][field] = value
+                    with self.assertRaisesRegex(ValueError, "unsupported or authorizing"):
+                        parse_tracking_frame_json(json.dumps(payload))
+
     def test_model_revision_requires_pinned_model_identity(self):
         with self.assertRaises(ValueError):
             replace(fixture(), model_revision="oidv4-r1")
