@@ -121,8 +121,8 @@ class ValidationSeedTests(unittest.TestCase):
                 patch.object(validation_seed, "_download_models") as models:
             opener = object()  # Acquisition is stubbed; no network/model/media execution.
             manifest = prepare_seed(temp, subset="subject4-regression", opener=opener)
-            media.assert_called_once_with(Path(temp), opener=opener, specs=GMDCSA24_HELDOUT_S4)
-            models.assert_called_once_with(Path(temp), opener=opener)
+            media.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=GMDCSA24_HELDOUT_S4)
+            models.assert_called_once_with(Path(temp).resolve(), opener=opener)
             document = json.loads(manifest.read_text())
             _, samples, config = load_manifest(manifest)
             attribution = (Path(temp) / "ATTRIBUTION.txt").read_text()
@@ -149,7 +149,7 @@ class ValidationSeedTests(unittest.TestCase):
                 patch.object(validation_seed, "_download_models"):
             opener = object()
             manifest = prepare_seed(temp, opener=opener)
-            media.assert_called_once_with(Path(temp), opener=opener, specs=GMDCSA24_SEED)
+            media.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=GMDCSA24_SEED)
             self.assertEqual(json.loads(manifest.read_text())["config"]["max_total_video_bytes"], 9_347_373)
 
     def test_unknown_subset_rejected_before_directory_or_asset_acquisition(self):
@@ -168,11 +168,12 @@ class ValidationSeedTests(unittest.TestCase):
                 patch.object(validation_seed, "_download_exact") as download, \
                 patch.object(validation_seed, "verify_seed_media", side_effect=("a" * 64, "b" * 64)) as verify:
             opener = object()
-            identities = _download_media(Path(temp), opener=opener, specs=GMDCSA24_HELDOUT_S4)
+            root = Path(temp).resolve()
+            identities = _download_media(root, opener=opener, specs=GMDCSA24_HELDOUT_S4)
             self.assertEqual(download.call_count, 2)
             self.assertEqual(verify.call_count, 2)
             for index, spec in enumerate(GMDCSA24_HELDOUT_S4):
-                target = Path(temp) / "media" / "gmdcsa24" / spec.relative_path
+                target = root / "media" / "gmdcsa24" / spec.relative_path
                 self.assertEqual(download.call_args_list[index].args, (spec.source_url, target))
                 self.assertEqual(download.call_args_list[index].kwargs, {"expected_size": spec.size_bytes, "opener": opener})
                 self.assertEqual(verify.call_args_list[index].args, (target, spec))

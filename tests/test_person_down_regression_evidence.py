@@ -349,7 +349,7 @@ class PersonDownRegressionEvidenceTests(unittest.TestCase):
                 patch.object(evidence, "_runtime_versions", return_value={}), \
                 patch.object(evidence, "run_regression", return_value=report) as run, redirect_stdout(output):
             self.assertEqual(evidence.main(["--work-dir", str(self.root / "child")]), 0)
-        run.assert_called_once_with(self.root / "child")
+        run.assert_called_once_with((self.root / "child").resolve())
         self.assertEqual(json.loads(output.getvalue()), report)
 
 

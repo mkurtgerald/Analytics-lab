@@ -57,8 +57,7 @@ camera-hour rates remain unscored, and the replay never qualifies a false-alert
 acceptance gate. Original positive endpoints cannot
 be clipped or extended to pass; an uncovered label rejects the run. Silent
 positives remain misses. A comparable historical result bound to this new plan
-is unavailable, so baseline delta remains unmeasured. Hosted results are pending
-when this implementation snapshot is authored; no deployment accuracy,
+is unavailable, so baseline delta remains unmeasured. No deployment accuracy,
 improvement or automatic promotion is claimed.
 
 Local verification passed 722 tests with three existing optional OpenCV skips,
@@ -66,7 +65,36 @@ including 16 offline evidence-contract tests. Guardrails, syntax checks,
 deterministic candidate replay and diff checking passed. The two exact upstream
 CSV texts were independently rehashed against all declared identities and
 accepted by the annotation verifier without downloading or decoding media.
-These checks do not substitute for the pending hosted native replay.
+Hosted run #348 (`38431713938`) executed the exact frozen plan
+`3a4b5ca9746acee274a8e9f760fc43e904d80ab3a9a717a01dc6ae914571e74f`
+on head `8180d2b358b52c79797d1f1529699f01e7a41def`. Linux passed all 722
+tests with four existing optional skips and completed one native suite call.
+Fall/03 decoded 200 frames spanning 6,672 ms, produced only four posture
+observations, emitted no candidates and missed the one source falling interval.
+ADL/07 decoded 149 frames spanning 4,960 ms and produced nine posture
+observations with no candidates. Its 960 ms unannotated tail correctly leaves
+annotated false-alert counts/rates null; zero full-clip candidates does not
+qualify the owner's no-false-positives goal. The suite took 2,502.277 ms including
+235.044 ms shared-backend preparation on hosted Linux CPU, with OpenVINO
+`2026.3.1-22476-759c5a6ab8c-releases/2026/3`, OpenCV `4.12.0` and NumPy
+`2.2.6`. Exact CPU model was not captured, so this observation cannot establish
+a comparable hardware performance claim. The aggregate result/log is preserved
+in PR #142; no media/model/frame artifact was uploaded or retained.
+
+Run #348 failed Windows: three assertions and one private-helper test mixed
+Windows TEMP's short alias with its canonical resolved path (722 tests,
+three failures, one error, five existing optional skips). Test paths now resolve
+before comparison/helper calls, matching existing canonical-root behavior.
+Product code, labels, model identities and thresholds are unchanged by that
+correction. A corrected exact-head hosted run is required before merge; the
+work item has used one of two CI requests, with zero unchanged retries.
+
+Next acceptance boundary: recover independently labeled positive activity
+through perception while preserving separately labeled normal-activity negatives.
+Four posture observations over 200 positive frames do not establish that
+changing persistence thresholds would solve the miss. This historical pair is
+fixed regression evidence; do not tune it into success or describe it as new
+held-out generalization. The admitted baseline remains unpromoted.
 
 ## October 13 precision-first correction
 
