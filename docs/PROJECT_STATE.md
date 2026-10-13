@@ -12,6 +12,90 @@ Analytics Lab develops platform-independent video analytics for paid integration
 
 Person-down and slip/fall remain required deliverables and are secondary only in sequencing. On September 24, 2026 the owner-directed Face hardening finish line was reached and the single active implementation lane moved back to LPR/OCR. PR #84 remains closed/unmerged as preserved historical work; the current successor is `evidence/lpr-ocr-exact-glyph-2`. Face feature expansion is stopped except for regression, packaging/provenance, and later explicitly authorized evidence needed to preserve the accepted boundary.
 
+## October 13 precision-first correction
+
+The owner redirected the work toward no false positives and getting the
+analytics back on track. Active work now targets demonstrated false accepts
+before further donor/model expansion. Zero observed false alerts on a declared,
+independently annotated held-out negative set is the goal; negative camera-hours,
+missed incidents and per-class recall must be reported together. Emitting no
+results is not sufficient, and finite tests cannot guarantee zero deployment
+errors. Raw detections and person-down events remain review candidates, without
+automatic confirmation or action authority. Face privacy retains its separate
+default-blur and fail-closed controls.
+
+A source audit reproduced five OCR false accepts on current main using bounded
+TSV fixtures: word confidence `1000` was clipped to `1.0`; `ABC` at score `99`
+plus `123` at score `5`, with cutoff `0.95`, became `ABC` at confidence `0.99`;
+a malformed-confidence suffix was discarded the same way; a 17-character
+value became a different 16-character prefix; `ABC?123` lost its uncertain glyph
+and became `ABC123`. These are false accepts into normalized,
+searchable plate metadata; no automatic LPR alarm emitter is present and no
+real-world false-alert reduction is claimed from the fixtures.
+
+The repair rejects invalid/non-finite/out-of-range word confidence, unsupported
+characters and overlength identifiers. It abstains on incomplete/uncertain word
+sequences rather than dropping a word, preserves only deliberate ASCII
+space/hyphen separators, and reports the minimum word score for the complete
+plate. Valid complete reads remain covered. This deliberately rejects more
+ambiguous reads and may increase missed reads; future held-out evaluation must
+measure that cost. Existing model/runtime/configuration and frozen native
+thresholds are unchanged. No model/media acquisition or training is added.
+
+The same audit reproduced a person-down false candidate through the actual
+evidence scan orchestration with generated detections and poses: person A is
+down at 0/500/1000 ms, then spatially disjoint person B at
+1500/2000/2500/3000 ms. Neither segment lasts three seconds, yet both the
+end-to-end and retained orientation scanners emitted one candidate/false alert
+because they kept a constant temporal track despite detection reacquisition.
+All five Figshare diagnostics import the retained orientation scanner, so the
+repair belongs in both shared scan paths rather than a new model hypothesis.
+
+The detection association must expose loss/new-segment decisions, including
+reacquisition after an empty detection frame. A fresh bounded temporal episode
+and session prevent one segment from lending duration to the next; trace
+persistence resets too. Unknown pose while the detection remains spatially
+linked still follows the existing explicitly configured bridge. Regression
+fixtures must retain the uninterrupted positive and fresh full-length episode,
+reject direct spatial jumps and short lost/reacquired runs, and exercise many
+segments without accumulating stale temporal tracks. This is a demonstrated
+logic repair under generated inputs, not a new real-video accuracy claim or a
+restart of the stopped native experiments.
+
+Verification of this repair: 695 full local regression tests passed with three
+existing optional OpenCV skips; guardrails, compilation, deterministic replay
+and diffcheck passed. LPR/forensic focused verification passed 42 tests with
+no skips; independent review also exercised 65 additional parser checks.
+Continuity verification passed 115 focused synthetic tests with no skips,
+including both real scan-orchestration functions driven by generated metadata.
+Those fixtures reproduced eight failing module subcases before the repair and
+now reject the disconnected short episodes while preserving continuous positives.
+The 1,100-segment stress fixture retained at most one live engine and one active
+track. No real media, donor/runtime/model or training was acquired or executed.
+Exact-head hosted Linux/Windows qualification is still required before merge.
+
+The ResNet101-FPN exploration in PR #140 is parked with its native source and
+results preserved. Run #344 passed discovery; run #345 passed the Linux native
+path (one compile, three immutable-input observations, graph cleanup) but failed
+Windows due to LF-to-CRLF conversion of hash-pinned JSON. All generated/rifle/
+chair observations returned zero weapon candidates; no gain over the baseline
+was observed. Prepared LF-repair commit
+`7672f369f8bc0ee4441349070eac45e934bea6cc` remains unmerged and unverified on
+hosted Windows. Its four-request ceiling is exhausted and stays recorded; this
+new main-based OCR false-acceptance repair is a distinct owner-priority work
+item, not a renamed donor retry or a reset of those counters. Keep one active
+implementation PR, preserve main until exact-head checks pass, and stop the
+no-gain model lane before publishing the new repair.
+
+The current evidence gaps are still substantive: OCR's three retained real
+positive measurements were wrong (MPR318->IFMPR318J, 354AVV->354AVIV,
+CPU4704->CPU404), and no representative independently labeled no-plate negative
+suite is admitted. Weapons/face engineering examples lack independently authored
+box annotations; model execution success cannot supply their false-positive or
+recall metrics. The next acceptance work is a frozen held-out positive/hard-
+negative evaluation, not image-specific threshold tuning or declaring success
+from zero outputs.
+
 ## October 11 donor-first acceleration — Weapons comparison
 
 The owner selected **stronger weapons detection** as the active donor-first

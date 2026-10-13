@@ -222,7 +222,8 @@ def _scan_sample(
 
     temporal_config = _measured_temporal_config()
     continuity = ContinuityAccumulator(min_link_iou=_CONTINUITY_MIN_LINK_IOU)
-    engine = PersonDownEngine(sample.sample_id, "staged-real-orientation", temporal_config)
+    engine: PersonDownEngine | None = None
+    segment_index = 0
     trace = _TemporalTrace(temporal_config)
     events: list[dict] = []
     detector_ms = 0.0
@@ -281,6 +282,16 @@ def _scan_sample(
 
             candidates = primary if primary else (() if fallback_selected is None else (fallback_selected,))
             selected = continuity.add(candidates)
+            before_resets = trace.reset_reasons.copy()
+            decision = continuity.last_decision
+            if decision.continuity_lost:
+                trace.break_continuity()
+                engine = None
+            if decision.starts_segment:
+                segment_index += 1
+                engine = PersonDownEngine(
+                    sample.sample_id, f"staged-real-orientation-{segment_index}", temporal_config,
+                )
             used_fallback = fallback_selected is not None and selected is not None and not primary
             if selected is not None:
                 row["selected_frames"] += 1
@@ -325,7 +336,6 @@ def _scan_sample(
             if corrected_associated is not None:
                 associated_frames += 1
             posture, confidence, basis = _bounded_posture(corrected_associated)
-            before_resets = trace.reset_reasons.copy()
             trace.observe(frame.timestamp_ms, posture, confidence, basis)
             reset_delta = trace.reset_reasons - before_resets
             if sum(reset_delta.values()) > 1:
@@ -341,12 +351,13 @@ def _scan_sample(
                     nearest=nearest,
                     reset_reason=reset_reason,
                 )
-            events.extend(engine.observe(Observation(
-                timestamp_ms=frame.timestamp_ms,
-                track_id=_TRACK_ID,
-                posture=posture,
-                confidence=confidence,
-            )))
+            if engine is not None:
+                events.extend(engine.observe(Observation(
+                    timestamp_ms=frame.timestamp_ms,
+                    track_id=_TRACK_ID,
+                    posture=posture,
+                    confidence=confidence,
+                )))
 
     elapsed_ms = (time.perf_counter() - started_sample) * 1000.0
     if path.is_symlink() or not path.is_file() or _sha256(path) != sample.media_sha256:

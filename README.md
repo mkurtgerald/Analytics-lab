@@ -25,7 +25,9 @@ Its purpose is to prototype, benchmark, and mature new analytics using clean mod
 
 The library contains detection/tracking, LPR/OCR, face detection/privacy, seven-class weapons detection, person-down candidates and forensic metadata/appearance search. These are engineering components with separate real-media and product-integration acceptance gates.
 
-The current donor-first priority is stronger weapons detection. The retained Open Images V4 SSD is the runnable baseline; RF-DETR currently supplies architecture source only. A bounded Weapons comparison evaluates exact-class box matches, misses and false positives on the same evidence-bound held-out annotations before selecting a replacement donor.
+The current priority is reducing false accepts and false alerts. Keep uncertain results as review candidates or abstain. Evaluate changes on independently labeled positives and hard negatives; require zero observed false alerts on the declared held-out negative exposure while reporting recall and missed incidents. A silent detector that misses every positive does not meet the goal. Zero observed errors in a finite test is not a guarantee of zero errors in deployment.
+
+The first repairs make OCR abstain on incomplete or ambiguous plate reads and restart persistence in the shared person-down diagnostic scans when detection continuity is lost. Plate confidence must not exceed its weakest recognized word; disconnected people cannot contribute time toward one person-down candidate. Donor perception stays replaceable; runtime smoke tests and larger models do not establish accuracy. The retained Open Images V4 SSD remains the weapons baseline, and RF-DETR supplies architecture source only. The tested ResNet101-FPN experiment showed no candidate gain on its two admitted samples and is parked.
 
 Run the generated-metadata comparison:
 

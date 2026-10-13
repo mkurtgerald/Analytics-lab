@@ -97,6 +97,22 @@ class ContinuityTotals:
         return self.resets / self.transitions if self.transitions else 0.0
 
 
+@dataclass(frozen=True)
+class ContinuityDecision:
+    """Latest selection's spatial segment boundary, separate from totals.
+
+    Initial acquisition and reacquisition after an empty frame start a segment.
+    An established segment is lost on an empty frame or an unlinked selection.
+    ``resets`` in ContinuityTotals still counts only unlinked selected-to-selected
+    transitions; it is not a complete segment-boundary signal.
+    """
+
+    selected: DetectionBox | None
+    linked: bool
+    starts_segment: bool
+    continuity_lost: bool
+
+
 class ContinuityAccumulator:
     """Accumulate one-box-per-frame continuity statistics without retaining media."""
 
@@ -112,11 +128,22 @@ class ContinuityAccumulator:
         self.resets = 0
         self._confidence_sum = 0.0
         self._min_confidence: float | None = None
+        self._last_decision = ContinuityDecision(None, False, False, False)
+
+    @property
+    def last_decision(self) -> ContinuityDecision:
+        return self._last_decision
 
     def add(self, candidates: Iterable[DetectionBox]) -> DetectionBox | None:
         options = tuple(candidates)
         prior = self.previous
         selected, linked = select_detection(prior, options, min_link_iou=self.min_link_iou)
+        self._last_decision = ContinuityDecision(
+            selected=selected,
+            linked=linked,
+            starts_segment=selected is not None and not linked,
+            continuity_lost=prior is not None and not linked,
+        )
         self.frames += 1
         if selected is None:
             self.previous = None

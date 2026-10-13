@@ -119,6 +119,13 @@ class _TemporalTrace:
         self._last_qualified_down_ms = None
         self._unknown_since_down = False
 
+    def break_continuity(self) -> None:
+        """Record an established detection-segment loss, keeping aggregate counts."""
+        self.reset_reasons["detection_continuity_lost"] += 1
+        self._reset_qualified_run()
+        self._raw_run_start = None
+        self._raw_run_count = 0
+
     def observe(self, timestamp_ms: int, posture: str, confidence: float, basis: str) -> None:
         self.postures[posture] += 1
         self.bases[basis] += 1
@@ -218,7 +225,8 @@ def _scan_sample(
     if path.is_symlink() or not path.is_file() or _sha256(path) != sample.media_sha256:
         raise RuntimeError("end-to-end diagnostic media identity mismatch")
     continuity = ContinuityAccumulator(min_link_iou=_CONTINUITY_MIN_LINK_IOU)
-    engine = PersonDownEngine(sample.sample_id, "staged-real-e2e", temporal_config)
+    engine: PersonDownEngine | None = None
+    segment_index = 0
     trace = _TemporalTrace(temporal_config)
     events: list[dict] = []
     detector_ms = 0.0
@@ -242,6 +250,15 @@ def _scan_sample(
             selected = continuity.add(
                 item for item in detections if float(item.confidence) >= _CONTINUITY_THRESHOLD
             )
+            decision = continuity.last_decision
+            if decision.continuity_lost:
+                trace.break_continuity()
+                engine = None
+            if decision.starts_segment:
+                segment_index += 1
+                engine = PersonDownEngine(
+                    sample.sample_id, f"staged-real-e2e-{segment_index}", temporal_config,
+                )
             corrected_associated = None
             if selected is not None:
                 bbox = _pixel_bbox(selected, frame.image)
@@ -268,12 +285,13 @@ def _scan_sample(
                 associated_frames += 1
             posture, confidence, basis = _corrected_posture(corrected_associated)
             trace.observe(frame.timestamp_ms, posture, confidence, basis)
-            events.extend(engine.observe(Observation(
-                timestamp_ms=frame.timestamp_ms,
-                track_id=_TRACK_ID,
-                posture=posture,
-                confidence=confidence,
-            )))
+            if engine is not None:
+                events.extend(engine.observe(Observation(
+                    timestamp_ms=frame.timestamp_ms,
+                    track_id=_TRACK_ID,
+                    posture=posture,
+                    confidence=confidence,
+                )))
 
     elapsed_ms = (time.perf_counter() - started_sample) * 1000.0
     if path.is_symlink() or not path.is_file() or _sha256(path) != sample.media_sha256:
