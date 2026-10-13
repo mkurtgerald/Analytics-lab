@@ -228,6 +228,20 @@ class GuardrailsTests(unittest.TestCase):
             generic[0]['if'],
         )
 
+    def test_person_down_regression_is_one_isolated_bounded_pass(self):
+        steps = self.workflow['jobs']['linux']['steps']
+        lanes = [step for step in steps if step.get('name') == 'Bounded person-down activity regression evidence']
+        self.assertEqual(len(lanes), 1)
+        lane = lanes[0]
+        self.assertIn("evidence/person-down-regression-", lane['if'])
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertEqual(lane['run'].count('python -m analytics_lab.'), 1)
+        self.assertIn('analytics_lab.person_down_regression_evidence', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-person-down-regression', lane['run'])
+        generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-regression-')", generic['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):

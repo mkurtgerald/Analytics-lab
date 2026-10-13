@@ -364,10 +364,12 @@ def _scan_sample(
         raise RuntimeError("orientation diagnostic media changed during execution")
     if frames_processed < 1 or first_timestamp_ms is None or last_timestamp_ms is None:
         raise RuntimeError("orientation diagnostic decoded no frames")
-    decoded_start = min(sample.start_timestamp_ms, first_timestamp_ms)
-    decoded_end = max(sample.end_timestamp_ms, last_timestamp_ms)
+    decoded_start = first_timestamp_ms
+    decoded_end = last_timestamp_ms
+    if decoded_start != sample.start_timestamp_ms:
+        raise RuntimeError("decoded video start does not match the declared sample start")
     if decoded_end <= decoded_start:
-        raise RuntimeError("decoded interval must have positive duration")
+        raise RuntimeError("validation sample must span more than one decoded timestamp")
 
     evaluation = evaluate_person_down_candidates(
         events,

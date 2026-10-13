@@ -41,6 +41,25 @@ Preferred licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause. Copyleft, non-c
 | OpenCV TensorFlow SSD text-graph helpers | `opencv/opencv@49486f61fb25722cbcf586b7f4320921d46fb38e`; `tf_text_graph_ssd.py` 18,314 bytes Git blob `d27fd0d384f509789bf64f069203d3f9964db576`; `tf_text_graph_common.py` 10,055 bytes Git blob `c82053b4fb05aa2fd40c45b1cefa550431608847` | Apache-2.0 | Evidence-only FaceSSD graph rewrite/compatibility classification | Route closed after bounded classification; not production packaging approval. |
 | TensorFlow 2.21.0 native TOCO converter target | `tensorflow/tensorflow@a481b10260dfdf833a1b16007eead49c1d7febf3`; Bazel `7.7.0`; public target `//tensorflow/lite/toco:toco` | Apache-2.0 source | FaceSSD frozen GraphDef -> TFLite conversion candidate | Closed before build: target pulls TensorFlow core/lib/ops/protos, TFLite import/export, protobuf, Abseil and TOCO transformation stack; not a bounded standalone converter under five-minute hosted CI/toolchain policy. Do not retry unchanged. |
 
+## GMDCSA-24 retrospective activity-label provenance
+
+The already reviewed MIT evaluation source is
+`ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos` at
+`5abac7693229900cf80f722e878fbb119211fc1c`, by Ekram Alam, Abu Sufian,
+Paramartha Dutta, Marco Leo and I. A. Hameed (Data in Brief,
+DOI `10.1016/j.dib.2024.110892`). The existing source-rights registration and
+upstream MIT notice remain applicable; no media or complete dataset is vendored.
+
+The retrospective Subject-4 replay additionally pins publisher annotation
+metadata: `Subject 4/Fall.csv`, 2,399 bytes, Git blob
+`31c1625bbf51eff2e5bd767455c400f50f5786e4`, and `Subject 4/ADL.csv`,
+3,092 bytes, Git blob `4d97c1ba3b3a43290529ae5c7be236322706816d`.
+Their SHA-256 identities and the exact selected rows are recorded in
+`analytics_lab.person_down_regression_evidence`. Falling/exercise activity
+labels are source-authored evaluation proxies, not clinical person-down truth,
+an injury diagnosis or a commercial acceptance claim. Subject 4 was previously
+used, so this replay provides no new held-out generalization evidence.
+
 ## Rules
 1. Never copy donor code without recording its source and license.
 2. Preserve required copyright and attribution notices.

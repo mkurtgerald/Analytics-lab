@@ -1,9 +1,13 @@
 import hashlib
 import io
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from analytics_lab import validation_seed
+from analytics_lab.validation_cli import load_manifest
 from analytics_lab.validation_seed import (
     GMDCSA24_ACCEPTED_SEED,
     GMDCSA24_HELDOUT_S2,
@@ -15,7 +19,9 @@ from analytics_lab.validation_seed import (
     SeedMediaSpec,
     _attribution_text,
     _download_exact,
+    _download_media,
     _manifest,
+    prepare_seed,
     verify_seed_media,
 )
 
@@ -107,6 +113,71 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertNotIn("Subject 1/Fall/05.mp4", text)
         self.assertIn("git:5abac7693229900cf80f722e878fbb119211fc1c", text)
         self.assertIn("MIT", text)
+
+    def test_subject4_regression_selection_binds_manifest_labels_budget_and_attribution(self):
+        identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_HELDOUT_S4)}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(validation_seed, "_download_media", return_value=identities) as media, \
+                patch.object(validation_seed, "_download_models") as models:
+            opener = object()  # Acquisition is stubbed; no network/model/media execution.
+            manifest = prepare_seed(temp, subset="subject4-regression", opener=opener)
+            media.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=GMDCSA24_HELDOUT_S4)
+            models.assert_called_once_with(Path(temp).resolve(), opener=opener)
+            document = json.loads(manifest.read_text())
+            _, samples, config = load_manifest(manifest)
+            attribution = (Path(temp) / "ATTRIBUTION.txt").read_text()
+        self.assertEqual(document["schema_version"], 1)
+        self.assertEqual(config.max_samples, 2)
+        self.assertEqual(config.max_total_video_bytes, 7_996_782)
+        self.assertLess(config.max_total_video_bytes, 16 * 1024 * 1024)
+        self.assertEqual([sample.sample_id for sample in samples], [item.sample_id for item in GMDCSA24_HELDOUT_S4])
+        self.assertEqual(samples[0].end_timestamp_ms, 6000)
+        self.assertEqual(samples[1].end_timestamp_ms, 4000)
+        self.assertEqual((samples[0].labels[0].start_timestamp_ms, samples[0].labels[0].end_timestamp_ms), (1700, 6000))
+        self.assertEqual(samples[1].labels, ())
+        self.assertEqual([sample.media_sha256 for sample in samples], ["a" * 64, "b" * 64])
+        self.assertIn("Subject 4/Fall/03.mp4", attribution)
+        self.assertIn("Subject 4/ADL/07.mp4", attribution)
+        self.assertNotIn("Subject 2/Fall/13.mp4", attribution)
+        self.assertIn("MIT", attribution)
+        self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_NIGHT)
+
+    def test_prepare_default_still_routes_active_seed(self):
+        identities = {item.sample_id: "a" * 64 for item in GMDCSA24_SEED}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(validation_seed, "_download_media", return_value=identities) as media, \
+                patch.object(validation_seed, "_download_models"):
+            opener = object()
+            manifest = prepare_seed(temp, opener=opener)
+            media.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=GMDCSA24_SEED)
+            self.assertEqual(json.loads(manifest.read_text())["config"]["max_total_video_bytes"], 9_347_373)
+
+    def test_unknown_subset_rejected_before_directory_or_asset_acquisition(self):
+        with patch.object(validation_seed, "_ensure_root") as root, \
+                patch.object(validation_seed, "_download_media") as media, \
+                patch.object(validation_seed, "_download_models") as models:
+            for subset in ("subject4", "Subject4-regression", "../subject4-regression", "", None, False):
+                with self.subTest(subset=subset), self.assertRaises(ValueError):
+                    prepare_seed("unused", subset=subset)
+            root.assert_not_called()
+            media.assert_not_called()
+            models.assert_not_called()
+
+    def test_subject4_download_routes_only_exact_reviewed_media_specs(self):
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(validation_seed, "_download_exact") as download, \
+                patch.object(validation_seed, "verify_seed_media", side_effect=("a" * 64, "b" * 64)) as verify:
+            opener = object()
+            root = Path(temp).resolve()
+            identities = _download_media(root, opener=opener, specs=GMDCSA24_HELDOUT_S4)
+            self.assertEqual(download.call_count, 2)
+            self.assertEqual(verify.call_count, 2)
+            for index, spec in enumerate(GMDCSA24_HELDOUT_S4):
+                target = root / "media" / "gmdcsa24" / spec.relative_path
+                self.assertEqual(download.call_args_list[index].args, (spec.source_url, target))
+                self.assertEqual(download.call_args_list[index].kwargs, {"expected_size": spec.size_bytes, "opener": opener})
+                self.assertEqual(verify.call_args_list[index].args, (target, spec))
+                self.assertEqual(identities[spec.sample_id], ("a" if index == 0 else "b") * 64)
 
 
 if __name__ == "__main__":
