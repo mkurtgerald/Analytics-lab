@@ -195,6 +195,13 @@ def fetch_verified_member(
     *,
     opener: Any,
 ) -> tuple[bytes, str]:
+    # Re-evaluate commercial-media eligibility at direct byte acquisition.
+    # Callers must not bypass the higher-level admission boundary.
+    rights = require_source(
+        FIGSHARE_FALL_2017.source_id, purpose="evaluation", require_real_world=True,
+    )
+    if rights is not FIGSHARE_FALL_2017:
+        raise RuntimeError("reviewed Figshare rights identity changed")
     if not isinstance(artifact, FigshareArtifact) or not isinstance(member, ZipMember):
         raise TypeError("artifact and member are required")
     if not member.is_bounded_video or member.compression_method not in _SUPPORTED_METHODS:

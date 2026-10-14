@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from analytics_lab.figshare_acquisition import FigshareArtifact, ZipMember, locate_zip_directory, parse_zip_directory
@@ -122,6 +123,25 @@ class FigshareMemberAdmissionTests(unittest.TestCase):
         self.assertEqual(len(requested), 3)
         self.assertEqual(requested[0], (member.local_header_offset, member.local_header_offset + 29))
         self.assertEqual(requested[-1][1] - requested[-1][0] + 1, member.compressed_size)
+
+    def test_direct_member_fetch_denies_revoked_rights_before_network(self):
+        archive, member = _single_member_archive(b"generated-fixture")
+        artifact = FigshareArtifact(
+            file_id=52990358, name="fixture.zip", size_bytes=len(archive),
+            download_url="https://figshare.com/ndownloader/files/52990358",
+            md5="0123456789abcdef0123456789abcdef",
+        )
+        def forbidden_opener(*_args, **_kwargs):
+            self.fail("media network access despite revoked authorization")
+        with patch(
+            "analytics_lab.figshare_member_admission.require_source",
+            side_effect=ValueError("data source is not eligible for commercial evaluation"),
+        ):
+            with self.assertRaisesRegex(ValueError, "not eligible"):
+                fetch_verified_member(artifact, member, opener=forbidden_opener)
+        with patch("analytics_lab.figshare_member_admission.require_source", return_value=object()):
+            with self.assertRaisesRegex(RuntimeError, "rights identity changed"):
+                fetch_verified_member(artifact, member, opener=forbidden_opener)
 
     def test_inflate_rejects_crc_mismatch(self):
         source = b"crc-test" * 50

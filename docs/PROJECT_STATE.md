@@ -1,3 +1,12 @@
+## October 14 Figshare direct-member media preflight
+
+The public member-fetch boundary now rechecks commercial-source eligibility and
+the exact reviewed rights record before any HTTP Range request. Generated-byte
+regressions cover revoked authorization and substituted registry identity.
+This is defense in depth only: the Figshare registry remains permissive despite
+unverified participant-media/likeness permissions, which require separate
+disposition before commercial qualification. No inference/accuracy claim.
+
 ## October 14 GMDCSA24 commercial-media rights hold
 
 The published Zenodo v2.1 dataset license is CC BY 4.0; the repository's
