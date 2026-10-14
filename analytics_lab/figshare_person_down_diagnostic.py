@@ -113,6 +113,8 @@ def run_figshare_person_down_diagnostic(
     *,
     opener: Callable[..., Any] = urllib.request.urlopen,
 ) -> dict[str, Any]:
+    # Commercial authorization must be checked before filesystem, media, or model work.
+    _source_document()
     root = Path(output_dir)
     if root.exists() and root.is_symlink():
         raise RuntimeError("output directory must not be a symlink")
