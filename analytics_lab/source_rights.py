@@ -71,6 +71,9 @@ UE4_FALL = DataSourceRights(
     attribution_required=True,
 )
 
+# Publisher CC BY 4.0 metadata is distinct from participant-media/likeness
+# authorization. Independent permissions for commercial use are unverified;
+# both uses remain on hold without changing the published license identity.
 FIGSHARE_FALL_2017 = DataSourceRights(
     source_id="figshare-fall-2017-activities",
     title="Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects",
@@ -80,8 +83,8 @@ FIGSHARE_FALL_2017 = DataSourceRights(
     source_url="https://figshare.com/articles/dataset/Sensor-Based_Fall_Detection_Dataset_with_2017_Activities_from_29_Subjects/28596332/2",
     license_url="https://creativecommons.org/licenses/by/4.0/",
     provenance_ref="figshare:28596332:version-2",
-    commercial_training=True,
-    commercial_evaluation=True,
+    commercial_training=False,
+    commercial_evaluation=False,
     attribution_required=True,
 )
 

@@ -15,15 +15,19 @@ class SourceRightsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             require_source(UE4_FALL.source_id, purpose="evaluation", require_real_world=True)
 
-    def test_real_world_figshare_source_is_eligible_for_commercial_evaluation(self):
-        source = require_source(
-            FIGSHARE_FALL_2017.source_id,
-            purpose="evaluation",
-            require_real_world=True,
-        )
+    def test_figshare_preserves_cc_by_metadata_and_holds_commercial_media(self):
+        source = FIGSHARE_FALL_2017
         self.assertEqual(source.media_origin, "real_world")
         self.assertEqual(source.license_id, "CC-BY-4.0")
+        self.assertTrue(source.attribution_required)
         self.assertTrue(source.exact_asset_identity_required)
+        self.assertFalse(source.commercial_training)
+        self.assertFalse(source.commercial_evaluation)
+        for purpose in ("training", "evaluation"):
+            with self.subTest(purpose=purpose):
+                self.assertFalse(source.permits(purpose, require_real_world=True))
+                with self.assertRaisesRegex(ValueError, "not eligible"):
+                    require_source(source.source_id, purpose=purpose, require_real_world=True)
 
     def test_gmdcsa24_preserves_cc_by_provenance_but_denies_commercial_media(self):
         source = GMDCSA24

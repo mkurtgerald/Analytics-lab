@@ -3,9 +3,13 @@
 The public member-fetch boundary now rechecks commercial-source eligibility and
 the exact reviewed rights record before any HTTP Range request. Generated-byte
 regressions cover revoked authorization and substituted registry identity.
-This is defense in depth only: the Figshare registry remains permissive despite
-unverified participant-media/likeness permissions, which require separate
-disposition before commercial qualification. No inference/accuracy claim.
+The registry now holds both commercial training and evaluation pending
+independent participant-media/likeness authorization; recorded CC BY 4.0
+license and immutable provenance remain unchanged. Default media admission
+now fails closed before byte acquisition, including direct member fetch.
+Generated fixture regressions use explicit test-only rights stubs to retain
+ZIP validation coverage without authorizing real participant media. No dataset
+or model acquisition, release, or accuracy claim is implied.
 
 ## October 14 GMDCSA24 commercial-media rights hold
 
