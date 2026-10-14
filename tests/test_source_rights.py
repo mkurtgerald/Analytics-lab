@@ -25,17 +25,16 @@ class SourceRightsTests(unittest.TestCase):
         self.assertEqual(source.license_id, "CC-BY-4.0")
         self.assertTrue(source.exact_asset_identity_required)
 
-    def test_gmdcsa24_is_pinned_real_world_commercial_source(self):
-        source = require_source(
-            GMDCSA24.source_id,
-            purpose="evaluation",
-            require_real_world=True,
-        )
-        self.assertEqual(source.version, "git:5abac7693229900cf80f722e878fbb119211fc1c")
-        self.assertEqual(source.media_origin, "real_world")
-        self.assertEqual(source.license_id, "MIT")
-        self.assertTrue(source.commercial_training)
-        self.assertTrue(source.exact_asset_identity_required)
+    def test_gmdcsa24_is_pinned_but_commercial_media_use_is_held(self):
+        self.assertEqual(GMDCSA24.version, "git:5abac7693229900cf80f722e878fbb119211fc1c")
+        self.assertEqual(GMDCSA24.media_origin, "real_world")
+        self.assertEqual(GMDCSA24.license_id, "MIT")
+        self.assertTrue(GMDCSA24.exact_asset_identity_required)
+        self.assertFalse(GMDCSA24.commercial_training)
+        self.assertFalse(GMDCSA24.commercial_evaluation)
+        for purpose in ("training", "evaluation"):
+            with self.subTest(purpose=purpose), self.assertRaisesRegex(ValueError, "not eligible"):
+                require_source(GMDCSA24.source_id, purpose=purpose, require_real_world=True)
 
     def test_unknown_source_and_purpose_fail_closed(self):
         with self.assertRaises(ValueError):
