@@ -211,6 +211,11 @@ def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
     top = max(0, min(height - 1, int(math.floor(plate.y1 * height))))
     right = max(left + 1, min(width, int(math.ceil(plate.x2 * width))))
     bottom = max(top + 1, min(height, int(math.ceil(plate.y2 * height))))
+    # Apply the downstream 16 MiB PPM limit before accessing or allocating pixels.
+    crop_width, crop_height = right - left, bottom - top
+    header = f"P6\n{crop_width} {crop_height}\n255\n".encode("ascii")
+    if crop_width * crop_height > (16 * 1024 * 1024 - len(header)) // 3:
+        raise ValueError("plate crop exceeds bounded OCR input")
     pixels = bytearray()
     for y in range(top, bottom):
         for x in range(left, right):
@@ -224,9 +229,7 @@ def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
             if any(value < 0 or value > 255 for value in (b, g, r)):
                 raise ValueError("image channels must be bytes")
             pixels.extend((r, g, b))
-    crop_width = right - left
-    crop_height = bottom - top
-    return f"P6\n{crop_width} {crop_height}\n255\n".encode("ascii") + bytes(pixels)
+    return header + bytes(pixels)
 
 
 def normalize_plate_text(value: str) -> str:
