@@ -264,6 +264,18 @@ class GuardrailsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             g.validate_workflow(self.workflow, self.policy)
 
+    def test_accuracy_comparison_is_isolated_to_its_two_suite_wrapper(self):
+        steps = self.workflow['jobs']['linux']['steps']
+        lane = next(step for step in steps if step.get('name') == 'Bounded person-down accuracy comparison')
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn("evidence/person-down-accuracy-", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-person-down-accuracy', lane['run'])
+        self.assertEqual(lane['run'].count('python -m analytics_lab.'), 1)
+        self.assertIn('analytics_lab.person_down_accuracy_comparison', lane['run'])
+        generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-accuracy-')", generic['if'])
+
     def test_preflight_allows_bounded_work(self):
         self.assertTrue(g.preflight(self.snapshot, self.policy)['allowed'])
 

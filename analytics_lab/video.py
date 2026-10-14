@@ -89,6 +89,7 @@ def run_frame_source(
     last_index = -1
     last_timestamp = -1
     first_timestamp: int | None = None
+    previous_tracks = set(engine.last_observed_track_ids)
 
     for frame in frames:
         if frames_processed >= cfg.max_frames:
@@ -106,6 +107,7 @@ def run_frame_source(
         if raw is None:
             raise ValueError("perception adapter must return an iterable, not None")
         seen_tracks: set[str] = set()
+        observations: list[Observation] = []
         per_frame = 0
         try:
             iterator = iter(raw)
@@ -117,14 +119,21 @@ def run_frame_source(
                 raise RuntimeError("per-frame observation limit exceeded")
             if not isinstance(item, PerceptionObservation):
                 raise ValueError("perception adapter returned an unsupported observation")
-            if item.track_id in seen_tracks:
+            observation = item.bind(frame.timestamp_ms)
+            if observation.track_id in seen_tracks:
                 raise ValueError("duplicate track observation in one frame")
-            seen_tracks.add(item.track_id)
+            seen_tracks.add(observation.track_id)
+            observations.append(observation)
+        # A filtered or absent detection is unknown evidence for its previous
+        # handle, even when the geometric tracker can recover that handle later.
+        engine.mark_missing(frame.timestamp_ms, sorted(previous_tracks - seen_tracks))
+        for observation in observations:
             observations_processed += 1
-            for event in engine.observe(item.bind(frame.timestamp_ms)):
+            for event in engine.observe(observation):
                 events.append(event)
                 if len(events) > cfg.max_events:
                     raise RuntimeError("video event limit exceeded")
+        previous_tracks = seen_tracks
         frames_processed += 1
 
     return VideoRunResult(

@@ -221,6 +221,46 @@ def _proxy_report(result: ValidationSuiteResult) -> dict[str, Any]:
     }
 
 
+def _paired_report(plan: dict[str, Any], versions: dict[str, str], cpu_metadata: dict[str, Any],
+                   samples: tuple, results: list[ValidationSuiteResult]) -> dict[str, Any]:
+    """Preserve both positive and negative outcomes for either paired lane."""
+    baseline, candidate = results
+    if any((left.frames_processed, left.evaluation.duration_ms) != (right.frames_processed, right.evaluation.duration_ms)
+           for left, right in zip(baseline.sample_runs, candidate.sample_runs)):
+        raise RuntimeError("comparison decoded exposure differs between pipelines")
+    reports = [_proxy_report(result) for result in results]
+    scored_delta = None
+    if all(report["normal_clip_scored_activity_false_alerts"] is not None for report in reports):
+        scored_delta = reports[1]["normal_clip_scored_activity_false_alerts"] - reports[0]["normal_clip_scored_activity_false_alerts"]
+    report = {
+        "schema_version": 1, "plan": plan,
+        "plan_sha256": hashlib.sha256(_canonical(plan)).hexdigest(),
+        "runtime_versions": versions, "cpu_metadata": cpu_metadata,
+        "materialized_media": [{"sample_id": sample.sample_id, "sha256": sample.media_sha256} for sample in samples],
+        "baseline": reports[0], "candidate": reports[1],
+        "delta_direction": "candidate_minus_baseline",
+        "aggregate_deltas": {
+            "observations_processed": sum(run.observations_processed for run in candidate.sample_runs)
+            - sum(run.observations_processed for run in baseline.sample_runs),
+            **{field: getattr(candidate.aggregate, field) - getattr(baseline.aggregate, field)
+               for field in ("candidate_events", "matched_events", "missed_episodes")},
+        },
+        "sample_deltas": [{
+            "sample_id": left.sample_id,
+            "observations_processed": right.observations_processed - left.observations_processed,
+            **{field: getattr(right.evaluation, field) - getattr(left.evaluation, field)
+               for field in ("candidate_events", "matched_events", "missed_episodes")},
+        } for left, right in zip(baseline.sample_runs, candidate.sample_runs)],
+        "normal_clip_scored_activity_false_alerts_delta": scored_delta,
+        "clinical_false_positive_delta": None,
+        "zero_candidates_is_success": False, "false_alert_gate_eligible": False,
+        "clinical_person_down_ground_truth": False, "new_heldout_evidence": False,
+        "commercial_accuracy_claim": False, "performance_claim": False, "production_promoted": False,
+        "coverage_identity_scope": "same immutable clips, decoder, frame counts and decoded duration; no decoded-frame digest",
+    }
+    return report
+
+
 def run_comparison(work_dir: str | Path, *, opener: Callable[..., Any] = urllib.request.urlopen) -> dict[str, Any]:
     root = _hosted_root(work_dir)
     versions = _runtime_versions()
@@ -250,40 +290,7 @@ def run_comparison(work_dir: str | Path, *, opener: Callable[..., Any] = urllib.
             )
             _validate_result(result, samples, specs, versions)
             results.append(result)
-        baseline, candidate = results
-        if any((left.frames_processed, left.evaluation.duration_ms) != (right.frames_processed, right.evaluation.duration_ms)
-               for left, right in zip(baseline.sample_runs, candidate.sample_runs)):
-            raise RuntimeError("comparison decoded exposure differs between detectors")
-        reports = [_proxy_report(result) for result in results]
-        scored_delta = None
-        if all(report["normal_clip_scored_activity_false_alerts"] is not None for report in reports):
-            scored_delta = reports[1]["normal_clip_scored_activity_false_alerts"] - reports[0]["normal_clip_scored_activity_false_alerts"]
-        report = {
-            "schema_version": 1, "plan": plan,
-            "plan_sha256": hashlib.sha256(_canonical(plan)).hexdigest(),
-            "runtime_versions": versions, "cpu_metadata": cpu_metadata,
-            "materialized_media": [{"sample_id": sample.sample_id, "sha256": sample.media_sha256} for sample in samples],
-            "baseline": reports[0], "candidate": reports[1],
-            "delta_direction": "candidate_minus_baseline",
-            "aggregate_deltas": {
-                "observations_processed": sum(run.observations_processed for run in candidate.sample_runs)
-                - sum(run.observations_processed for run in baseline.sample_runs),
-                **{field: getattr(candidate.aggregate, field) - getattr(baseline.aggregate, field)
-                   for field in ("candidate_events", "matched_events", "missed_episodes")},
-            },
-            "sample_deltas": [{
-                "sample_id": left.sample_id,
-                "observations_processed": right.observations_processed - left.observations_processed,
-                **{field: getattr(right.evaluation, field) - getattr(left.evaluation, field)
-                   for field in ("candidate_events", "matched_events", "missed_episodes")},
-            } for left, right in zip(baseline.sample_runs, candidate.sample_runs)],
-            "normal_clip_scored_activity_false_alerts_delta": scored_delta,
-            "clinical_false_positive_delta": None,
-            "zero_candidates_is_success": False, "false_alert_gate_eligible": False,
-            "clinical_person_down_ground_truth": False, "new_heldout_evidence": False,
-            "commercial_accuracy_claim": False, "performance_claim": False, "production_promoted": False,
-            "coverage_identity_scope": "same immutable clips, decoder, frame counts and decoded duration; no decoded-frame digest",
-        }
+        report = _paired_report(plan, versions, cpu_metadata, samples, results)
     if directory.exists():
         raise RuntimeError("comparison temporary assets were not removed")
     report["temporary_assets_removed"] = True

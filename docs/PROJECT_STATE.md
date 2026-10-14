@@ -1,5 +1,77 @@
 # Project state — 2026-09-24
 
+## October 14 accuracy repair and guarded donor recovery
+
+PR #143 merged at `709dc5d5376d8fd0d27138dc9ff62b5adb15528d` after
+exact-head run #351 and main #352 passed. Its paired native comparison kept
+all thresholds fixed: retail-0013 versus optional 0200 produced 4 versus 50
+observations on the 200-frame fall clip, and 9 versus 12 on the 149-frame ADL
+clip. Both arms produced zero candidate events, zero activity matches and one
+missed falling interval. More detector admissions did not establish recovery
+of the falling event. Actual decoded spans were 6,672 and 4,960 ms; the ADL
+clip's 960 ms unannotated tail leaves annotated-negative counts/rates and
+clinical false-positive rates unqualified. PR #144's separate PPM allocation
+hardening merged at `b4d1c97f3abb8c4ba6abf592fba9be9945755aa4`; exact-head
+#353 and automatic main #354 passed. It was memory safety work, not accuracy.
+
+A generated composition of the real reusable detector/pose/tracker/temporal
+pipeline demonstrated an accuracy defect in both detector profiles. Thirteen
+250 ms frames with confident down poses produce no candidate when one detector
+score is 0.60: the admitted low-confidence observation breaks the 0.70 temporal
+run. Lowering only that score to 0.49 filtered the observation, retained its IoU
+handle across the absent frame, and incorrectly produced a 0.90 candidate at
+3,000 ms despite `max_unknown_gap_ms=0`. Known absence now reaches the existing
+unknown-evidence policy before the frame's actual observations. Missing markers
+never create tracks, extend observed lifetime or count as observations. A
+bounded frame buffer preserves per-person isolation; uninterrupted positives
+and explicitly configured short unknown bridging remain supported. Empty
+frames advance expiration, avoiding expired-handle ghosts at track capacity.
+This is a demonstrated false-acceptance repair, not a real-video accuracy rate.
+
+The existing reviewed 0200 detector now has an opt-in guarded orientation path.
+Primary detections take precedence. Only a primary miss immediately after one
+admitted person may try +/-90-degree views of the same detector, with unchanged
+0.50 detection confidence and existing IoU/temporal gap limits. At most three
+detector passes yield at most one spatially linked fallback box; original-frame
+cropped pose and the corrected integer coordinate mapping stay common. Fresh
+per-clip recovery state is isolated from a reused warm backend, and resets on
+missing/multiple people, frame/time/dimension gaps or exceptions. The default
+remains off; retail plus recovery rejects before constructing a runtime. No
+threshold was loosened and no additional model/framework was introduced.
+
+Dataset provenance is corrected independently of the software notice. Primary
+author Zenodo record `13354453`, DOI `10.5281/zenodo.13354453`, identifies the
+v2.1 archive as CC-BY-4.0 (2024-08-21; Ekram Alam), with the GitHub v2.1 tag
+resolving exactly to the pinned `5abac7693229900cf80f722e878fbb119211fc1c`.
+The data authorization reference and credit now bind that license and version;
+the repository's separate MIT software copyright/notice is retained. The
+selected clips are unchanged; subset/manifest activity mapping is disclosed.
+These engineering provenance facts do not authorize a commercial release.
+
+The narrow `evidence/person-down-accuracy-*` lane prepares only that same
+retrospective S4 pair (7,996,782 bytes) and the reviewed four 0200/pose artifacts
+(12,304,842 bytes), once under hosted Linux RUNNER_TEMP. Publisher annotation
+identity is checked before acquisition. Exactly one orientation-OFF suite and
+one ON suite share the same host, decoder, 1,000-frame ceiling, confidence,
+posture, IoU, temporal and scoring settings; both include the missing-evidence
+repair. Reports retain all fall misses and normal candidates, bind immutable
+source/model/config/runtime/hardware identities, require equal decoded spans
+and frame counts, and keep clinical/gate/promotion claims false. Both other
+person-down lanes and the generic seven-pipeline lane are excluded. Assets are
+deleted on success/failure; no media/model/frame artifact is retained/uploaded.
+
+Local verification passed 795 full tests with three existing optional OpenCV
+skips, plus guardrails, deterministic replay, compilation and diff checks. The
+15 new missing-evidence tests, 13 guarded-recovery tests and 11 generated-byte
+OFF/ON wrapper tests pass without skips. A separate read-only review found no
+blocker in the bounded acquisition, unchanged settings, cleanup or metric
+preservation. No model/media/runtime was acquired locally.
+
+Native OFF/ON results and exact-head Linux/Windows checks are pending when this
+implementation snapshot is authored. Generated checks cannot establish a
+real-video gain. This new work has no CI requests yet; completed/parked PR #140,
+#142, #143 and #144 counters are preserved and are not reset by this work.
+
 ## October 14 LPR crop preallocation budget
 
 The PPM encoder previously iterated/allocated plate crop bytes before its
@@ -7,7 +79,7 @@ downstream OCR adapter enforced a 16 MiB limit. A 4096x4096 generated image
 reproduces pixel access before rejection. The encoder now preflights the exact
 PPM header and RGB pixel budget before reading pixels, leaving small crops
 byte-identical. Four isolated synthetic regressions pass (including the exact
-boundary); exact-head full CI remains pending. No model, media, cutoff,
+boundary); exact-head run #353 and main #354 subsequently passed. No model, media, cutoff,
 dependency, rights, or release policy changes. This is memory-safety hardening,
 not a plate-reading accuracy improvement.
 

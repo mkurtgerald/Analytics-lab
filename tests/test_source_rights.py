@@ -31,10 +31,17 @@ class SourceRightsTests(unittest.TestCase):
             purpose="evaluation",
             require_real_world=True,
         )
-        self.assertEqual(source.version, "git:5abac7693229900cf80f722e878fbb119211fc1c")
+        self.assertEqual(source.version, "zenodo:13354453:v2.1:2024-08-21;git:5abac7693229900cf80f722e878fbb119211fc1c")
         self.assertEqual(source.media_origin, "real_world")
-        self.assertEqual(source.license_id, "MIT")
+        self.assertEqual(source.license_id, "CC-BY-4.0")
+        self.assertEqual(source.source_url, "https://zenodo.org/records/13354453")
+        self.assertEqual(source.license_url, "https://creativecommons.org/licenses/by/4.0/")
+        self.assertIn("doi:10.5281/zenodo.13354453", source.provenance_ref)
+        self.assertIn("tag:v2.1", source.provenance_ref)
+        self.assertIn("5abac7693229900cf80f722e878fbb119211fc1c", source.provenance_ref)
         self.assertTrue(source.commercial_training)
+        self.assertTrue(source.commercial_evaluation)
+        self.assertTrue(source.attribution_required)
         self.assertTrue(source.exact_asset_identity_required)
 
     def test_unknown_source_and_purpose_fail_closed(self):

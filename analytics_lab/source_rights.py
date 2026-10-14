@@ -85,15 +85,22 @@ FIGSHARE_FALL_2017 = DataSourceRights(
     attribution_required=True,
 )
 
+# The publisher's Zenodo v2.1 release declares CC BY 4.0 and links the GitHub
+# v2.1 tag, which resolves to this exact media commit. The repository's MIT
+# software notice is separate from the published dataset/release license.
 GMDCSA24 = DataSourceRights(
     source_id="gmdcsa24-fall-video",
     title="GMDCSA-24: A Dataset for Human Fall Detection in Videos",
-    version="git:5abac7693229900cf80f722e878fbb119211fc1c",
+    version="zenodo:13354453:v2.1:2024-08-21;git:5abac7693229900cf80f722e878fbb119211fc1c",
     media_origin="real_world",
-    license_id="MIT",
-    source_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/tree/5abac7693229900cf80f722e878fbb119211fc1c",
-    license_url="https://github.com/ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos/blob/5abac7693229900cf80f722e878fbb119211fc1c/LICENSE",
-    provenance_ref="doi:10.5281/zenodo.13354453;paper:10.1016/j.dib.2024.110892",
+    license_id="CC-BY-4.0",
+    source_url="https://zenodo.org/records/13354453",
+    license_url="https://creativecommons.org/licenses/by/4.0/",
+    provenance_ref=(
+        "doi:10.5281/zenodo.13354453;tag:v2.1;"
+        "github:ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos@"
+        "5abac7693229900cf80f722e878fbb119211fc1c;paper:10.1016/j.dib.2024.110892"
+    ),
     commercial_training=True,
     commercial_evaluation=True,
     attribution_required=True,
