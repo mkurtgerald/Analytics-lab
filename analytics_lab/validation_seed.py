@@ -27,13 +27,13 @@ import urllib.request
 from urllib.parse import quote
 from typing import Any, Callable, BinaryIO
 
-from .artifacts import OPENVINO_OMZ_2023_FP16, verify_artifact_set
+from .artifacts import ArtifactSpec, OPENVINO_OMZ_2023_FP16, omz_artifacts_for_detector, verify_artifact_set
 from .source_rights import GMDCSA24, require_source
 
 _GMD_REPOSITORY = "ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos"
 _GMD_COMMIT = "5abac7693229900cf80f722e878fbb119211fc1c"
 _GMD_RAW = f"https://raw.githubusercontent.com/{_GMD_REPOSITORY}/{_GMD_COMMIT}/"
-_AUTHORIZATION_REF = "gmdcsa24:MIT:git:5abac7693229900cf80f722e878fbb119211fc1c:doi:10.5281/zenodo.13354453"
+_AUTHORIZATION_REF = "gmdcsa24:CC-BY-4.0:git:5abac7693229900cf80f722e878fbb119211fc1c:doi:10.5281/zenodo.13354453:v2.1"
 _MAX_ITEM_BYTES = 16 * 1024 * 1024
 _SHA1 = re.compile(r"[0-9a-f]{40}\Z")
 
@@ -328,13 +328,16 @@ def _download_media(
     return identities
 
 
-def _download_models(root: Path, *, opener: Callable[..., Any]) -> Path:
+def _download_models(
+    root: Path, *, opener: Callable[..., Any], specs: tuple[ArtifactSpec, ...] | None = None,
+) -> Path:
+    selected = OPENVINO_OMZ_2023_FP16 if specs is None else specs
     artifact_root = root / "artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
-    for spec in OPENVINO_OMZ_2023_FP16:
+    for spec in selected:
         target = _target(artifact_root, spec.relative_path)
         _download_exact(spec.source_url, target, expected_size=spec.size_bytes, opener=opener)
-    verify_artifact_set(artifact_root, OPENVINO_OMZ_2023_FP16)
+    verify_artifact_set(artifact_root, selected)
     return artifact_root
 
 
@@ -385,24 +388,37 @@ def _attribution_text(specs: tuple[SeedMediaSpec, ...] | None = None) -> str:
     return (
         f"{source.title}\n"
         f"Version: {source.version}\n"
-        f"License: {source.license_id}\n"
+        "Dataset creator: Ekram Alam (Gour Mahavidyalaya), as credited by Zenodo v2.1.\n"
+        "Published title: ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos: 2.1\n"
+        f"Dataset source: {source.source_url}\n"
+        f"Dataset license: {source.license_id} ({source.license_url})\n"
         f"Provenance: {source.provenance_ref}\n"
         f"Selected clips: {selected}\n"
+        "Changes: Analytics Lab selected the listed evaluation clips and generated checksum-bound manifests "
+        "with publisher activity intervals expressed in milliseconds; media bytes are unchanged.\n"
+        "Repository software license: MIT (separate from the dataset license).\n"
+        "Copyright (c) 2024 Ekram Alam\n"
+        f"Software notice: https://github.com/{_GMD_REPOSITORY}/blob/{_GMD_COMMIT}/LICENSE\n"
         "This local evidence subset is for bounded evaluation; media is not committed to Analytics-lab.\n"
     )
 
 
 def prepare_seed(
     output_dir: str | Path, *, subset: str = "active",
+    detector_model: str = "person-detection-retail-0013",
     opener: Callable[..., Any] = urllib.request.urlopen,
 ) -> Path:
-    """Prepare only the active seed or the pinned historical Subject-4 regression."""
+    """Prepare a pinned two-clip subset and exactly one reviewed detector/pose set."""
     if type(subset) is not str or subset not in ("active", "subject4-regression"):
         raise ValueError("unsupported validation seed subset")
+    selected_models = omz_artifacts_for_detector(detector_model)
     selected = GMDCSA24_SEED if subset == "active" else GMDCSA24_HELDOUT_S4
     root = _ensure_root(Path(output_dir))
     identities = _download_media(root, opener=opener, specs=selected)
-    _download_models(root, opener=opener)
+    if detector_model == "person-detection-retail-0013":
+        _download_models(root, opener=opener)
+    else:
+        _download_models(root, opener=opener, specs=selected_models)
     document = _manifest(identities, selected)
     manifest = root / "validation-manifest.json"
     manifest.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")

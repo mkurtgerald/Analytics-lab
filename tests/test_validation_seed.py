@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from analytics_lab import validation_seed
+from analytics_lab.artifacts import OPENVINO_OMZ_2023_FP16, OPENVINO_OMZ_PERSON_0200_FP16
 from analytics_lab.validation_cli import load_manifest
 from analytics_lab.validation_seed import (
     GMDCSA24_ACCEPTED_SEED,
@@ -101,6 +102,10 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertEqual(document["samples"][0]["site_id"], document["samples"][1]["site_id"])
         self.assertNotEqual(document["samples"][0]["camera_id"], document["samples"][1]["camera_id"])
         self.assertTrue(all(sample["camera_id"].startswith("gmdcsa24-clip-") for sample in document["samples"]))
+        for sample in document["samples"]:
+            self.assertIn("gmdcsa24:CC-BY-4.0:", sample["authorization_ref"])
+            self.assertIn("zenodo.13354453", sample["authorization_ref"])
+            self.assertNotIn(":MIT:", sample["authorization_ref"])
 
     def test_attribution_tracks_exact_active_files(self):
         text = _attribution_text()
@@ -112,7 +117,15 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertNotIn("Subject 2/Fall/01.mp4", text)
         self.assertNotIn("Subject 1/Fall/05.mp4", text)
         self.assertIn("git:5abac7693229900cf80f722e878fbb119211fc1c", text)
-        self.assertIn("MIT", text)
+        self.assertIn("Dataset license: CC-BY-4.0", text)
+        self.assertIn("Dataset creator: Ekram Alam (Gour Mahavidyalaya)", text)
+        self.assertIn("Published title: ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos: 2.1", text)
+        self.assertIn("https://creativecommons.org/licenses/by/4.0/", text)
+        self.assertIn("https://zenodo.org/records/13354453", text)
+        self.assertIn("Changes:", text)
+        self.assertIn("Repository software license: MIT", text)
+        self.assertIn("Copyright (c) 2024 Ekram Alam", text)
+        self.assertIn("5abac7693229900cf80f722e878fbb119211fc1c/LICENSE", text)
 
     def test_subject4_regression_selection_binds_manifest_labels_budget_and_attribution(self):
         identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_HELDOUT_S4)}
@@ -139,7 +152,8 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertIn("Subject 4/Fall/03.mp4", attribution)
         self.assertIn("Subject 4/ADL/07.mp4", attribution)
         self.assertNotIn("Subject 2/Fall/13.mp4", attribution)
-        self.assertIn("MIT", attribution)
+        self.assertIn("Dataset license: CC-BY-4.0", attribution)
+        self.assertIn("Repository software license: MIT", attribution)
         self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_NIGHT)
 
     def test_prepare_default_still_routes_active_seed(self):
@@ -178,6 +192,54 @@ class ValidationSeedTests(unittest.TestCase):
                 self.assertEqual(download.call_args_list[index].kwargs, {"expected_size": spec.size_bytes, "opener": opener})
                 self.assertEqual(verify.call_args_list[index].args, (target, spec))
                 self.assertEqual(identities[spec.sample_id], ("a" if index == 0 else "b") * 64)
+
+    def test_subject4_0200_selection_passes_only_reviewed_detector_and_shared_pose_set(self):
+        identities = {item.sample_id: "a" * 64 for item in GMDCSA24_HELDOUT_S4}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(validation_seed, "_download_media", return_value=identities) as media, \
+                patch.object(validation_seed, "_download_models") as models:
+            opener = object()
+            manifest = prepare_seed(temp, subset="subject4-regression", detector_model="person-detection-0200", opener=opener)
+            media.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=GMDCSA24_HELDOUT_S4)
+            models.assert_called_once_with(Path(temp).resolve(), opener=opener, specs=OPENVINO_OMZ_PERSON_0200_FP16)
+            _, samples, config = load_manifest(manifest)
+            self.assertEqual(config.max_total_video_bytes, 7_996_782)
+            self.assertEqual([sample.sample_id for sample in samples], [spec.sample_id for spec in GMDCSA24_HELDOUT_S4])
+            self.assertEqual((samples[0].labels[0].start_timestamp_ms, samples[0].labels[0].end_timestamp_ms), (1700, 6000))
+
+    def test_model_acquisition_uses_exact_selected_four_with_default_preserved(self):
+        for selected in (None, OPENVINO_OMZ_PERSON_0200_FP16):
+            with self.subTest(selected=selected), tempfile.TemporaryDirectory() as temp, \
+                    patch.object(validation_seed, "_download_exact") as download, \
+                    patch.object(validation_seed, "verify_artifact_set") as verify:
+                opener = object()
+                root = Path(temp).resolve()
+                if selected is None:
+                    artifact_root = validation_seed._download_models(root, opener=opener)
+                    expected = OPENVINO_OMZ_2023_FP16
+                else:
+                    artifact_root = validation_seed._download_models(root, opener=opener, specs=selected)
+                    expected = OPENVINO_OMZ_PERSON_0200_FP16
+                self.assertEqual(download.call_count, 4)
+                self.assertEqual(artifact_root, root / "artifacts")
+                for call, spec in zip(download.call_args_list, expected):
+                    self.assertEqual(call.args, (spec.source_url, artifact_root / spec.relative_path))
+                    self.assertEqual(call.kwargs, {"expected_size": spec.size_bytes, "opener": opener})
+                verify.assert_called_once_with(artifact_root, expected)
+                if selected is not None:
+                    self.assertFalse(any("retail-0013" in call.args[0] for call in download.call_args_list))
+                    self.assertEqual(expected[2:], OPENVINO_OMZ_2023_FP16[2:])
+
+    def test_unknown_detector_rejected_before_directory_or_acquisition(self):
+        with patch.object(validation_seed, "_ensure_root") as root, \
+                patch.object(validation_seed, "_download_media") as media, \
+                patch.object(validation_seed, "_download_models") as models:
+            for detector in ("unknown", "person-detection-0202", "person-detection-0200/../other", "", None, False, []):
+                with self.subTest(detector=detector), self.assertRaises(ValueError):
+                    prepare_seed("unused", detector_model=detector)
+            root.assert_not_called()
+            media.assert_not_called()
+            models.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -288,6 +288,13 @@ class _OpenVINORuntime:
             raise RuntimeError("detector output does not contain seven-value rows")
         return output.reshape((-1, 7))
 
+    def detect_rotated_rows(self, image: Any, quarter_turn: int) -> Iterable[Sequence[float]]:
+        """Use the same detector on one bounded temporary quarter-turn view."""
+        if type(quarter_turn) is not int or quarter_turn not in (-1, 1):
+            raise ValueError("quarter_turn must be -1 or 1")
+        rotated = self._np.ascontiguousarray(self._np.rot90(image, k=quarter_turn))
+        return self.detect_rows(rotated)
+
     def pose_heatmaps(self, image: Any, bbox: BBox) -> Any:
         width, height = _image_size(image)
         left, top, right, bottom = _pose_crop_bounds(width, height, bbox)
@@ -335,12 +342,37 @@ class OpenVINOOMZPoseBackend:
             raise ValueError("frame_index must be a nonnegative integer")
         if type(timestamp_ms) is not int or timestamp_ms < 0:
             raise ValueError("timestamp_ms must be a nonnegative integer")
+        return self.poses_from_detections(image, self.detect_people(image))
+
+    def detect_people(self, image: Any, *, quarter_turn: int = 0) -> tuple[PersonDetection, ...]:
+        """Return person boxes in the requested view's pixel coordinates; retain no history."""
+        if type(quarter_turn) is not int or quarter_turn not in (-1, 0, 1):
+            raise ValueError("quarter_turn must be -1, 0 or 1")
         width, height = _image_size(image)
-        detections = parse_person_detections(
-            self._runtime.detect_rows(image), image_width=width, image_height=height,
+        if quarter_turn:
+            if self.config.detector_model != "person-detection-0200":
+                raise ValueError("orientation recovery requires person-detection-0200")
+            rotated_reader = getattr(self._runtime, "detect_rotated_rows", None)
+            if not callable(rotated_reader):
+                raise RuntimeError("reviewed runtime does not support rotated detection")
+            rows = rotated_reader(image, quarter_turn)
+            width, height = height, width
+        else:
+            rows = self._runtime.detect_rows(image)
+        return parse_person_detections(
+            rows, image_width=width, image_height=height,
             threshold=self.config.detection_threshold, max_people=self.config.max_people,
             person_label=1 if self.config.detector_model == "person-detection-retail-0013" else 0,
         )
+
+    def poses_from_detections(
+        self, image: Any, detections: tuple[PersonDetection, ...],
+    ) -> tuple[PoseCandidate, ...]:
+        """Infer original-frame crops for a bounded set of admitted source boxes."""
+        if (not isinstance(detections, tuple) or len(detections) > self.config.max_people
+                or any(not isinstance(item, PersonDetection) for item in detections)):
+            raise ValueError("detections must be a bounded tuple of PersonDetection values")
+        width, height = _image_size(image)
         return tuple(
             pose_candidate_from_heatmaps(
                 self._runtime.pose_heatmaps(image, detection.bbox), detection,

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import math
 import re
+from typing import Iterable
 from uuid import NAMESPACE_URL, uuid5
 
 
@@ -79,12 +80,19 @@ class Config:
 @dataclass
 class _Track:
     last_timestamp_ms: int
+    last_missing_timestamp_ms: int | None = None
     start_timestamp_ms: int | None = None
     min_confidence: float = 1.0
     count: int = 0
     emitted: bool = False
     last_down_timestamp_ms: int | None = None
     unknown_since_down: bool = False
+
+    @property
+    def last_evidence_timestamp_ms(self) -> int:
+        if self.last_missing_timestamp_ms is None:
+            return self.last_timestamp_ms
+        return max(self.last_timestamp_ms, self.last_missing_timestamp_ms)
 
     def reset_run(self) -> None:
         self.start_timestamp_ms = None
@@ -125,6 +133,72 @@ class PersonDownEngine:
     def active_tracks(self) -> int:
         return len(self._tracks)
 
+    @property
+    def last_observed_track_ids(self) -> tuple[str, ...]:
+        """Immutable IDs actually observed at the latest accepted source time."""
+        return tuple(sorted(track_id for track_id, track in self._tracks.items()
+                            if track.last_timestamp_ms == self._watermark))
+
+    def _expire_tracks(self, timestamp_ms: int) -> None:
+        expired = [key for key, track in self._tracks.items()
+                   if timestamp_ms - track.last_timestamp_ms > self.config.track_ttl_ms]
+        for key in expired:
+            del self._tracks[key]
+
+    def _apply_unknown(self, track: _Track, timestamp_ms: int) -> None:
+        if (
+            self.config.max_unknown_gap_ms > 0
+            and track.start_timestamp_ms is not None
+            and track.last_down_timestamp_ms is not None
+            and timestamp_ms - track.last_down_timestamp_ms <= self.config.max_unknown_gap_ms
+        ):
+            track.unknown_since_down = True
+        else:
+            track.reset_run()
+
+    def mark_missing(self, timestamp_ms: int, track_ids: Iterable[str]) -> None:
+        """Apply unknown evidence to known tracks absent from a decoded frame.
+
+        Call before the frame's actual observations. Missing IDs never create
+        tracks or extend their last-observed lifetime. Empty calls still advance
+        the source clock and expire stale state. Input IDs must be unique and
+        are bounded by the configured track capacity before any state changes.
+        """
+        _integer(timestamp_ms, "timestamp_ms")
+        if timestamp_ms > _MAX_TIMESTAMP_MS:
+            raise ValueError("timestamp_ms exceeds the supported UTC date range")
+        if timestamp_ms < self._watermark:
+            raise ValueError("out-of-order source timestamp")
+        if isinstance(track_ids, (str, bytes)):
+            raise ValueError("track_ids must be an iterable of identifiers")
+        try:
+            iterator = iter(track_ids)
+        except TypeError as exc:
+            raise ValueError("track_ids must be an iterable of identifiers") from exc
+        ids: list[str] = []
+        seen: set[str] = set()
+        for track_id in iterator:
+            if len(ids) >= self.config.max_tracks:
+                raise RuntimeError("missing track limit exceeded; no evidence accepted")
+            _identifier(track_id, "track_id")
+            if track_id in seen:
+                raise ValueError("duplicate missing track identifier")
+            seen.add(track_id)
+            ids.append(track_id)
+        for track_id in ids:
+            track = self._tracks.get(track_id)
+            if (track is not None
+                    and timestamp_ms - track.last_timestamp_ms <= self.config.track_ttl_ms
+                    and timestamp_ms <= track.last_evidence_timestamp_ms):
+                raise ValueError("duplicate or out-of-order track timestamp")
+        self._expire_tracks(timestamp_ms)
+        self._watermark = timestamp_ms
+        for track_id in ids:
+            track = self._tracks.get(track_id)
+            if track is not None:
+                track.last_missing_timestamp_ms = timestamp_ms
+                self._apply_unknown(track, timestamp_ms)
+
     def observe(self, observation: Observation) -> list[dict]:
         if not isinstance(observation, Observation):
             raise ValueError("observation must be an Observation")
@@ -132,14 +206,11 @@ class PersonDownEngine:
         if t < self._watermark:
             raise ValueError("out-of-order source timestamp")
         track = self._tracks.get(observation.track_id)
-        if track is not None and t <= track.last_timestamp_ms:
+        if track is not None and t <= track.last_evidence_timestamp_ms:
             raise ValueError("duplicate or out-of-order track timestamp")
 
         # Expiration breaks continuity; no recovery or safety inference is made.
-        expired = [key for key, item in self._tracks.items()
-                   if t - item.last_timestamp_ms > self.config.track_ttl_ms]
-        for key in expired:
-            del self._tracks[key]
+        self._expire_tracks(t)
         track = self._tracks.get(observation.track_id)
         if track is None:
             if len(self._tracks) >= self.config.max_tracks:
@@ -151,17 +222,10 @@ class PersonDownEngine:
 
         self._watermark = t
         track.last_timestamp_ms = t
+        track.last_missing_timestamp_ms = None
 
         if observation.posture == "unknown":
-            if (
-                self.config.max_unknown_gap_ms > 0
-                and track.start_timestamp_ms is not None
-                and track.last_down_timestamp_ms is not None
-                and t - track.last_down_timestamp_ms <= self.config.max_unknown_gap_ms
-            ):
-                track.unknown_since_down = True
-                return []
-            track.reset_run()
+            self._apply_unknown(track, t)
             return []
 
         if observation.posture != "down" or observation.confidence < self.config.min_confidence:
