@@ -68,6 +68,32 @@ class Tests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "not eligible"):
                     ValidationSampleSpec(**dict(base, **{field: value}))
 
+    def test_revoked_source_is_rechecked_before_any_preflight_media_access(self):
+        base = dict(
+            sample_id="fixture", site_id="lab", camera_id="cam",
+            authorization_ref="rights:test", video_path=self.a,
+            media_sha256=hashlib.sha256(self.a.read_bytes()).hexdigest(),
+            start_timestamp_ms=0, end_timestamp_ms=1000,
+        )
+        permitted = self.spec(sample="allowed")
+        for field, value in (
+            ("sample_id", "GMDCSA-24-s2"),
+            ("authorization_ref", "10.1016/j.dib.2024.110892"),
+            ("site_id", "zenodo_13354453"),
+            ("video_path", r"C:\\archive\\gmdcsa_24\\fall.mp4"),
+        ):
+            with self.subTest(field=field):
+                # Simulate a spec admitted before rights were placed on hold.
+                with mock.patch("analytics_lab.validation.require_source") as earlier_authorization:
+                    saved = ValidationSampleSpec(**dict(base, **{field: value}))
+                earlier_authorization.assert_called_once()
+                with mock.patch.object(Path, "is_symlink", side_effect=AssertionError("media accessed")) as accessed:
+                    with self.assertRaisesRegex(ValueError, "not eligible"):
+                        run_validation_suite(
+                            [permitted, saved], artifact_root="/models", runner=lambda *a, **k: None,
+                        )
+                    accessed.assert_not_called()
+
     def test_runs_and_binds_identity_metrics_and_runtime(self):
         calls = []
         results = [

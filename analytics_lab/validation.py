@@ -47,6 +47,15 @@ _GMDCSA24_PROVENANCE = re.compile(
 )
 
 
+def _require_known_source_rights(
+    sample_id: str, site_id: str, camera_id: str, authorization_ref: str, video_path: str | Path,
+) -> None:
+    """Recheck known held-source provenance at admission and before media I/O."""
+    claims = (sample_id, site_id, camera_id, authorization_ref, str(video_path))
+    if any(_GMDCSA24_PROVENANCE.search(value) for value in claims):
+        require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
+
+
 def _bounded_text(value: str, name: str, *, maximum: int = 128) -> None:
     if not isinstance(value, str) or not value or len(value) > maximum:
         raise ValueError(f"{name} must be a bounded nonempty string")
@@ -120,9 +129,7 @@ class ValidationSampleSpec:
         raw = str(self.video_path)
         if not raw or "://" in raw or raw.lower().startswith(("http:", "https:", "rtsp:", "rtsps:")) or raw.startswith(("/dev/", "\\\\.\\")):
             raise ValueError("video_path must identify an ordinary local file")
-        claims = (self.sample_id, self.site_id, self.camera_id, self.authorization_ref, raw)
-        if any(_GMDCSA24_PROVENANCE.search(value) for value in claims):
-            require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
+        _require_known_source_rights(self.sample_id, self.site_id, self.camera_id, self.authorization_ref, raw)
         object.__setattr__(self, "video_path", Path(self.video_path))
         if not isinstance(self.media_sha256, str) or not _SHA256.fullmatch(self.media_sha256):
             raise ValueError("media_sha256 must be lowercase 64-character hex")
@@ -199,6 +206,13 @@ def _preflight_samples(samples: list[ValidationSampleSpec], cfg: ValidationSuite
     ids = [item.sample_id for item in samples]
     if len(set(ids)) != len(ids):
         raise ValueError("sample_id values must be unique")
+
+    # Recheck all known held-source claims before filesystem access to any sample.
+    # A previously constructed manifest must not retain revoked eligibility.
+    for item in samples:
+        _require_known_source_rights(
+            item.sample_id, item.site_id, item.camera_id, item.authorization_ref, item.video_path,
+        )
 
     total_bytes = 0
     by_camera: dict[tuple[str, str], list[ValidationSampleSpec]] = {}
