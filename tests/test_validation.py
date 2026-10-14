@@ -41,6 +41,59 @@ class Tests(unittest.TestCase):
         digest = hashlib.sha256(media.read_bytes()).hexdigest() if media.exists() and not media.is_symlink() else "0" * 64
         return ValidationSampleSpec(sample, site, camera, "rights:test", media, digest, start, end, labels)
 
+
+    def test_known_gmdcsa24_saved_manifest_claims_remain_denied(self):
+        base = dict(
+            sample_id="fixture", site_id="lab", camera_id="camera",
+            authorization_ref="rights:test", video_path=self.a,
+            media_sha256=hashlib.sha256(self.a.read_bytes()).hexdigest(),
+            start_timestamp_ms=0, end_timestamp_ms=1000,
+        )
+        self.assertEqual(ValidationSampleSpec(**base).sample_id, "fixture")
+        for field, value in (
+            ("sample_id", "gmdcsa24-s2-fall-13"),
+            ("sample_id", "lab-gmdcsa_24-13"),
+            ("site_id", "GMDCSA-24-home"),
+            ("camera_id", "gmdcsa_24_fall"),
+            ("authorization_ref", "doi:10.1016/j.dib.2024.110892"),
+            ("authorization_ref", "zenodo:13354453"),
+            ("video_path", self.root / "GMDCSA24" / "fall.mp4"),
+            ("video_path", r"C:\archive\gmdcsa24\fall.mp4"),
+            ("video_path", r"C:\archive/more\GMDCSA24-S2-Fall-13.mp4"),
+            ("video_path", "gmdcsa-24-s2-fall-13.mp4"),
+            ("video_path", "archive-gmdcsa_24.avi"),
+            ("video_path", "folder/gmdcsa/24/media.mp4"),
+        ):
+            with self.subTest(field=field, value=str(value)):
+                with self.assertRaisesRegex(ValueError, "not eligible"):
+                    ValidationSampleSpec(**dict(base, **{field: value}))
+
+    def test_revoked_source_is_rechecked_before_any_preflight_media_access(self):
+        base = dict(
+            sample_id="fixture", site_id="lab", camera_id="cam",
+            authorization_ref="rights:test", video_path=self.a,
+            media_sha256=hashlib.sha256(self.a.read_bytes()).hexdigest(),
+            start_timestamp_ms=0, end_timestamp_ms=1000,
+        )
+        permitted = self.spec(sample="allowed")
+        for field, value in (
+            ("sample_id", "GMDCSA-24-s2"),
+            ("authorization_ref", "10.1016/j.dib.2024.110892"),
+            ("site_id", "zenodo_13354453"),
+            ("video_path", r"C:\\archive\\gmdcsa_24\\fall.mp4"),
+        ):
+            with self.subTest(field=field):
+                # Simulate a spec admitted before rights were placed on hold.
+                with mock.patch("analytics_lab.validation.require_source") as earlier_authorization:
+                    saved = ValidationSampleSpec(**dict(base, **{field: value}))
+                earlier_authorization.assert_called_once()
+                with mock.patch.object(Path, "is_symlink", side_effect=AssertionError("media accessed")) as accessed:
+                    with self.assertRaisesRegex(ValueError, "not eligible"):
+                        run_validation_suite(
+                            [permitted, saved], artifact_root="/models", runner=lambda *a, **k: None,
+                        )
+                    accessed.assert_not_called()
+
     def test_runs_and_binds_identity_metrics_and_runtime(self):
         calls = []
         results = [

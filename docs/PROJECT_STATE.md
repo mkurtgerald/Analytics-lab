@@ -1,3 +1,20 @@
+## October 14 GMDCSA24 commercial-media rights hold
+
+The published Zenodo v2.1 dataset license is CC BY 4.0; the repository's
+MIT software notice remains separate. Publication does not establish
+independently verified participant-media/likeness permissions for commercial
+training or evaluation. The GMDCSA24 registry now denies both operations.
+Seed preparation and direct media acquisition fail before filesystem/network
+activity, while known saved-manifest GMDCSA24 claims are checked at admission
+and immediately before reading validation samples. Deliberately stripped or
+falsified provenance cannot be authenticated by matching identifiers.
+
+Generated-byte tests use explicit test-only rights stubs to preserve checks of
+parsing, bounded resources, comparison and cleanup without authorizing media.
+Neither the prior 0/1 fall-episode match result nor synthetic regressions
+establishes commercial accuracy. No release, model-weight admission or dataset
+download is approved. Hosted CI qualification is pending.
+
 # Project state — 2026-09-24
 
 ## October 14 accuracy repair and guarded donor recovery

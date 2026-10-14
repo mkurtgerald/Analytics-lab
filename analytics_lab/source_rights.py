@@ -88,6 +88,9 @@ FIGSHARE_FALL_2017 = DataSourceRights(
 # The publisher's Zenodo v2.1 release declares CC BY 4.0 and links the GitHub
 # v2.1 tag, which resolves to this exact media commit. The repository's MIT
 # software notice is separate from the published dataset/release license.
+# The publisher's CC-BY-4.0 dataset license is recorded accurately, but it
+# does not independently establish participant-media/likeness permissions for
+# commercial training or evaluation. Hold both uses until rights are verified.
 GMDCSA24 = DataSourceRights(
     source_id="gmdcsa24-fall-video",
     title="GMDCSA-24: A Dataset for Human Fall Detection in Videos",
@@ -101,8 +104,8 @@ GMDCSA24 = DataSourceRights(
         "github:ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos@"
         "5abac7693229900cf80f722e878fbb119211fc1c;paper:10.1016/j.dib.2024.110892"
     ),
-    commercial_training=True,
-    commercial_evaluation=True,
+    commercial_training=False,
+    commercial_evaluation=False,
     attribution_required=True,
 )
 

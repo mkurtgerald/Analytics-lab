@@ -25,24 +25,23 @@ class SourceRightsTests(unittest.TestCase):
         self.assertEqual(source.license_id, "CC-BY-4.0")
         self.assertTrue(source.exact_asset_identity_required)
 
-    def test_gmdcsa24_is_pinned_real_world_commercial_source(self):
-        source = require_source(
-            GMDCSA24.source_id,
-            purpose="evaluation",
-            require_real_world=True,
-        )
+    def test_gmdcsa24_preserves_cc_by_provenance_but_denies_commercial_media(self):
+        source = GMDCSA24
         self.assertEqual(source.version, "zenodo:13354453:v2.1:2024-08-21;git:5abac7693229900cf80f722e878fbb119211fc1c")
         self.assertEqual(source.media_origin, "real_world")
         self.assertEqual(source.license_id, "CC-BY-4.0")
         self.assertEqual(source.source_url, "https://zenodo.org/records/13354453")
         self.assertEqual(source.license_url, "https://creativecommons.org/licenses/by/4.0/")
         self.assertIn("doi:10.5281/zenodo.13354453", source.provenance_ref)
-        self.assertIn("tag:v2.1", source.provenance_ref)
-        self.assertIn("5abac7693229900cf80f722e878fbb119211fc1c", source.provenance_ref)
-        self.assertTrue(source.commercial_training)
-        self.assertTrue(source.commercial_evaluation)
         self.assertTrue(source.attribution_required)
         self.assertTrue(source.exact_asset_identity_required)
+        self.assertFalse(source.commercial_training)
+        self.assertFalse(source.commercial_evaluation)
+        for purpose in ("training", "evaluation"):
+            with self.subTest(purpose=purpose):
+                self.assertFalse(source.permits(purpose))
+                with self.assertRaisesRegex(ValueError, "not eligible"):
+                    require_source(source.source_id, purpose=purpose, require_real_world=True)
 
     def test_unknown_source_and_purpose_fail_closed(self):
         with self.assertRaises(ValueError):
