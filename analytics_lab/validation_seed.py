@@ -317,6 +317,8 @@ def _download_exact(
 def _download_media(
     root: Path, *, opener: Callable[..., Any], specs: tuple[SeedMediaSpec, ...] | None = None,
 ) -> dict[str, str]:
+    # Deny held participant media before directories or network I/O, including direct helper calls.
+    require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
     selected = GMDCSA24_SEED if specs is None else specs
     media_root = root / "media" / "gmdcsa24"
     media_root.mkdir(parents=True, exist_ok=True)
@@ -400,6 +402,8 @@ def prepare_seed(
     if type(subset) is not str or subset not in ("active", "subject4-regression"):
         raise ValueError("unsupported validation seed subset")
     selected = GMDCSA24_SEED if subset == "active" else GMDCSA24_HELDOUT_S4
+    # A revoked source must not create an output directory or acquire any assets.
+    require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
     root = _ensure_root(Path(output_dir))
     identities = _download_media(root, opener=opener, specs=selected)
     _download_models(root, opener=opener)
