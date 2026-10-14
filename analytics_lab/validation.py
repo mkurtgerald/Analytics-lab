@@ -32,12 +32,19 @@ from .openvino_pipeline import (
     OpenVINOOMZRunResult,
     run_local_video_openvino_omz,
 )
+from .source_rights import GMDCSA24, require_source
 
 _MAX_TIMESTAMP_MS = 253402300799999
 _MAX_SAMPLES = 256
 _MAX_REFERENCE_LENGTH = 256
 _DEVICE = re.compile(r"[A-Za-z0-9_.:-]{1,64}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+
+# Reject known saved-manifest claims from this held source before media access.
+# This does not authenticate an altered or deliberately stripped provenance claim.
+_GMDCSA24_PROVENANCE = re.compile(
+    r"(?i)(?:gmdcsa[\W_]*24|zenodo[\W_]*13354453|10\.1016/j\.dib\.2024\.110892)"
+)
 
 
 def _bounded_text(value: str, name: str, *, maximum: int = 128) -> None:
@@ -113,6 +120,9 @@ class ValidationSampleSpec:
         raw = str(self.video_path)
         if not raw or "://" in raw or raw.lower().startswith(("http:", "https:", "rtsp:", "rtsps:")) or raw.startswith(("/dev/", "\\\\.\\")):
             raise ValueError("video_path must identify an ordinary local file")
+        claims = (self.sample_id, self.site_id, self.camera_id, self.authorization_ref, raw)
+        if any(_GMDCSA24_PROVENANCE.search(value) for value in claims):
+            require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
         object.__setattr__(self, "video_path", Path(self.video_path))
         if not isinstance(self.media_sha256, str) or not _SHA256.fullmatch(self.media_sha256):
             raise ValueError("media_sha256 must be lowercase 64-character hex")
