@@ -1,3 +1,33 @@
+## October 14 Figshare direct-member media preflight
+
+The public member-fetch boundary now rechecks commercial-source eligibility and
+the exact reviewed rights record before any HTTP Range request. Generated-byte
+regressions cover revoked authorization and substituted registry identity.
+The registry now holds both commercial training and evaluation pending
+independent participant-media/likeness authorization; recorded CC BY 4.0
+license and immutable provenance remain unchanged. Default media admission
+now fails closed before byte acquisition, including direct member fetch.
+Generated fixture regressions use explicit test-only rights stubs to retain
+ZIP validation coverage without authorizing real participant media. No dataset
+or model acquisition, release, or accuracy claim is implied.
+
+## October 14 GMDCSA24 commercial-media rights hold
+
+The published Zenodo v2.1 dataset license is CC BY 4.0; the repository's
+MIT software notice remains separate. Publication does not establish
+independently verified participant-media/likeness permissions for commercial
+training or evaluation. The GMDCSA24 registry now denies both operations.
+Seed preparation and direct media acquisition fail before filesystem/network
+activity, while known saved-manifest GMDCSA24 claims are checked at admission
+and immediately before reading validation samples. Deliberately stripped or
+falsified provenance cannot be authenticated by matching identifiers.
+
+Generated-byte tests use explicit test-only rights stubs to preserve checks of
+parsing, bounded resources, comparison and cleanup without authorizing media.
+Neither the prior 0/1 fall-episode match result nor synthetic regressions
+establishes commercial accuracy. No release, model-weight admission or dataset
+download is approved. Hosted CI qualification is pending.
+
 # Project state — 2026-09-24
 
 ## October 14 accuracy repair and guarded donor recovery
@@ -704,3 +734,16 @@ python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
+
+## October 15 disjoint-person orientation/continuity guard
+
+The evidence-only person-down selector and rotated-detector fallback previously
+accepted `min_link_iou=0.0`. Two disjoint detections with zero intersection
+therefore satisfied `IoU >= min_link_iou` and could be incorrectly treated as
+one continuing person, contaminating duration-based event evidence. The policy
+now rejects zero-overlap continuity floors in both the shared selector and the
+orientation path. The existing default `min_link_iou=0.05`, detector confidence,
+posture and temporal thresholds remain unchanged. Synthetic regressions prove
+the zero-floor configuration is rejected and the ordinary nonlinked
+reacquisition remains supported. These tests are structural/behavioral only,
+not a real-video accuracy improvement; fall recall remains unqualified.

@@ -317,6 +317,7 @@ def _download_exact(
 def _download_media(
     root: Path, *, opener: Callable[..., Any], specs: tuple[SeedMediaSpec, ...] | None = None,
 ) -> dict[str, str]:
+    require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
     selected = GMDCSA24_SEED if specs is None else specs
     media_root = root / "media" / "gmdcsa24"
     media_root.mkdir(parents=True, exist_ok=True)
@@ -413,6 +414,7 @@ def prepare_seed(
         raise ValueError("unsupported validation seed subset")
     selected_models = omz_artifacts_for_detector(detector_model)
     selected = GMDCSA24_SEED if subset == "active" else GMDCSA24_HELDOUT_S4
+    require_source(GMDCSA24.source_id, purpose="evaluation", require_real_world=True)
     root = _ensure_root(Path(output_dir))
     identities = _download_media(root, opener=opener, specs=selected)
     if detector_model == "person-detection-retail-0013":

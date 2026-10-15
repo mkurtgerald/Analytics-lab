@@ -85,6 +85,7 @@ class ValidationSeedTests(unittest.TestCase):
             self.assertFalse(target.exists())
             self.assertFalse((Path(temp) / "x.bin.partial").exists())
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_manifest_has_one_positive_and_floor_transition_hard_negative(self):
         identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_SEED)}
         document = _manifest(identities)
@@ -107,6 +108,7 @@ class ValidationSeedTests(unittest.TestCase):
             self.assertIn("zenodo.13354453", sample["authorization_ref"])
             self.assertNotIn(":MIT:", sample["authorization_ref"])
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_attribution_tracks_exact_active_files(self):
         text = _attribution_text()
         self.assertIn("Subject 2/Fall/13.mp4", text)
@@ -127,6 +129,8 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertIn("Copyright (c) 2024 Ekram Alam", text)
         self.assertIn("5abac7693229900cf80f722e878fbb119211fc1c/LICENSE", text)
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
+    @patch("analytics_lab.validation.require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_subject4_regression_selection_binds_manifest_labels_budget_and_attribution(self):
         identities = {item.sample_id: ("a" if index == 0 else "b") * 64 for index, item in enumerate(GMDCSA24_HELDOUT_S4)}
         with tempfile.TemporaryDirectory() as temp, \
@@ -156,6 +160,7 @@ class ValidationSeedTests(unittest.TestCase):
         self.assertIn("Repository software license: MIT", attribution)
         self.assertEqual(GMDCSA24_SEED, GMDCSA24_ROBUSTNESS_S2_NIGHT)
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_prepare_default_still_routes_active_seed(self):
         identities = {item.sample_id: "a" * 64 for item in GMDCSA24_SEED}
         with tempfile.TemporaryDirectory() as temp, \
@@ -177,6 +182,7 @@ class ValidationSeedTests(unittest.TestCase):
             media.assert_not_called()
             models.assert_not_called()
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_subject4_download_routes_only_exact_reviewed_media_specs(self):
         with tempfile.TemporaryDirectory() as temp, \
                 patch.object(validation_seed, "_download_exact") as download, \
@@ -193,6 +199,8 @@ class ValidationSeedTests(unittest.TestCase):
                 self.assertEqual(verify.call_args_list[index].args, (target, spec))
                 self.assertEqual(identities[spec.sample_id], ("a" if index == 0 else "b") * 64)
 
+    @patch.object(validation_seed, "require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
+    @patch("analytics_lab.validation.require_source", new=lambda *_a, **_kw: validation_seed.GMDCSA24)
     def test_subject4_0200_selection_passes_only_reviewed_detector_and_shared_pose_set(self):
         identities = {item.sample_id: "a" * 64 for item in GMDCSA24_HELDOUT_S4}
         with tempfile.TemporaryDirectory() as temp, \
@@ -240,6 +248,31 @@ class ValidationSeedTests(unittest.TestCase):
             root.assert_not_called()
             media.assert_not_called()
             models.assert_not_called()
+
+
+    def test_held_gmdcsa24_preparation_has_no_directory_or_acquisition_side_effect(self):
+        with patch.object(validation_seed, "_ensure_root") as root, \
+                patch.object(validation_seed, "_download_media") as media, \
+                patch.object(validation_seed, "_download_models") as models:
+            for subset in ("active", "subject4-regression"):
+                with self.subTest(subset=subset), self.assertRaisesRegex(ValueError, "not eligible"):
+                    prepare_seed("uncreated-synthetic-fixture", subset=subset, opener=object())
+            root.assert_not_called()
+            media.assert_not_called()
+            models.assert_not_called()
+
+    def test_held_gmdcsa24_direct_media_manifest_and_attribution_denied(self):
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(validation_seed, "_download_exact") as network:
+            root = Path(temp).resolve()
+            with self.assertRaisesRegex(ValueError, "not eligible"):
+                _download_media(root, opener=object(), specs=GMDCSA24_HELDOUT_S4)
+            self.assertFalse((root / "media").exists())
+            network.assert_not_called()
+        with self.assertRaisesRegex(ValueError, "not eligible"):
+            _manifest({})
+        with self.assertRaisesRegex(ValueError, "not eligible"):
+            _attribution_text()
 
 
 if __name__ == "__main__":

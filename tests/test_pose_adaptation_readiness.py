@@ -1,6 +1,7 @@
 from dataclasses import replace
 import unittest
 
+from analytics_lab.source_rights import UE4_FALL
 from analytics_lab.pose_adaptation_readiness import (
     LIGHTWEIGHT_OPENPOSE_PLAN,
     PretrainedArtifact,
@@ -35,6 +36,7 @@ class PoseAdaptationReadinessTests(unittest.TestCase):
         self.assertIn("transitive_dependency_rights_unverified", blockers)
         self.assertIn("pretrained_weight_hash_missing", blockers)
         self.assertIn("pretrained_weight_license_unresolved", blockers)
+        self.assertIn("pretrained_training_data_provenance_unresolved", blockers)
         self.assertIn("training_split_empty", blockers)
         self.assertIn("validation_split_empty", blockers)
         self.assertIn("openvino_export_not_smoke_tested", blockers)
@@ -76,14 +78,147 @@ class PoseAdaptationReadinessTests(unittest.TestCase):
                 sha256="a" * 64,
                 license_spdx="Apache-2.0",
                 rights_status="cleared-commercial-and-redistribution",
+                training_data_provenance_ref="reviewed-test-fixture:synthetic-corpus",
+                training_data_rights_status="cleared-commercial-training",
             ),
             export_smoke_tested=True,
-            train_subjects=("ApprovedCorpus:train-subject-01",),
-            validation_subjects=("ApprovedCorpus:validation-subject-01",),
+            train_subjects=("ue4-fall-detection-dataset:train-subject-01",),
+            validation_subjects=("ue4-fall-detection-dataset:validation-subject-01",),
         )
         self.assertEqual(training_blockers(cleared), ())
         self.assertTrue(training_ready(cleared))
 
+
+
+    def test_known_prohibited_sources_fail_in_otherwise_cleared_splits(self):
+        baseline = LIGHTWEIGHT_OPENPOSE_PLAN
+        cleared = replace(
+            baseline,
+            dependency_rights_status="cleared-commercial-and-redistribution",
+            pretrained=replace(
+                baseline.pretrained,
+                sha256="a" * 64,
+                license_spdx="Apache-2.0",
+                rights_status="cleared-commercial-and-redistribution",
+                training_data_provenance_ref="reviewed-test-fixture:synthetic-corpus",
+                training_data_rights_status="cleared-commercial-training",
+            ),
+            export_smoke_tested=True,
+            train_subjects=("ue4-fall-detection-dataset:train-01",),
+            validation_subjects=("ue4-fall-detection-dataset:validation-01",),
+        )
+        self.assertEqual(training_blockers(cleared), ())
+        for subject in (
+            "GMDCSA24:Subject-99",
+            "Figshare:SBJ_99",
+            "  gMdCsA24 : Subject-99",
+            "gmdcsa24-fall-video:Subject-99",
+            "figshare-fall-2017-activities:SBJ_99",
+        ):
+            with self.subTest(subject=subject, purpose="training"):
+                restricted = replace(cleared, train_subjects=(subject,))
+                self.assertEqual(training_blockers(restricted), ("training_split_source_rights_unresolved",))
+                self.assertFalse(training_ready(restricted))
+            with self.subTest(subject=subject, purpose="evaluation"):
+                restricted = replace(cleared, validation_subjects=(subject,))
+                self.assertEqual(training_blockers(restricted), ("validation_split_source_rights_unresolved",))
+                self.assertFalse(training_ready(restricted))
+
+    def test_unregistered_or_malformed_source_fails_closed(self):
+        baseline = LIGHTWEIGHT_OPENPOSE_PLAN
+        cleared = replace(
+            baseline,
+            dependency_rights_status="cleared-commercial-and-redistribution",
+            pretrained=replace(
+                baseline.pretrained,
+                sha256="a" * 64,
+                license_spdx="Apache-2.0",
+                rights_status="cleared-commercial-and-redistribution",
+                training_data_provenance_ref="reviewed-test-fixture:synthetic-corpus",
+                training_data_rights_status="cleared-commercial-training",
+            ),
+            export_smoke_tested=True,
+            train_subjects=(f"{UE4_FALL.source_id}:train-01",),
+            validation_subjects=(f"{UE4_FALL.source_id}:validation-01",),
+        )
+        self.assertTrue(training_ready(cleared))
+        for subject in (
+            "UnreviewedCorpus:person-01",
+            "ApprovedCorpus:person-01",
+            "person-01",
+            ":person-01",
+            "ue4-fall-detection-dataset:",
+            "ue4-fall-detection-dataset:person:extra",
+            "ue4-fall-detection-dataset:" + "x" * 129,
+            r"ue4-fall-detection-dataset:person\\nother",
+            None,
+        ):
+            with self.subTest(subject=subject, purpose="training"):
+                unreviewed = replace(cleared, train_subjects=(subject,))
+                self.assertEqual(
+                    training_blockers(unreviewed),
+                    ("training_split_source_rights_unresolved",),
+                )
+                self.assertFalse(training_ready(unreviewed))
+            with self.subTest(subject=subject, purpose="evaluation"):
+                unreviewed = replace(cleared, validation_subjects=(subject,))
+                self.assertEqual(
+                    training_blockers(unreviewed),
+                    ("validation_split_source_rights_unresolved",),
+                )
+                self.assertFalse(training_ready(unreviewed))
+
+    def test_license_does_not_confer_training_data_rights(self):
+        baseline = LIGHTWEIGHT_OPENPOSE_PLAN
+        otherwise_cleared = replace(
+            baseline,
+            dependency_rights_status="cleared-commercial-and-redistribution",
+            pretrained=PretrainedArtifact(
+                name=baseline.pretrained.name,
+                source_url=baseline.pretrained.source_url,
+                sha256="a" * 64,
+                license_spdx="Apache-2.0",
+                rights_status="cleared-commercial-and-redistribution",
+            ),
+            export_smoke_tested=True,
+            train_subjects=("ue4-fall-detection-dataset:train-01",),
+            validation_subjects=("ue4-fall-detection-dataset:validation-01",),
+        )
+        self.assertEqual(
+            training_blockers(otherwise_cleared),
+            ("pretrained_training_data_provenance_unresolved",),
+        )
+        self.assertFalse(training_ready(otherwise_cleared))
+        provenance_without_rights = replace(
+            otherwise_cleared,
+            pretrained=replace(
+                otherwise_cleared.pretrained,
+                training_data_provenance_ref="unreviewed:model-card",
+            ),
+        )
+        self.assertIn(
+            "pretrained_training_data_provenance_unresolved",
+            training_blockers(provenance_without_rights),
+        )
+
+    def test_invalid_weight_hash_and_unapproved_license_fail_closed(self):
+        baseline = LIGHTWEIGHT_OPENPOSE_PLAN
+        unsupported = replace(
+            baseline,
+            pretrained=replace(
+                baseline.pretrained,
+                sha256="not-a-sha256",
+                license_spdx="research-only",
+                rights_status="cleared-commercial-and-redistribution",
+                training_data_provenance_ref="reviewed-test-fixture:synthetic-corpus",
+                training_data_rights_status="cleared-commercial-training",
+            ),
+        )
+        blockers = training_blockers(unsupported)
+        self.assertIn("pretrained_weight_hash_invalid", blockers)
+        self.assertIn("pretrained_weight_license_unresolved", blockers)
+        self.assertNotIn("pretrained_training_data_provenance_unresolved", blockers)
+        self.assertFalse(training_ready(unsupported))
 
 if __name__ == "__main__":
     unittest.main()

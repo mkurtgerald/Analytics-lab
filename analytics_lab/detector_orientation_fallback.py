@@ -72,8 +72,8 @@ def select_orientation_fallback(
     """
     if not 0.0 <= float(min_confidence) <= 1.0:
         raise ValueError("min_confidence must be within [0, 1]")
-    if not 0.0 <= float(min_link_iou) <= 1.0:
-        raise ValueError("min_link_iou must be within [0, 1]")
+    if not 0.0 < float(min_link_iou) <= 1.0:
+        raise ValueError("min_link_iou must be within (0, 1]")
 
     mapped: list[DetectionBox] = []
     for turn, boxes in rotated.items():

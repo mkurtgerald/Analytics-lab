@@ -127,6 +127,23 @@ class TrackingEvaluationTests(unittest.TestCase):
                 TrackingEvaluationConfig(max_objects_per_frame=1),
             )
 
+    def test_stream_is_bounded_before_materialization(self):
+        pulled = []
+
+        def frames():
+            for i in range(100):
+                pulled.append(i)
+                yield TrackingEvaluationFrame(i, (), ())
+
+        with self.assertRaisesRegex(RuntimeError, "frame count exceeds configured evaluation bound"):
+            evaluate_tracking(frames(), TrackingEvaluationConfig(max_frames=2))
+        self.assertEqual(pulled, [0, 1, 2])
+
+    def test_generator_at_exact_frame_limit(self):
+        frames = (TrackingEvaluationFrame(i, (), ()) for i in range(2))
+        result = evaluate_tracking(frames, TrackingEvaluationConfig(max_frames=2))
+        self.assertEqual(result.frames, 2)
+
 
 if __name__ == "__main__":
     unittest.main()

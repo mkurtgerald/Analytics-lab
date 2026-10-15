@@ -201,11 +201,14 @@ def evaluate_tracking(
         raise ValueError("config must be TrackingEvaluationConfig")
 
     try:
-        values = tuple(frames)
+        iterator = iter(frames)
     except TypeError as exc:
         raise ValueError("frames must be iterable") from exc
-    if len(values) > cfg.max_frames:
-        raise RuntimeError("frame count exceeds configured evaluation bound")
+    values = []
+    for frame in iterator:
+        if len(values) == cfg.max_frames:
+            raise RuntimeError("frame count exceeds configured evaluation bound")
+        values.append(frame)
     if any(not isinstance(frame, TrackingEvaluationFrame) for frame in values):
         raise ValueError("frames must contain TrackingEvaluationFrame values")
 

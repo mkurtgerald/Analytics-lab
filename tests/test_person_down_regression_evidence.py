@@ -37,6 +37,16 @@ class _Response(io.BytesIO):
 
 class PersonDownRegressionEvidenceTests(unittest.TestCase):
     def setUp(self):
+        # Synthetic/generated fixture tests stub eligibility only; production
+        # admission and GMDCSA24 media acquisition continue to fail closed.
+        for target in (
+            "analytics_lab.validation_seed.require_source",
+            "analytics_lab.validation.require_source",
+            "analytics_lab.person_down_regression_evidence.require_source",
+        ):
+            patcher = patch(target, new=lambda *_a, **_kw: evidence.GMDCSA24)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)

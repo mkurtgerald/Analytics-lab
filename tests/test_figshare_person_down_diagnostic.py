@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from analytics_lab.figshare_member_admission import AdmittedMember
+from analytics_lab.source_rights import FIGSHARE_FALL_2017
 from analytics_lab.figshare_person_down_diagnostic import (
     _EXPECTED_SHA256,
     run_figshare_person_down_diagnostic,
@@ -106,10 +107,22 @@ class FigsharePersonDownDiagnosticTests(unittest.TestCase):
                 (self._scan_result("figshare-act10-positive", false_alerts=1), Mock()),
             ]
 
-            result = run_figshare_person_down_diagnostic(
-                root / "output",
-                root / "detector",
-                opener=Mock(),
+            # Synthetic-only diagnostics retain downstream coverage under a
+            # localized rights stub; production commercial admission stays closed.
+            with patch(
+                "analytics_lab.figshare_person_down_diagnostic.require_source",
+                return_value=FIGSHARE_FALL_2017,
+            ) as synthetic_rights:
+                result = run_figshare_person_down_diagnostic(
+                    root / "output",
+                    root / "detector",
+                    opener=Mock(),
+                )
+            self.assertEqual(synthetic_rights.call_count, 2)
+            synthetic_rights.assert_called_with(
+                FIGSHARE_FALL_2017.source_id,
+                purpose="evaluation",
+                require_real_world=True,
             )
 
         by_role = {item["role"]: item for item in result["samples"]}
@@ -130,6 +143,20 @@ class FigsharePersonDownDiagnosticTests(unittest.TestCase):
 
     @patch("analytics_lab.figshare_person_down_diagnostic._download_models")
     @patch("analytics_lab.figshare_person_down_diagnostic.admit_pinned_pair")
+    def test_rights_hold_precedes_filesystem_media_and_models(self, admit, download_models) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            output_dir = root / "uncreated-output"
+            opener = Mock()
+            with self.assertRaisesRegex(ValueError, "not eligible"):
+                run_figshare_person_down_diagnostic(output_dir, root / "detector", opener=opener)
+            self.assertFalse(output_dir.exists())
+            opener.assert_not_called()
+        admit.assert_not_called()
+        download_models.assert_not_called()
+
+    @patch("analytics_lab.figshare_person_down_diagnostic._download_models")
+    @patch("analytics_lab.figshare_person_down_diagnostic.admit_pinned_pair")
     def test_sha_identity_change_fails_before_model_download(self, admit, download_models) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -145,8 +172,13 @@ class FigsharePersonDownDiagnosticTests(unittest.TestCase):
             )
             positive = self._member("positive", root / "positive.mp4")
             admit.return_value = (bad, positive)
-            with self.assertRaises(RuntimeError):
-                run_figshare_person_down_diagnostic(root / "output", root / "detector", opener=Mock())
+            # Reach integrity checks using synthetic-only test authorization.
+            with patch(
+                "analytics_lab.figshare_person_down_diagnostic.require_source",
+                return_value=FIGSHARE_FALL_2017,
+            ):
+                with self.assertRaises(RuntimeError):
+                    run_figshare_person_down_diagnostic(root / "output", root / "detector", opener=Mock())
         download_models.assert_not_called()
 
 

@@ -71,6 +71,9 @@ UE4_FALL = DataSourceRights(
     attribution_required=True,
 )
 
+# Publisher CC BY 4.0 metadata is distinct from participant-media/likeness
+# authorization. Independent permissions for commercial use are unverified;
+# both uses remain on hold without changing the published license identity.
 FIGSHARE_FALL_2017 = DataSourceRights(
     source_id="figshare-fall-2017-activities",
     title="Video-Based Fall Detection Dataset with 2017 Activities from 29 Subjects",
@@ -80,14 +83,17 @@ FIGSHARE_FALL_2017 = DataSourceRights(
     source_url="https://figshare.com/articles/dataset/Sensor-Based_Fall_Detection_Dataset_with_2017_Activities_from_29_Subjects/28596332/2",
     license_url="https://creativecommons.org/licenses/by/4.0/",
     provenance_ref="figshare:28596332:version-2",
-    commercial_training=True,
-    commercial_evaluation=True,
+    commercial_training=False,
+    commercial_evaluation=False,
     attribution_required=True,
 )
 
 # The publisher's Zenodo v2.1 release declares CC BY 4.0 and links the GitHub
 # v2.1 tag, which resolves to this exact media commit. The repository's MIT
 # software notice is separate from the published dataset/release license.
+# The publisher's CC-BY-4.0 dataset license is recorded accurately, but it
+# does not independently establish participant-media/likeness permissions for
+# commercial training or evaluation. Hold both uses until rights are verified.
 GMDCSA24 = DataSourceRights(
     source_id="gmdcsa24-fall-video",
     title="GMDCSA-24: A Dataset for Human Fall Detection in Videos",
@@ -101,8 +107,8 @@ GMDCSA24 = DataSourceRights(
         "github:ekramalam/GMDCSA24-A-Dataset-for-Human-Fall-Detection-in-Videos@"
         "5abac7693229900cf80f722e878fbb119211fc1c;paper:10.1016/j.dib.2024.110892"
     ),
-    commercial_training=True,
-    commercial_evaluation=True,
+    commercial_training=False,
+    commercial_evaluation=False,
     attribution_required=True,
 )
 

@@ -7,7 +7,10 @@ artifact/right/split/export prerequisite is explicit and reviewable.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Tuple
+
+from .source_rights import FIGSHARE_FALL_2017, GMDCSA24, UE4_FALL, require_source
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,9 @@ class PretrainedArtifact:
     sha256: str | None
     license_spdx: str | None
     rights_status: str
+    # Weight licensing does not confer commercial rights to its training data.
+    training_data_provenance_ref: str | None = None
+    training_data_rights_status: str = "unverified"
 
 
 @dataclass(frozen=True)
@@ -117,6 +123,43 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
 )
 
 
+_REVIEWED_SOURCE_NAMESPACES = {
+    "ue4": UE4_FALL.source_id,
+    UE4_FALL.source_id: UE4_FALL.source_id,
+    "gmdcsa24": GMDCSA24.source_id,
+    GMDCSA24.source_id: GMDCSA24.source_id,
+    "figshare": FIGSHARE_FALL_2017.source_id,
+    FIGSHARE_FALL_2017.source_id: FIGSHARE_FALL_2017.source_id,
+}
+
+
+_SUBJECT_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\\Z")
+
+
+def _unapproved_partition_source(subjects: Tuple[str, ...], *, purpose: str) -> bool:
+    """Deny unregistered or ineligible source namespaces before adaptation.
+
+    Registry eligibility alone cannot authorize a particular media asset.
+    Exact asset identity and media-specific permission must be checked
+    separately before training or evaluation reads any bytes.
+    """
+    for subject in subjects:
+        if type(subject) is not str:
+            return True
+        namespace, separator, subject_id = subject.partition(":")
+        if not separator or not _SUBJECT_TOKEN.fullmatch(subject_id.strip()):
+            return True
+        source_id = _REVIEWED_SOURCE_NAMESPACES.get(namespace.strip().casefold())
+        if source_id is None:
+            return True
+        try:
+            require_source(source_id, purpose=purpose)
+        except ValueError:
+            return True
+    return False
+
+
+
 def training_blockers(plan: PoseAdaptationPlan = LIGHTWEIGHT_OPENPOSE_PLAN) -> Tuple[str, ...]:
     """Return deterministic reasons training is not yet authorized."""
     blockers: list[str] = []
@@ -126,12 +169,33 @@ def training_blockers(plan: PoseAdaptationPlan = LIGHTWEIGHT_OPENPOSE_PLAN) -> T
         blockers.append("transitive_dependency_rights_unverified")
     if not plan.pretrained.sha256:
         blockers.append("pretrained_weight_hash_missing")
-    if not plan.pretrained.license_spdx or plan.pretrained.rights_status != "cleared-commercial-and-redistribution":
+    elif (
+        type(plan.pretrained.sha256) is not str
+        or len(plan.pretrained.sha256) != 64
+        or any(char not in "0123456789abcdef" for char in plan.pretrained.sha256)
+    ):
+        blockers.append("pretrained_weight_hash_invalid")
+    if (
+        plan.pretrained.license_spdx not in {"Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause"}
+        or plan.pretrained.rights_status != "cleared-commercial-and-redistribution"
+    ):
         blockers.append("pretrained_weight_license_unresolved")
+    # The training corpus needs a separately reviewed grant of commercial rights.
+    # A model-card SPDX identifier is not sufficient provenance.
+    if (
+        not isinstance(plan.pretrained.training_data_provenance_ref, str)
+        or not plan.pretrained.training_data_provenance_ref.strip()
+        or plan.pretrained.training_data_rights_status != "cleared-commercial-training"
+    ):
+        blockers.append("pretrained_training_data_provenance_unresolved")
     if not plan.train_subjects:
         blockers.append("training_split_empty")
     if not plan.validation_subjects:
         blockers.append("validation_split_empty")
+    if _unapproved_partition_source(plan.train_subjects, purpose="training"):
+        blockers.append("training_split_source_rights_unresolved")
+    if _unapproved_partition_source(plan.validation_subjects, purpose="evaluation"):
+        blockers.append("validation_split_source_rights_unresolved")
     if set(plan.train_subjects) & set(plan.validation_subjects):
         blockers.append("train_validation_subject_overlap")
     if set(plan.train_subjects) & set(plan.holdout_subjects):

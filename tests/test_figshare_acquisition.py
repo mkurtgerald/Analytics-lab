@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from analytics_lab.figshare_acquisition import (
@@ -83,17 +84,23 @@ def _metadata(archive: bytes) -> bytes:
 
 
 class FigshareAcquisitionTests(unittest.TestCase):
-    def test_metadata_binds_reviewed_article_version_file_and_license(self):
+    @patch("analytics_lab.figshare_acquisition.require_source", return_value=FIGSHARE_FALL_2017)
+    def test_metadata_binds_reviewed_article_version_file_and_license(self, _synthetic_rights):
         artifact = parse_article_metadata(_metadata(_archive()))
         self.assertEqual(artifact.file_id, FIGSHARE_FILE_ID)
         self.assertEqual(artifact.name, "fall-videos.zip")
         self.assertTrue(artifact.download_url.startswith("https://"))
 
-    def test_metadata_rejects_wrong_version(self):
+    @patch("analytics_lab.figshare_acquisition.require_source", return_value=FIGSHARE_FALL_2017)
+    def test_metadata_rejects_wrong_version(self, _synthetic_rights):
         payload = json.loads(_metadata(_archive()).decode("utf-8"))
         payload["version"] = 1
         with self.assertRaisesRegex(ValueError, "article/version"):
             parse_article_metadata(json.dumps(payload).encode("utf-8"))
+
+    def test_default_hold_rejects_article_admission(self):
+        with self.assertRaisesRegex(ValueError, "not eligible"):
+            parse_article_metadata(_metadata(_archive()))
 
     def test_bounded_zip_directory_parser_finds_safe_video_members(self):
         archive = _archive()
@@ -121,7 +128,8 @@ class FigshareAcquisitionTests(unittest.TestCase):
                 opener=opener,
             )
 
-    def test_high_level_index_fetch_never_requests_member_payload(self):
+    @patch("analytics_lab.figshare_acquisition.require_source", return_value=FIGSHARE_FALL_2017)
+    def test_high_level_index_fetch_never_requests_member_payload(self, _synthetic_rights):
         # The first attempt used a sub-128 KiB synthetic archive. By definition,
         # a bounded 128 KiB tail request then covered that entire tiny fixture,
         # including local member headers. Use a larger generated archive so this
