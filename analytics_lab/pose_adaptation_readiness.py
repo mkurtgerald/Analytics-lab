@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Tuple
 
+from .source_rights import FIGSHARE_FALL_2017, GMDCSA24, require_source
+
 
 @dataclass(frozen=True)
 class DependencyPin:
@@ -120,6 +122,30 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
 )
 
 
+_REVIEWED_SOURCE_NAMESPACES = {
+    "gmdcsa24": GMDCSA24.source_id,
+    GMDCSA24.source_id: GMDCSA24.source_id,
+    "figshare": FIGSHARE_FALL_2017.source_id,
+    FIGSHARE_FALL_2017.source_id: FIGSHARE_FALL_2017.source_id,
+}
+
+
+def _unapproved_partition_source(subjects: Tuple[str, ...], *, purpose: str) -> bool:
+    """Deny known restricted source namespaces using the pinned rights registry."""
+    for subject in subjects:
+        if not isinstance(subject, str) or not subject.strip():
+            return True
+        source_id = _REVIEWED_SOURCE_NAMESPACES.get(subject.split(":", 1)[0].strip().casefold())
+        if source_id is None:
+            continue
+        try:
+            require_source(source_id, purpose=purpose)
+        except ValueError:
+            return True
+    return False
+
+
+
 def training_blockers(plan: PoseAdaptationPlan = LIGHTWEIGHT_OPENPOSE_PLAN) -> Tuple[str, ...]:
     """Return deterministic reasons training is not yet authorized."""
     blockers: list[str] = []
@@ -152,6 +178,10 @@ def training_blockers(plan: PoseAdaptationPlan = LIGHTWEIGHT_OPENPOSE_PLAN) -> T
         blockers.append("training_split_empty")
     if not plan.validation_subjects:
         blockers.append("validation_split_empty")
+    if _unapproved_partition_source(plan.train_subjects, purpose="training"):
+        blockers.append("training_split_source_rights_unresolved")
+    if _unapproved_partition_source(plan.validation_subjects, purpose="evaluation"):
+        blockers.append("validation_split_source_rights_unresolved")
     if set(plan.train_subjects) & set(plan.validation_subjects):
         blockers.append("train_validation_subject_overlap")
     if set(plan.train_subjects) & set(plan.holdout_subjects):

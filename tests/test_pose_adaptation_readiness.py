@@ -88,6 +88,41 @@ class PoseAdaptationReadinessTests(unittest.TestCase):
         self.assertTrue(training_ready(cleared))
 
 
+
+    def test_known_prohibited_sources_fail_in_otherwise_cleared_splits(self):
+        baseline = LIGHTWEIGHT_OPENPOSE_PLAN
+        cleared = replace(
+            baseline,
+            dependency_rights_status="cleared-commercial-and-redistribution",
+            pretrained=replace(
+                baseline.pretrained,
+                sha256="a" * 64,
+                license_spdx="Apache-2.0",
+                rights_status="cleared-commercial-and-redistribution",
+                training_data_provenance_ref="reviewed-test-fixture:synthetic-corpus",
+                training_data_rights_status="cleared-commercial-training",
+            ),
+            export_smoke_tested=True,
+            train_subjects=("ApprovedCorpus:train-01",),
+            validation_subjects=("ApprovedCorpus:validation-01",),
+        )
+        self.assertEqual(training_blockers(cleared), ())
+        for subject in (
+            "GMDCSA24:Subject-99",
+            "Figshare:SBJ_99",
+            "  gMdCsA24 : Subject-99",
+            "gmdcsa24-fall-video:Subject-99",
+            "figshare-fall-2017-activities:SBJ_99",
+        ):
+            with self.subTest(subject=subject, purpose="training"):
+                restricted = replace(cleared, train_subjects=(subject,))
+                self.assertEqual(training_blockers(restricted), ("training_split_source_rights_unresolved",))
+                self.assertFalse(training_ready(restricted))
+            with self.subTest(subject=subject, purpose="evaluation"):
+                restricted = replace(cleared, validation_subjects=(subject,))
+                self.assertEqual(training_blockers(restricted), ("validation_split_source_rights_unresolved",))
+                self.assertFalse(training_ready(restricted))
+
     def test_license_does_not_confer_training_data_rights(self):
         baseline = LIGHTWEIGHT_OPENPOSE_PLAN
         otherwise_cleared = replace(
