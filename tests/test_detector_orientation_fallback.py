@@ -52,6 +52,17 @@ class DetectorOrientationFallbackTests(unittest.TestCase):
         self.assertIsNone(result.selected)
         self.assertEqual(result.linked_candidate_count, 0)
 
+    def test_zero_link_floor_is_rejected_before_rotated_reassociation(self):
+        previous = DetectionBox(0.9, 0.2, 0.3, 0.4, 0.6)
+        far_ccw = DetectionBox(0.9, 0.0, 0.0, 0.1, 0.1)
+        with self.assertRaisesRegex(ValueError, "min_link_iou"):
+            select_orientation_fallback(
+                previous,
+                {1: (far_ccw,), -1: ()},
+                min_confidence=0.1,
+                min_link_iou=0.0,
+            )
+
     def test_fallback_rejects_unreviewed_rotation(self):
         previous = DetectionBox(0.9, 0.2, 0.3, 0.4, 0.6)
         with self.assertRaises(ValueError):

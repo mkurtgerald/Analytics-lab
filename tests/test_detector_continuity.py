@@ -56,6 +56,19 @@ class DetectorContinuityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ContinuityAccumulator(min_link_iou=-0.1)
 
+    def test_zero_overlap_floor_cannot_link_disjoint_people(self):
+        previous = DetectionBox(0.9, 0.10, 0.10, 0.30, 0.40)
+        different_person = DetectionBox(0.95, 0.65, 0.60, 0.90, 0.90)
+        self.assertEqual(box_iou(previous, different_person), 0.0)
+        # A zero IoU floor previously marked this unrelated person as linked.
+        with self.assertRaisesRegex(ValueError, "min_link_iou"):
+            select_detection(previous, (different_person,), min_link_iou=0.0)
+        with self.assertRaisesRegex(ValueError, "min_link_iou"):
+            ContinuityAccumulator(min_link_iou=0.0)
+        selected, linked = select_detection(previous, (different_person,))
+        self.assertEqual(selected, different_person)
+        self.assertFalse(linked)
+
     def test_segment_decision_distinguishes_start_link_loss_and_reacquisition(self):
         acc = ContinuityAccumulator()
         first = DetectionBox(.9, 0, .1, .2, .2)

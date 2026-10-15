@@ -734,3 +734,16 @@ python tools/guardrails.py ci
 python -m unittest discover -s tests -v
 python -m analytics_lab --input examples/person_down.jsonl --source-id synthetic-camera --session-id fixture-001
 ```
+
+## October 15 disjoint-person orientation/continuity guard
+
+The evidence-only person-down selector and rotated-detector fallback previously
+accepted `min_link_iou=0.0`. Two disjoint detections with zero intersection
+therefore satisfied `IoU >= min_link_iou` and could be incorrectly treated as
+one continuing person, contaminating duration-based event evidence. The policy
+now rejects zero-overlap continuity floors in both the shared selector and the
+orientation path. The existing default `min_link_iou=0.05`, detector confidence,
+posture and temporal thresholds remain unchanged. Synthetic regressions prove
+the zero-floor configuration is rejected and the ordinary nonlinked
+reacquisition remains supported. These tests are structural/behavioral only,
+not a real-video accuracy improvement; fall recall remains unqualified.

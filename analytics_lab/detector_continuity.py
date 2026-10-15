@@ -59,8 +59,8 @@ def select_detection(
     is false. With no prior box, the highest-confidence candidate starts a new
     track and is not considered linked.
     """
-    if not 0.0 <= float(min_link_iou) <= 1.0:
-        raise ValueError("min_link_iou must be within [0, 1]")
+    if not 0.0 < float(min_link_iou) <= 1.0:
+        raise ValueError("min_link_iou must be within (0, 1]")
     options = tuple(candidates)
     if not options:
         return None, False
@@ -117,8 +117,8 @@ class ContinuityAccumulator:
     """Accumulate one-box-per-frame continuity statistics without retaining media."""
 
     def __init__(self, *, min_link_iou: float = 0.05) -> None:
-        if not 0.0 <= float(min_link_iou) <= 1.0:
-            raise ValueError("min_link_iou must be within [0, 1]")
+        if not 0.0 < float(min_link_iou) <= 1.0:
+            raise ValueError("min_link_iou must be within (0, 1]")
         self.min_link_iou = float(min_link_iou)
         self.previous: DetectionBox | None = None
         self.frames = 0
