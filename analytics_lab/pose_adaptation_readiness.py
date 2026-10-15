@@ -7,9 +7,10 @@ artifact/right/split/export prerequisite is explicit and reviewable.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Tuple
 
-from .source_rights import FIGSHARE_FALL_2017, GMDCSA24, require_source
+from .source_rights import FIGSHARE_FALL_2017, GMDCSA24, UE4_FALL, require_source
 
 
 @dataclass(frozen=True)
@@ -123,6 +124,8 @@ LIGHTWEIGHT_OPENPOSE_PLAN = PoseAdaptationPlan(
 
 
 _REVIEWED_SOURCE_NAMESPACES = {
+    "ue4": UE4_FALL.source_id,
+    UE4_FALL.source_id: UE4_FALL.source_id,
     "gmdcsa24": GMDCSA24.source_id,
     GMDCSA24.source_id: GMDCSA24.source_id,
     "figshare": FIGSHARE_FALL_2017.source_id,
@@ -130,14 +133,25 @@ _REVIEWED_SOURCE_NAMESPACES = {
 }
 
 
+_SUBJECT_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\\Z")
+
+
 def _unapproved_partition_source(subjects: Tuple[str, ...], *, purpose: str) -> bool:
-    """Deny known restricted source namespaces using the pinned rights registry."""
+    """Deny unregistered or ineligible source namespaces before adaptation.
+
+    Registry eligibility alone cannot authorize a particular media asset.
+    Exact asset identity and media-specific permission must be checked
+    separately before training or evaluation reads any bytes.
+    """
     for subject in subjects:
-        if not isinstance(subject, str) or not subject.strip():
+        if type(subject) is not str:
             return True
-        source_id = _REVIEWED_SOURCE_NAMESPACES.get(subject.split(":", 1)[0].strip().casefold())
+        namespace, separator, subject_id = subject.partition(":")
+        if not separator or not _SUBJECT_TOKEN.fullmatch(subject_id.strip()):
+            return True
+        source_id = _REVIEWED_SOURCE_NAMESPACES.get(namespace.strip().casefold())
         if source_id is None:
-            continue
+            return True
         try:
             require_source(source_id, purpose=purpose)
         except ValueError:
