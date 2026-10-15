@@ -71,6 +71,8 @@ def _source_document() -> dict[str, Any]:
 
 
 def run_figshare_generalization4_person_down_diagnostic(output_dir: str | Path, candidate_dir: str | Path, *, opener: Callable[..., Any] = urllib.request.urlopen) -> dict[str, Any]:
+    # Fail closed on unverified participant-media rights before any side effects.
+    _source_document()
     root = Path(output_dir)
     if root.exists() and root.is_symlink():
         raise RuntimeError("output directory must not be a symlink")
