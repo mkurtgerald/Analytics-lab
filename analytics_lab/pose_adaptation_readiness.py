@@ -23,6 +23,9 @@ class PretrainedArtifact:
     sha256: str | None
     license_spdx: str | None
     rights_status: str
+    # Weight licensing does not confer commercial rights to its training data.
+    training_data_provenance_ref: str | None = None
+    training_data_rights_status: str = "unverified"
 
 
 @dataclass(frozen=True)
@@ -126,8 +129,25 @@ def training_blockers(plan: PoseAdaptationPlan = LIGHTWEIGHT_OPENPOSE_PLAN) -> T
         blockers.append("transitive_dependency_rights_unverified")
     if not plan.pretrained.sha256:
         blockers.append("pretrained_weight_hash_missing")
-    if not plan.pretrained.license_spdx or plan.pretrained.rights_status != "cleared-commercial-and-redistribution":
+    elif (
+        type(plan.pretrained.sha256) is not str
+        or len(plan.pretrained.sha256) != 64
+        or any(char not in "0123456789abcdef" for char in plan.pretrained.sha256)
+    ):
+        blockers.append("pretrained_weight_hash_invalid")
+    if (
+        plan.pretrained.license_spdx not in {"Apache-2.0", "MIT", "BSD-2-Clause", "BSD-3-Clause"}
+        or plan.pretrained.rights_status != "cleared-commercial-and-redistribution"
+    ):
         blockers.append("pretrained_weight_license_unresolved")
+    # The training corpus needs a separately reviewed grant of commercial rights.
+    # A model-card SPDX identifier is not sufficient provenance.
+    if (
+        not isinstance(plan.pretrained.training_data_provenance_ref, str)
+        or not plan.pretrained.training_data_provenance_ref.strip()
+        or plan.pretrained.training_data_rights_status != "cleared-commercial-training"
+    ):
+        blockers.append("pretrained_training_data_provenance_unresolved")
     if not plan.train_subjects:
         blockers.append("training_split_empty")
     if not plan.validation_subjects:
