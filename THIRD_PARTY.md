@@ -20,7 +20,8 @@ catalog entry has no contrary/third-party notice. Keep attribution to Caltrans,
 avoid service-degrading access and perform no face/plate identification.
 
 Admission is limited to one short non-identifying traffic compatibility test in
-the named hosted evidence lane: three consecutive unencrypted segments, at most
+the named hosted evidence lane: the latest two consecutive unencrypted segments
+from a verified three-entry playlist, at most
 35 seconds declared media and 4 MiB, hashed before local decoding and deleted
 with models/frames on success or failure. Runtime byte hashes identify the
 actual dynamic material; a static camera URL or catalog modification date is not

@@ -32,7 +32,7 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
         directory = Path(directory)
         directory.mkdir(parents=True, exist_ok=True)
         self.segments = []
-        for sequence in (100, 101, 102):
+        for sequence in (101, 102):
             payload = f"generated-segment-metadata-only:{sequence}".encode("ascii")
             path = directory / f"generated-{sequence}.ts"
             path.write_bytes(payload)
@@ -103,27 +103,31 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
             stack.enter_context(redirect_stdout(io.StringIO()))
             return evidence.run(self.work, opener=forbidden_network, clock=clock or (lambda: 0.0))
 
-    def test_capture_precedes_single_model_preparation_and_one_detector_for_three_segments(self):
+    def test_capture_precedes_single_model_preparation_and_one_detector_for_two_newest_segments(self):
         report = self._run()
-        self.assertEqual(self.steps, ["capture", "models", "detector", 100, 101, 102])
+        self.assertEqual(self.steps, ["capture", "models", "detector", 101, 102])
         self.capture_call.assert_called_once()
         self.models_call.assert_called_once()
         self.factory_call.assert_called_once()
-        self.assertEqual(self.process_call.call_count, 3)
+        self.assertEqual(self.process_call.call_count, 2)
         self.assertEqual(
             [(call.kwargs["decoded_budget"], call.kwargs["sample_budget"])
              for call in self.process_call.call_args_list],
-            [(2400, 100), (1600, 70), (800, 40)],
+            [(2400, 100), (1600, 70)],
         )
         self.assertFalse(self.work.exists())
         serialized = json.dumps(report, allow_nan=False, sort_keys=True)
         self.assertNotIn(str(self.root), serialized)
         self.assertNotIn("generated-segment-metadata-only:", serialized)
         self.assertNotIn("generated-model-identity-only:", serialized)
-        self.assertEqual((report["decoded_frames"], report["sampled_frames"]), (2400, 90))
-        self.assertEqual((report["detections"], report["track_observations"]), (3, 3))
+        self.assertEqual((report["decoded_frames"], report["sampled_frames"]), (1600, 60))
+        self.assertEqual((report["detections"], report["track_observations"]), (2, 2))
         self.assertEqual(report["detector"]["instances"], 1)
-        self.assertEqual(report["tracking"]["sessions"], 3)
+        self.assertEqual(report["tracking"]["sessions"], 2)
+        for key, expected in (("decoded_frames", 2400), ("sampled_frames", 100),
+                              ("media_bytes", 4 * 1024 * 1024), ("duration_seconds", 35.0),
+                              ("evidence_seconds", 180.0)):
+            self.assertEqual(report["limits"][key], expected, key)
         self.assertFalse(report["tracking"]["cross_segment_association"])
         self.assertFalse(report["tracking"]["identity_claim"])
         for key in ("precision", "recall", "false_positive_rate", "misses", "camera_capture_utc"):
@@ -153,15 +157,21 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
                 self.process_call.assert_not_called()
                 self.assertFalse(self.work.exists())
 
-    def test_capture_must_return_exactly_three_segments(self):
-        for count in (0, 2, 4):
+    def test_capture_must_return_exactly_two_segments(self):
+        for count in (0, 1, 3):
             with self.subTest(count=count):
                 def capture(*args, **kwargs):
                     window = self._capture(*args, **kwargs)
-                    segments = window.segments[:count]
-                    if count == 4:
-                        segments += (window.segments[-1],)
-                    window.segments = segments
+                    segments = list(window.segments[:count])
+                    if count == 3:
+                        payload = b"generated-segment-metadata-only:103"
+                        path = window.segments[-1].path.parent / "generated-103.ts"
+                        path.write_bytes(payload)
+                        segments.append(SimpleNamespace(
+                            sequence=103, duration_seconds=10.0, path=path,
+                            sha256=hashlib.sha256(payload).hexdigest(), size_bytes=len(payload),
+                        ))
+                    window.segments = tuple(segments)
                     return window
                 with self.assertRaises((RuntimeError, ValueError)):
                     self._run(capture=capture)
@@ -179,7 +189,7 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
                         window.segments[1].sequence += 1
                     else:
                         for segment in window.segments:
-                            segment.duration_seconds = 12.0
+                            segment.duration_seconds = 18.0
                     return window
                 with self.assertRaises((RuntimeError, ValueError)):
                     self._run(capture=capture)
@@ -212,7 +222,7 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
         self.assertFalse(self.work.exists())
 
     def test_aggregate_decoded_and_sampled_budgets_cannot_be_exceeded(self):
-        for key, value in (("decoded_frames", 801), ("sampled_frames", 34)):
+        for key, value in (("decoded_frames", 1201), ("sampled_frames", 51)):
             with self.subTest(key=key):
                 def process(*args, **kwargs):
                     result = self._process(*args, **kwargs)
@@ -259,7 +269,7 @@ class CaltransLiveEvidenceTests(unittest.TestCase):
                 raise BrokenPipeError("generated output failure")
         with self.assertRaises(BrokenPipeError):
             self._run(phase=phase)
-        self.assertEqual(self.process_call.call_count, 3)
+        self.assertEqual(self.process_call.call_count, 2)
         self.assertFalse(self.work.exists())
 
     def test_capture_phase_timeout_stops_before_model_acquisition_and_cleans(self):
@@ -350,7 +360,7 @@ class CaltransSegmentProcessingTests(unittest.TestCase):
         for frame in frames:
             digest = hashlib.sha256(frame.image.payload).digest()
             chain.update(frame.index.to_bytes(8, "big") + frame.timestamp_ms.to_bytes(8, "big") + digest)
-        rows = [self._process(frames) for _ in range(3)]
+        rows = [self._process(frames) for _ in range(2)]
         for row in rows:
             self.assertEqual((row["decoded_frames"], row["sampled_frames"]), (3, 3))
             self.assertEqual(row["within_segment_unique_ids"], ["bt-000001"])

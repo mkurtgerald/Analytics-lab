@@ -1,8 +1,8 @@
 """Bounded metadata/TS acquisition for one reviewed Caltrans public camera.
 
 No decoder, inference, frame export or media retention policy lives here. The
-caller owns a new RUNNER_TEMP directory and its cleanup. Only three complete,
-sync-checked TS files are written after a second playlist proves advancement.
+caller owns a new RUNNER_TEMP directory and its cleanup. Only the newest two
+of three advertised, sync-checked TS files are written after advancement.
 HTTP deadlines are cooperative; open/header timeouts bound inactivity.
 """
 from __future__ import annotations
@@ -271,7 +271,7 @@ def capture_live_window(work_dir: Path, *, opener: Callable | None = None,
                         sleep: Callable[[float], None] = time.sleep,
                         utc_now: Callable[[], datetime] = _utc_now,
                         deadline: LiveDeadline | None = None) -> LiveWindow:
-    """Acquire one three-segment window with exactly seven GETs and no retry."""
+    """Acquire the latest two advertised segments with six GETs and no retry."""
     root_value = os.environ.get("RUNNER_TEMP")
     if not root_value or not isinstance(work_dir, Path):
         raise ValueError("an existing work directory below RUNNER_TEMP is required")
@@ -290,7 +290,11 @@ def capture_live_window(work_dir: Path, *, opener: Callable | None = None,
     child_url, session = _master(master.payload)
     child = fetch(child_url, _PLAYLIST_CAP)
     first_child_time = budget.clock()
-    sequence, planned = _media(child.payload, session)
+    sequence, advertised = _media(child.payload, session)
+    # The publisher advertises an oldest segment that can already return 404.
+    # Select the latest two deterministically before any segment request; this
+    # is neither a retry nor a fallback after inspecting a failed response.
+    planned = advertised[-2:]
     downloaded: list[tuple[int, float, str, FetchedBytes]] = []
     total = 0
     for number, duration, url in planned:
@@ -318,9 +322,12 @@ def capture_live_window(work_dir: Path, *, opener: Callable | None = None,
         "catalog": _identity(CATALOG_URL, catalog), "master": _identity(MASTER_URL, master),
         "initial_child": _identity(child_url, child), "advanced_child": _identity(child_url, advanced),
         "initial_media_sequence": sequence, "advanced_media_sequence": advanced_sequence,
+        "selection": "latest_two_of_three_advertised_segments",
+        "advertised_segment_count": len(advertised), "selected_segment_count": len(planned),
+        "selected_start_sequence": planned[0][0],
         "sequence_advanced": True, "freshness_wait_seconds": delay,
         "declared_duration_seconds": sum(item[1] for item in planned),
-        "segment_bytes": total, "source_get_count": 7,
+        "segment_bytes": total, "source_get_count": 6,
         "segments": [{**_identity(url, payload), "sequence": number, "duration_seconds": duration}
                      for number, duration, url, payload in downloaded],
     }

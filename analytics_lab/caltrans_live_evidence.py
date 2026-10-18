@@ -1,6 +1,6 @@
 """Bounded public Caltrans traffic compatibility probe, without media retention.
 
-Three verified local TS segments are decoded separately. Vehicle-only inference
+Two verified local TS segments are decoded separately. Vehicle-only inference
 shares one compiled model; each segment gets a fresh portable ByteTrack session.
 All times are media-relative or explicitly HTTP receipt times, never inferred
 camera capture times. Unlabelled observations cannot establish accuracy.
@@ -113,11 +113,11 @@ def _detector_factory(root: Path) -> Any:
 
 
 def _validate_window(window: Any, capture_root: Path, deadline: Any) -> None:
-    if (len(window.segments) != 3 or window.metadata.get("sequence_advanced") is not True
+    if (len(window.segments) != 2 or window.metadata.get("sequence_advanced") is not True
             or window.metadata.get("source_id") != "caltrans-d1-cctv-88"
             or window.metadata.get("camera_name") != CAMERA_NAME
             or window.metadata.get("camera_capture_utc", "missing") is not None):
-        raise RuntimeError("Caltrans window lacks three segments and explicit sequence/unknown-UTC proof")
+        raise RuntimeError("Caltrans window lacks two segments and explicit sequence/unknown-UTC proof")
     total_bytes, total_duration = 0, 0.0
     previous = None
     for segment in window.segments:
@@ -281,7 +281,7 @@ def run(work_dir: Path, *, opener: Any = None,
                          "compile_count_basis": "one reviewed adapter construction; no per-frame compilation",
                          "model_domain": "front-facing barrier model; public wide-traffic domain stress"},
             "tracking": {"backend": "portable ByteTrack association slice", "revision": BYTE_TRACK_REVISION,
-                         "config": asdict(ByteTrackAssociationConfig()), "sessions": 3,
+                         "config": asdict(ByteTrackAssociationConfig()), "sessions": 2,
                          "frame_basis": "sample ordinal", "buffer_units": "sampled updates",
                          "cross_segment_association": False, "identity_claim": False},
             "limits": {"media_bytes": _MAX_MEDIA_BYTES, "duration_seconds": _MAX_DURATION_SECONDS,

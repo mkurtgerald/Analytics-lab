@@ -28,7 +28,8 @@ accuracy estimate for this traffic camera.
 
 Require the exact in-service catalog record and source directory, HTTPS with
 no redirects or credential/query substitution, one master/single-child path,
-three consecutive unencrypted TS segments, at most 35 seconds declared media
+the latest two consecutive unencrypted TS segments from a verified three-entry
+playlist, at most 35 seconds declared media
 and 4 MiB media bytes. Reject nested variants, keys/maps/ranges, end lists and
 discontinuities; verify TS framing/hash before local decoding. One additional
 child read after at most 15 seconds must demonstrate advertised sequence
@@ -58,7 +59,7 @@ and the gate, running 829 tests with existing optional skips. That related
 association repair family used two total requests and stays closed. Preserve
 parked PR #148's two requests, PR #146's eight and FPN's four. No old OCR/source
 or donor experiment is retried. This new live work has zero CI requests at
-preparation; the actual live result is pending here.
+initial preparation; the first hosted result and repair are recorded below.
 
 Local validation ran 877 tests with three existing optional-native skips;
 guardrails, compilation, deterministic replay and diff checks passed. Generated
@@ -71,6 +72,29 @@ segment HEAD returned 404; a fresh metadata request with cache revalidation then
 returned HTTP 200 and fixed Content-Length 188,000 for the current segment. No
 segment body, model or native runtime was acquired locally. The reader requests
 cache revalidation and will preserve any live-source failure without fallback.
+
+PR #150's first head `3c025e69dfef9ad4aae34cae5c9e0fd395de3bbe`, run #371
+(`39171665889`), passed all 877 Linux tests (four existing optional skips) and
+runtime installation, then failed in capture with an advertised TS HTTP 404.
+Cleanup ran; no model acquisition, decode, compilation or inference occurred.
+Windows skipped and the quality gate failed. Source diagnosis fetched only fresh
+metadata and HEADs: advertised sequence 18318 returned 404, while 18319 and 18320
+returned 200 with Content-Length 210,560 and 150,212 in the same session. The
+oldest advertised segment had already expired; this is not evidence of zero
+detections or acceptable false positives.
+
+The repaired reader selects the latest two entries directly, never requests the
+oldest, performs six total source GETs and still requires playlist advancement
+before decoding. This reduces acquisition to roughly 20 seconds and uses two
+fresh segment-local tracking sessions. All upper byte/time/frame limits,
+source/model/runtime identities, cleanup and null accuracy metrics stay fixed.
+CI requests are 1/2 used, unchanged retries 0/1; the changed-head request is the
+last allowed attempt for this work item. Its actual outcome remains pending in
+this preparation snapshot and will be persisted in the PR body.
+Repair validation ran 878 tests with three existing optional-native skips;
+guardrails, compilation, deterministic replay and diff checks passed. The new
+expiry fixture proves the oldest URL is never requested; a selected segment's
+404 still fails immediately. No extra source or automatic retry is added.
 
 ## October 18 core perception correctness follow-up
 

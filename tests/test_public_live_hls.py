@@ -12,6 +12,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from analytics_lab import public_live_hls as live
 
@@ -133,15 +134,15 @@ class PublicLiveHLSTests(unittest.TestCase):
             with self.assertRaises(RuntimeError): live._master(payload)
         with self.assertRaises(RuntimeError): live._master(MASTER.replace(b"202675", b"500001"))
 
-    def test_complete_fixed_camera_scope_seven_gets_and_three_verified_files(self):
+    def test_complete_fixed_camera_scope_six_gets_and_two_verified_files(self):
         fixture = Fixture()
         with destination() as directory:
             window = fixture.capture(directory)
-            segment_urls = list(fixture.payloads)[3:]
+            segment_urls = list(fixture.payloads)[4:]
             self.assertEqual([url for url, _ in fixture.requests],
                              [live.CATALOG_URL, live.MASTER_URL, CHILD_URL, *segment_urls, CHILD_URL])
             self.assertEqual(fixture.sleeps, [15.0])
-            self.assertEqual(len(window.segments), 3)
+            self.assertEqual(len(window.segments), 2)
             for segment in window.segments:
                 self.assertEqual(segment.path.parent, directory)
                 self.assertEqual(segment.path.read_bytes(), ts())
@@ -153,13 +154,38 @@ class PublicLiveHLSTests(unittest.TestCase):
             self.assertEqual((metadata["initial_media_sequence"], metadata["advanced_media_sequence"]), (18233, 18234))
             self.assertEqual(metadata["source_id"], "caltrans-d1-cctv-88")
             self.assertIsNone(metadata["camera_capture_utc"])
-            self.assertAlmostEqual(metadata["declared_duration_seconds"], 29.852)
-            self.assertEqual(metadata["source_get_count"], 7)
+            self.assertAlmostEqual(metadata["declared_duration_seconds"], 20.257)
+            self.assertEqual(metadata["source_get_count"], 6)
+            self.assertEqual(metadata["selection"], "latest_two_of_three_advertised_segments")
+            self.assertEqual((metadata["advertised_segment_count"], metadata["selected_segment_count"]), (3, 2))
+            self.assertEqual(metadata["selected_start_sequence"], 18234)
             for key in ("catalog", "master", "initial_child", "advanced_child"):
                 self.assertEqual(metadata[key]["http_date"], "Sun, 18 Oct 2026 12:00:00 GMT")
                 self.assertTrue(metadata[key]["received_utc"].endswith("Z"))
             self.assertNotIn(str(directory), json.dumps(metadata))
             self.assertTrue(all(0 < timeout <= 10 for _, timeout in fixture.requests))
+
+    def test_expired_oldest_is_never_requested_and_selected_failure_has_no_fallback(self):
+        with destination() as directory:
+            fixture = Fixture()
+            oldest = list(fixture.payloads)[3]
+            del fixture.payloads[oldest]
+            window = fixture.capture(directory)
+            self.assertEqual(tuple(item.sequence for item in window.segments), (18234, 18235))
+            self.assertNotIn(oldest, [url for url, _ in fixture.requests])
+        with destination() as directory:
+            fixture = Fixture()
+            selected = list(fixture.payloads)[4]
+            def opener(request, *, timeout):
+                if request.full_url == selected:
+                    fixture.requests.append((request.full_url, timeout))
+                    raise HTTPError(selected, 404, "generated unavailable selected segment", {}, None)
+                return fixture.opener(request, timeout=timeout)
+            with self.assertRaises(HTTPError):
+                live.capture_live_window(directory, opener=opener, clock=fixture.clock, sleep=fixture.sleep)
+            self.assertEqual([url for url, _ in fixture.requests],
+                             [live.CATALOG_URL, live.MASTER_URL, CHILD_URL, selected])
+            self.assertFalse(list(directory.iterdir()))
 
     def test_catalog_binding_duplicate_and_out_of_service_fail_before_playlist(self):
         for problem in ("index", "service", "district", "name", "url", "duplicate", "duplicate_key"):
@@ -222,7 +248,7 @@ class PublicLiveHLSTests(unittest.TestCase):
         with destination() as directory:
             source = Fixture()
             source.payloads[CHILD_URL] = [fixture, media(18234).replace(b"#EXT-X-VERSION:3", b"#EXT-X-VERSION:4")]
-            self.assertEqual(len(source.capture(directory).segments), 3)
+            self.assertEqual(len(source.capture(directory).segments), 2)
         for version in (0, 1, 2, 5, 6, 99):
             with self.subTest(version=version), self.assertRaises(RuntimeError):
                 live._media(media().replace(b"#EXT-X-VERSION:3", f"#EXT-X-VERSION:{version}".encode()), SESSION)
@@ -234,15 +260,17 @@ class PublicLiveHLSTests(unittest.TestCase):
         for problem in ("alignment", "second_sync", "individual_cap", "total_cap"):
             with self.subTest(problem=problem), destination() as directory:
                 fixture = Fixture()
-                urls = list(fixture.payloads)[3:]
+                urls = list(fixture.payloads)[4:]
                 if problem == "alignment": fixture.payloads[urls[0]] = ts() + b"x"
                 elif problem == "second_sync": fixture.payloads[urls[0]] = ts()[:188] + b"x" + bytes(187)
                 elif problem == "individual_cap": fixture.payloads[urls[0]] = ts(live._SEGMENT_CAP // 188 + 1)
                 else:
-                    for url in urls: fixture.payloads[url] = ts(live._SEGMENT_CAP // 188)
-                with self.assertRaises(RuntimeError): fixture.capture(directory)
+                    for url in urls: fixture.payloads[url] = ts(2)
+                cap = 3 * 188 if problem == "total_cap" else live._TOTAL_SEGMENT_CAP
+                with patch.object(live, "_TOTAL_SEGMENT_CAP", cap), self.assertRaises(RuntimeError):
+                    fixture.capture(directory)
                 self.assertFalse(list(directory.iterdir()))
-                self.assertLessEqual(len(fixture.requests), 6)
+                self.assertLessEqual(len(fixture.requests), 5)
 
     def test_stale_or_backwards_refresh_never_writes_a_segment(self):
         for sequence in (18233, 18232):
@@ -250,7 +278,7 @@ class PublicLiveHLSTests(unittest.TestCase):
                 fixture = Fixture(); fixture.payloads[CHILD_URL][1] = media(sequence)
                 with self.assertRaisesRegex(RuntimeError, "did not advance"):
                     fixture.capture(directory)
-                self.assertEqual(len(fixture.requests), 7)
+                self.assertEqual(len(fixture.requests), 6)
                 self.assertFalse(list(directory.iterdir()))
 
     def test_insufficient_deadline_prevents_refresh_and_files(self):
@@ -258,7 +286,7 @@ class PublicLiveHLSTests(unittest.TestCase):
             fixture = Fixture()
             with self.assertRaises(TimeoutError):
                 fixture.capture(directory, deadline=live.LiveDeadline(fixture.clock, 10))
-            self.assertEqual(len(fixture.requests), 6)
+            self.assertEqual(len(fixture.requests), 5)
             self.assertFalse(fixture.sleeps)
             self.assertFalse(list(directory.iterdir()))
 
@@ -315,7 +343,7 @@ class PublicLiveHLSTests(unittest.TestCase):
         with destination() as directory:
             original = Path.open
             def failing_open(path, *args, **kwargs):
-                if path.name == "segment-18234.ts": raise OSError("generated write failure")
+                if path.name == "segment-18235.ts": raise OSError("generated write failure")
                 return original(path, *args, **kwargs)
             with patch.object(Path, "open", failing_open), self.assertRaises(OSError):
                 Fixture().capture(directory)
