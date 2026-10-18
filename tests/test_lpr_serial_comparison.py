@@ -180,7 +180,7 @@ class SerialComparisonTests(unittest.TestCase):
 
     def test_actual_orchestration_same_pixels_once_per_asset_and_result_conservation(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             sentinel = root / "unrelated"
             sentinel.write_text("keep")
             fixture = Fixture()
@@ -222,7 +222,7 @@ class SerialComparisonTests(unittest.TestCase):
     def test_identity_or_native_failure_cleans_and_emits_no_complete_report(self):
         for failure in ("source", "crop", "installer_hash", "model_hash", "install", "version", "ocr"):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temporary:
-                root, fixture = Path(temporary), Fixture()
+                root, fixture = Path(temporary).resolve(), Fixture()
                 with fixture.environment(root):
                     if failure == "source":
                         url = evidence.sc._SOURCE_URL
@@ -250,7 +250,7 @@ class SerialComparisonTests(unittest.TestCase):
 
     def test_http_429_is_one_attempt_without_install_or_fallback(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root, fixture = Path(temporary), Fixture()
+            root, fixture = Path(temporary).resolve(), Fixture()
             with fixture.environment(root):
                 fixture.fail_url = evidence.exact._SOURCE_URL
                 with self.assertRaises(HTTPError):
@@ -262,7 +262,7 @@ class SerialComparisonTests(unittest.TestCase):
     def test_late_download_and_late_subprocess_fail_before_any_followup(self):
         for stage in ("download", "install"):
             with self.subTest(stage=stage), tempfile.TemporaryDirectory() as temporary:
-                root, fixture = Path(temporary), Fixture()
+                root, fixture = Path(temporary).resolve(), Fixture()
                 with fixture.environment(root):
                     fixture.late_download = stage == "download"
                     fixture.late_install = stage == "install"
@@ -323,7 +323,7 @@ class SerialComparisonTests(unittest.TestCase):
 
     def test_subprocess_timeout_is_capped_by_remaining_shared_budget(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root, fixture = Path(temporary), Fixture()
+            root, fixture = Path(temporary).resolve(), Fixture()
             with fixture.environment(root):
                 fixture.install_clock = 195
                 report = fixture.run(root)
@@ -374,7 +374,7 @@ class SerialComparisonTests(unittest.TestCase):
     def test_decoder_runtime_mismatch_fails_before_assets(self):
         for cv_version, np_version in (("4.11.0", "2.2.6"), ("4.12.0", "2.3.0")):
             with self.subTest(cv=cv_version, np=np_version), tempfile.TemporaryDirectory() as temporary:
-                root, fixture = Path(temporary), Fixture()
+                root, fixture = Path(temporary).resolve(), Fixture()
                 with fixture.environment(root):
                     sys.modules["cv2"].__version__ = cv_version
                     sys.modules["numpy"].__version__ = np_version
@@ -387,7 +387,7 @@ class SerialComparisonTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {}, clear=True), self.assertRaises(RuntimeError):
             evidence._require_hosted_windows()
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             (root / "existing").mkdir()
             with mock.patch.dict(os.environ, {"RUNNER_TEMP": str(root)}):
                 for path in (root, root.parent / "outside", root / "existing", root / "missing" / "nested"):
@@ -401,7 +401,7 @@ class SerialComparisonTests(unittest.TestCase):
     def test_plan_scope_and_budget_reject_before_acquisition(self):
         for problem in ("budget", "scope"):
             with self.subTest(problem=problem), tempfile.TemporaryDirectory() as temporary:
-                root, fixture = Path(temporary), Fixture()
+                root, fixture = Path(temporary).resolve(), Fixture()
                 with fixture.environment(root):
                     target = "_PAYLOAD_BYTES" if problem == "budget" else "_SOURCES"
                     value = evidence._PAYLOAD_BYTES + 1 if problem == "budget" else tuple(reversed(evidence._SOURCES))
@@ -412,7 +412,7 @@ class SerialComparisonTests(unittest.TestCase):
 
     def test_cleanup_still_occurs_if_progress_output_fails(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root, fixture = Path(temporary), Fixture()
+            root, fixture = Path(temporary).resolve(), Fixture()
             with fixture.environment(root):
                 def phase(name, **kwargs):
                     if name == "cleanup":

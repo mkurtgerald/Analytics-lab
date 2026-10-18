@@ -49,8 +49,15 @@ with three existing optional OpenCV skips, plus guardrails, compilation,
 deterministic replay and diff checks. Offline real-stdlib HTTPResponse tests
 cover complete-body socket closure; orchestration tests cover exact paired
 inputs/call counts, failure cleanup, deadlines and abstention conservation.
-Native comparison results are pending at preparation. This new serial-profile work item has zero CI requests at
-preparation and does not restart parked OCR glyph/429 or PR #146 work.
+Native comparison results remain pending. The first hosted request, run #367
+(`39157989758`, head `28e2a875c4fa77e5abb0df61699362900af9fe15`), passed
+Linux but stopped in Windows synthetic tests before acquiring assets or running
+OCR. Noncanonical temporary aliases in nine generated fixture roots triggered
+the intended restrictive directory guard; those owned test roots now resolve
+to canonical paths. Production validation is unchanged, and the tests are not
+skipped. The corrected head will use request two of the two-request work-item
+budget, with zero unchanged retries. This serial-profile comparison does not
+restart parked OCR glyph/429 or PR #146 work.
 
 ## October 18 core priority and tracking accuracy repair
 
