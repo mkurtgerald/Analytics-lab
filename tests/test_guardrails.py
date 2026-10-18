@@ -276,6 +276,20 @@ class GuardrailsTests(unittest.TestCase):
         generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
         self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-accuracy-')", generic['if'])
 
+    def test_serial_ocr_comparison_uses_only_its_bounded_windows_lane(self):
+        windows = self.workflow['jobs']['windows']['steps']
+        lane = next(step for step in windows if step.get('name') == 'Bounded paired LPR serial-line comparison')
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn("evidence/lpr-serial-compare-", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertIn('requirements/lpr-serial-windows.txt', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-lpr-serial-comparison', lane['run'])
+        self.assertEqual(lane['run'].count('python -m analytics_lab.'), 1)
+        self.assertIn('analytics_lab.lpr_serial_comparison', lane['run'])
+        generic = next(step for step in self.workflow['jobs']['linux']['steps']
+                       if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/lpr-serial-compare-')", generic['if'])
+
     def test_preflight_allows_bounded_work(self):
         self.assertTrue(g.preflight(self.snapshot, self.policy)['allowed'])
 

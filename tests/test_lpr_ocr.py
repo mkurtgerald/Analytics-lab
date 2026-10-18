@@ -17,6 +17,14 @@ from analytics_lab.lpr_ocr import (
 
 
 class LPROCRTests(unittest.TestCase):
+    def test_page_segmentation_profile_is_strict_and_defaults_to_seven(self) -> None:
+        from analytics_lab.lpr_ocr import LPROCRConfig
+        self.assertEqual(LPROCRConfig().tesseract_psm, 7)
+        self.assertEqual(LPROCRConfig(tesseract_psm=13).tesseract_psm, 13)
+        for invalid in (True, False, 7.0, 13.0, "13", None, 6, 8, 14):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                LPROCRConfig(tesseract_psm=invalid)
+
     def test_omz_parser_admits_only_plate_label_and_sorts(self) -> None:
         rows = (
             (0, 1, 0.99, 0.1, 0.1, 0.8, 0.8),
@@ -226,6 +234,12 @@ class LPROCRTests(unittest.TestCase):
             ["-c", "tessedit_create_tsv=1"],
         )
         self.assertNotIn("tsv", seen[1])
+        self.assertEqual(seen[1][seen[1].index("--psm") + 1], "7")
+        recognizer.config = LPROCRConfig(tesseract_psm=13)
+        self.assertEqual(recognizer(b"P6\n1 1\n255\n\x00\x00\x00"), result)
+        expected = list(seen[1])
+        expected[expected.index("--psm") + 1] = "13"
+        self.assertEqual(seen[2], expected)
 
     def test_pipeline_runs_detector_then_ocr_without_retaining_image(self) -> None:
         image = [[(0, 0, 0), (0, 0, 0)]]

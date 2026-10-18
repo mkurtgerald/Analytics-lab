@@ -97,8 +97,11 @@ class LPROCRConfig:
     max_plates: int = 16
     tesseract_timeout_seconds: float = 3.0
     min_ocr_confidence: float = 0.0
+    tesseract_psm: int = 7
 
     def __post_init__(self) -> None:
+        if type(self.tesseract_psm) is not int or self.tesseract_psm not in (7, 13):
+            raise ValueError("tesseract_psm must be integer 7 or 13")
         for name in ("plate_threshold", "min_ocr_confidence"):
             value = _finite(getattr(self, name), name)
             if not 0.0 <= value <= 1.0:
@@ -378,7 +381,7 @@ class TesseractPlateRecognizer:
         self._check_version()
         command = [
             self._binary, "stdin", "stdout", "--tessdata-dir", str(self._tessdata_dir),
-            "-l", "eng", "--psm", "7", "-c", "tessedit_create_tsv=1",
+            "-l", "eng", "--psm", str(self.config.tesseract_psm), "-c", "tessedit_create_tsv=1",
         ]
         result = self._runner(
             command,

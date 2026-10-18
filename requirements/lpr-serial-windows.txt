@@ -1,0 +1,6 @@
+# Existing reviewed decoder/runtime, exact CPython 3.11 Windows x86-64 wheels.
+# PyPI release metadata verified before preparation; no source builds or OpenVINO.
+numpy==2.2.6 \
+    --hash=sha256:e8213002e427c69c45a52bbd94163084025f533a55a59d6f9c5b820774ef3303
+opencv-python-headless==4.12.0.88 \
+    --hash=sha256:86b413bdd6c6bf497832e346cd5371995de148e579b9774f8eba686dee3f5528

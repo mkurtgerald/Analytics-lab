@@ -1,7 +1,61 @@
+## October 18 paired serial-line OCR comparison
+
+The owner's minimum 90% requirement is an accuracy goal for weapons, LPR/OCR
+and detection/tracking. Engineering completion and measured accuracy must be
+reported separately. No core stack has qualified that accuracy requirement on
+a representative held-out set. Face remains at its existing engineering
+checkpoint; it is not a new field-accuracy claim.
+
+PR #147 merged the focused tracking repair at
+`83197b1a86555c0062a23d55aac7013d8581745b`. Exact-head run #365
+(`39156878925`) and automatic main #366 (`39157027152`) passed Linux, Windows
+and the gate. Its new work item used one CI request, with zero unchanged retries.
+The generated association cases demonstrate a corrected false candidate and
+restored positive; they do not supply IDF1 or detection-accuracy measurements.
+
+The next bounded donor-first hypothesis reuses the already admitted Tesseract
+5.5.3 engine and pinned English tessdata_fast weights. It compares normal line
+PSM7 with opt-in raw-line PSM13 on identical immutable RGB PPM crops from the
+three already exposed CC0 Land Rover, South Carolina and Washington images.
+The default remains PSM7. The sole configuration difference between the arms
+is PSM; detector, crop, model, parser and confidence cutoff do not change.
+Historical gray/Otsu results (zero exact reads from three cases, five character
+errors) are recorded separately and are not the fresh paired RGB control.
+
+One source acquisition/decode per image, one installer/model acquisition and
+one install support six OCR calls and two version probes. Source dimensions,
+byte hashes and crop RGB24 hashes must all match before recognition. Native
+execution is restricted to the dedicated hosted Windows PR lane. The admitted
+payload is 39,945,587 bytes excluding hash-locked Windows OpenCV/NumPy wheels;
+the latter total 51,831,014 bytes. No new weights, detector or framework is
+selected. All source/crop/model/installer/runtime files stay below a new direct
+child of RUNNER_TEMP and are deleted on success or failure, with no artifacts.
+
+The existing five-minute job ceiling remains unchanged. A shared cooperative
+210-second evidence budget caps subprocess timeouts and each HTTP inactivity
+timeout by remaining time, reserves cleanup time and checks elapsed time around
+phases/reads. Exact Content-Length is required and transfer encodings rejected.
+HTTP opening/header parsing is inactivity-bounded (at most 15 seconds), not a
+strict wall-clock interruption; late completion fails rather than qualifying.
+No acquisition retries or alternate mirrors are used. Phase logs distinguish
+acquisition, installation, recognition and cleanup failures.
+
+Reports bind source/model/config/code/runtime/CPU identities, retain every
+output/confidence/abstention and compare whole-plate exact counts and character
+errors. Abstentions remain misses. These three retrospective positives have no
+independent negative coverage: no false-accept rate, held-out accuracy gate or
+default promotion follows from this run. Local verification passed 827 tests
+with three existing optional OpenCV skips, plus guardrails, compilation,
+deterministic replay and diff checks. Offline real-stdlib HTTPResponse tests
+cover complete-body socket closure; orchestration tests cover exact paired
+inputs/call counts, failure cleanup, deadlines and abstention conservation.
+Native comparison results are pending at preparation. This new serial-profile work item has zero CI requests at
+preparation and does not restart parked OCR glyph/429 or PR #146 work.
+
 ## October 18 core priority and tracking accuracy repair
 
 The owner set weapons, LPR/OCR and detection/tracking as the core deliverables,
-with a minimum 90% engineering-completion target and high measured accuracy.
+with a minimum 90% accuracy goal and a request to materially advance completion.
 Face detection/privacy remains at its existing engineering checkpoint. These
 are delivery targets, not achieved accuracy scores. Retain donor-first reuse:
 the admitted OIDv4 weapons baseline, Tesseract/OMZ LPR boundaries and portable
@@ -34,16 +88,18 @@ assignment. An independent read-only review passed 1,792 additional exact-oracle
 checks and twelve tracker permutations without finding a blocker. No model,
 media, new dependency, training or deployment is introduced. Full local verification passed 810 tests with three existing optional OpenCV
 skips; guardrails, compilation, deterministic replay and diff checks passed.
-Exact-head hosted qualification is pending when this snapshot is authored. Synthetic evidence does not establish field accuracy.
+Exact-head #365 and automatic main #366 subsequently passed all hosted jobs;
+the merge and CI accounting are recorded above. Synthetic evidence does not
+establish field accuracy.
 
 This work starts from main `dac3c6372c1ff77dad90e0f920062eabe899446a` and contains
 only the new weighted association, perception integration, its tests and this
-substantive state update. It has received zero hosted CI requests. It is distinct
+substantive state update. It received one hosted CI request. It is distinct
 from PR #146's unmerged participant-source/readiness/parser work and its separate
 zero-IoU configuration correction. Preserve that PR's eight runs (#357..#364;
 six passing heads and two deterministic failures), prepared review commit
-`0bf0321f4fe3648a8315571c16e22420ae370185` and local patch. Park that exhausted
-proposal before opening this sole focused implementation PR; no failed source
+`0bf0321f4fe3648a8315571c16e22420ae370185` and local patch. That exhausted
+proposal was parked before opening the sole focused implementation PR; no failed source
 parser test or old donor experiment is retried or renamed by this tracking fix.
 
 GMDCSA24/Figshare participant-media commercial permissions remain operationally
