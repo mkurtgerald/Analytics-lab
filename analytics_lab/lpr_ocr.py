@@ -20,6 +20,9 @@ import re
 import subprocess
 from typing import Any, Callable, Iterable, Protocol, Sequence
 
+from .artifacts import ArtifactSpec
+from .tracking import DetectionCandidate, NormalizedBox
+
 _OMZ_COMMIT = "6697dead54ed1cdd664b0313189c2cb52ee6335e"
 _OMZ_LICENSE = f"https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/{_OMZ_COMMIT}/LICENSE"
 _OMZ_XML = "vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.xml"
@@ -148,6 +151,46 @@ def parse_omz_plate_rows(
         result.append(PlateDetection(confidence, left, top, right, bottom))
     result.sort(key=lambda item: (-item.confidence, item.x1, item.y1, item.x2, item.y2))
     return tuple(result[:max_plates])
+
+
+def parse_omz_vehicle_rows(
+    rows: Iterable[Sequence[float]], *, threshold: float = 0.50, max_vehicles: int = 64
+) -> tuple[DetectionCandidate, ...]:
+    """Parse the admitted OMZ 0106 vehicle class (1), excluding plates (2)."""
+    cutoff = _finite(threshold, "threshold")
+    if not 0.0 <= cutoff <= 1.0:
+        raise ValueError("threshold must be in [0, 1]")
+    if type(max_vehicles) is not int or not 1 <= max_vehicles <= 64:
+        raise ValueError("max_vehicles must be an integer in [1, 64]")
+    result: list[DetectionCandidate] = []
+    for count, row in enumerate(rows, 1):
+        if count > 200:
+            raise RuntimeError("detector output row limit exceeded")
+        if isinstance(row, (str, bytes)):
+            raise ValueError("detector row must contain seven numeric values")
+        try:
+            if len(row) != 7:
+                raise ValueError("detector row must contain seven numeric values")
+            image_id, label, confidence, x1, y1, x2, y2 = (
+                _finite(row[index], "detector value") for index in range(7)
+            )
+        except (TypeError, IndexError, KeyError) as exc:
+            raise ValueError("detector row must contain seven numeric values") from exc
+        if image_id < 0:
+            break
+        if label != 1 or confidence < cutoff:
+            continue
+        left, top = max(0.0, min(1.0, x1)), max(0.0, min(1.0, y1))
+        right, bottom = max(0.0, min(1.0, x2)), max(0.0, min(1.0, y2))
+        if right <= left or bottom <= top:
+            continue
+        candidate = DetectionCandidate("vehicle", confidence, NormalizedBox(left, top, right, bottom), 1)
+        if len(result) >= max_vehicles:
+            raise RuntimeError("vehicle count exceeds configured bound")
+        result.append(candidate)
+    result.sort(key=lambda item: (-item.confidence, item.box.x_min, item.box.y_min,
+                                  item.box.x_max, item.box.y_max))
+    return tuple(result)
 
 
 def verify_tessdata_artifact(
@@ -429,6 +472,28 @@ def run_lpr_ocr(image: Any, detector: PlateDetector, recognizer: PlateRecognizer
     return tuple(observations)
 
 
+def omz_vehicle_artifacts() -> tuple[ArtifactSpec, ...]:
+    """The existing admitted OMZ 0106 FP16 pair, shared by both detector heads."""
+    return (
+        ArtifactSpec(
+            component="open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
+            relative_path=_OMZ_XML,
+            size_bytes=325452,
+            sha384="b0a70cfc4ccbe85dd5ba5549c2d142d7f922a0a1116657cdcc9f48cb6afc7cc40a596a655b9e6566396c48b72232ff65",
+            source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.xml",
+            license_id="Apache-2.0", license_url=_OMZ_LICENSE,
+        ),
+        ArtifactSpec(
+            component="open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
+            relative_path=_OMZ_BIN,
+            size_bytes=1286772,
+            sha384="0406e296c9822f4a5e8ee300ad40e5c0a0eeeaf9206f829556cb836cb8f10a4f8a4dd94d1bb16a60562bf1568fd12618",
+            source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.bin",
+            license_id="Apache-2.0", license_url=_OMZ_LICENSE,
+        ),
+    )
+
+
 class OpenVINOOMZPlateDetector:
     """Optional local CPU adapter for the pinned OMZ 0106 FP16 plate detector."""
 
@@ -442,27 +507,10 @@ class OpenVINOOMZPlateDetector:
             import cv2
             import numpy as np
             import openvino as ov
-            from .artifacts import ArtifactSpec, verify_artifact_set
+            from .artifacts import verify_artifact_set
         except ImportError as exc:
             raise RuntimeError("OpenVINO, NumPy and OpenCV are required for the OMZ plate detector") from exc
-        specs = (
-            ArtifactSpec(
-                component="open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
-                relative_path=_OMZ_XML,
-                size_bytes=325452,
-                sha384="b0a70cfc4ccbe85dd5ba5549c2d142d7f922a0a1116657cdcc9f48cb6afc7cc40a596a655b9e6566396c48b72232ff65",
-                source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.xml",
-                license_id="Apache-2.0", license_url=_OMZ_LICENSE,
-            ),
-            ArtifactSpec(
-                component="open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
-                relative_path=_OMZ_BIN,
-                size_bytes=1286772,
-                sha384="0406e296c9822f4a5e8ee300ad40e5c0a0eeeaf9206f829556cb836cb8f10a4f8a4dd94d1bb16a60562bf1568fd12618",
-                source_url="https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.bin",
-                license_id="Apache-2.0", license_url=_OMZ_LICENSE,
-            ),
-        )
+        specs = omz_vehicle_artifacts()
         verified = verify_artifact_set(artifact_root, specs)
         paths = {item.spec.relative_path: item.path for item in verified}
         core = ov.Core()
@@ -478,7 +526,8 @@ class OpenVINOOMZPlateDetector:
         if not self.runtime_version.startswith("2026.3.1"):
             raise RuntimeError("OpenVINO runtime version does not match reviewed release")
 
-    def __call__(self, image: Any) -> tuple[PlateDetection, ...]:
+    def infer_rows(self, image: Any) -> Any:
+        """Run one inference of the verified 0106 model, without class filtering."""
         _image_size(image)
         resized = self._cv2.resize(image, (300, 300), interpolation=self._cv2.INTER_LINEAR)
         blob = self._np.ascontiguousarray(resized[None], dtype=self._np.float32)
@@ -486,6 +535,36 @@ class OpenVINOOMZPlateDetector:
         output = self._np.asarray(result[self._compiled.output(0)])
         if output.size % 7:
             raise RuntimeError("OMZ plate detector output is not seven-value rows")
+        return output.reshape((-1, 7))
+
+    def __call__(self, image: Any) -> tuple[PlateDetection, ...]:
         return parse_omz_plate_rows(
-            output.reshape((-1, 7)), threshold=self.config.plate_threshold, max_plates=self.config.max_plates
+            self.infer_rows(image), threshold=self.config.plate_threshold, max_plates=self.config.max_plates
+        )
+
+
+class OpenVINOOMZVehicleDetector:
+    """Vehicle-only output from the already admitted local CPU OMZ 0106 model.
+
+    Class/input semantics are pinned to Open Model Zoo 6697dead54ed1cdd664b0313189c2cb52ee6335e,
+    models/intel/vehicle-license-plate-detection-barrier-0106/README.md.
+    The donor targets front-facing vehicles at barriers; traffic accuracy is unqualified.
+    """
+
+    def __init__(
+        self, artifact_root: str | Path, *, confidence_threshold: float = 0.50, max_vehicles: int = 64,
+    ) -> None:
+        cutoff = _finite(confidence_threshold, "confidence_threshold")
+        if not 0.0 <= cutoff <= 1.0:
+            raise ValueError("confidence_threshold must be in [0, 1]")
+        if type(max_vehicles) is not int or not 1 <= max_vehicles <= 64:
+            raise ValueError("max_vehicles must be an integer in [1, 64]")
+        self.confidence_threshold = cutoff
+        self.max_vehicles = max_vehicles
+        self._detector = OpenVINOOMZPlateDetector(artifact_root)
+        self.runtime_version = self._detector.runtime_version
+
+    def detect(self, image: Any) -> tuple[DetectionCandidate, ...]:
+        return parse_omz_vehicle_rows(
+            self._detector.infer_rows(image), threshold=self.confidence_threshold, max_vehicles=self.max_vehicles,
         )

@@ -2,6 +2,35 @@
 
 Every external library, repository, model, weight file, dataset, code fragment, or other donor component used by Analytics Lab must be recorded here before it is merged into a production candidate.
 
+## Bounded Caltrans public live evaluation source
+
+Caltrans public CWWP2 district 1 camera index `88`, `US-101 : Eureka / 14th -
+Looking North (C039)`, exposes a 320x240 HLS feed at
+`https://wzmedia.dot.ca.gov/D1/eureka_14th_320x240.stream/playlist.m3u8` through
+its [public catalog](https://cwwp2.dot.ca.gov/data/d1/cctv/cctvStatusD01.json).
+Primary review on 2026-10-18 binds the
+[CWWP2 purpose](https://dot.ca.gov/programs/traffic-operations/traveler-information/cwwp),
+[CCTV access and fair-use guidance](https://cwwp2.dot.ca.gov/closed-circuit-television-cameras.html)
+and [ownership terms](https://dot.ca.gov/conditions-of-use).
+The public portal offers CCTV for public/commercial integration and treats
+Caltrans-created information as public domain unless otherwise indicated;
+third-party and contrary notices remain exceptions. Its public website delivery
+is distinct from the direct TMC subscription described in TOPP97-1. The selected
+catalog entry has no contrary/third-party notice. Keep attribution to Caltrans,
+avoid service-degrading access and perform no face/plate identification.
+
+Admission is limited to one short non-identifying traffic compatibility test in
+the named hosted evidence lane: the latest two consecutive unencrypted segments
+from a verified three-entry playlist, at most
+35 seconds declared media and 4 MiB, hashed before local decoding and deleted
+with models/frames on success or failure. Runtime byte hashes identify the
+actual dynamic material; a static camera URL or catalog modification date is not
+an immutable frame identity or capture timestamp. No training, archival dataset,
+redistribution, standing capture service, release or accuracy admission follows.
+The existing OMZ 0106 vehicle head (class 1) is reused unchanged at 0.50 with the
+admitted runtime; its published front-facing barrier/BIT-Vehicle results do not
+qualify this wide traffic scene. ByteTrack handles are segment-local only.
+
 ## Policy
 Preferred licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause. Copyleft, non-commercial, research-only, custom or unclear terms require explicit review. Code, weights and data rights are separate admissions.
 

@@ -276,6 +276,22 @@ class GuardrailsTests(unittest.TestCase):
         generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
         self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-accuracy-')", generic['if'])
 
+    def test_public_live_probe_is_only_in_its_bounded_hosted_linux_lane(self):
+        steps = self.workflow['jobs']['linux']['steps']
+        name = 'Bounded public Caltrans live traffic probe'
+        lane = next(step for step in steps if step.get('name') == name)
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn("startsWith(github.head_ref, 'evidence/public-live-caltrans-')", lane['if'])
+        self.assertIn("steps.scope.outputs.run_full_tests == 'true'", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertIn('requirements/oidv4-object-smoke-linux.txt', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-caltrans-live', lane['run'])
+        self.assertEqual(lane['run'].count('python -m analytics_lab.'), 1)
+        self.assertIn('analytics_lab.caltrans_live_evidence', lane['run'])
+        self.assertFalse(any(step.get('name') == name for step in self.workflow['jobs']['windows']['steps']))
+        generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/public-live-caltrans-')", generic['if'])
+
     def test_preflight_allows_bounded_work(self):
         self.assertTrue(g.preflight(self.snapshot, self.policy)['allowed'])
 
