@@ -1,3 +1,77 @@
+## October 18 bounded public live traffic test
+
+The owner asked to watch public live streams for testing. Select one public
+Caltrans-created CWWP2 camera: district 1 index 88, `US-101 : Eureka / 14th -
+Looking North (C039)`, with the catalog-exposed 320x240 HLS playlist
+`https://wzmedia.dot.ca.gov/D1/eureka_14th_320x240.stream/playlist.m3u8`.
+Primary CWWP2/CCTV/ownership terms permit public/commercial use of Caltrans
+material subject to contrary/third-party notices and fair use. This public
+delivery does not require inventing a direct TMC subscription requirement.
+The bounded traffic-only test has no identity inference, plate text, camera
+control, training, archive, redistribution or continuing capture service.
+
+The metadata precheck returned HTTP 200 for a single-variant 320x240 HLS v3
+master and three consecutive MPEG-TS entries totaling about 30 seconds; it did
+not download video or run inference. A camera's record modification timestamp
+is not its capture clock. Other reviewed options did not provide an equivalent
+immediate test: TfL requires registration and publishes periodic images;
+USGS provides public-domain scientific camera images, with separate video
+hosting/access considerations. No substitute or private feed is selected.
+
+The narrow hosted Linux lane reuses the existing hash-locked runtime and exact
+OMZ 0106 XML/BIN identities (1,612,224 model bytes). Share its existing verified
+runtime to expose only vehicle class 1 at 0.50 and one inference per sampled
+frame; OCR/plate and face/privacy behavior is unchanged. Reuse the admitted
+ByteTrack adapter with fresh session state per segment. The vehicle head is
+trained/validated for front-facing barrier scenes: its published AP is not an
+accuracy estimate for this traffic camera.
+
+Require the exact in-service catalog record and source directory, HTTPS with
+no redirects or credential/query substitution, one master/single-child path,
+three consecutive unencrypted TS segments, at most 35 seconds declared media
+and 4 MiB media bytes. Reject nested variants, keys/maps/ranges, end lists and
+discontinuities; verify TS framing/hash before local decoding. One additional
+child read after at most 15 seconds must demonstrate advertised sequence
+advancement. That check supports a live-provider observation, not a known
+camera-capture UTC timestamp.
+
+Decode at most 2,400 frames, fixed 320x240 uint8 with FPS at most 60, sampling
+at most 100 frames around 3 Hz. Record actual decoded spans and media-relative
+times separately from EXTINF duration and receipt UTC. Do not fabricate
+unobserved duration, camera UTC, labels, cross-segment identity or missing
+observations. Reports bind source/rights/model/config/code/runtime/CPU identity,
+segment/frame hashes and every count/failure. With no independent labels,
+precision, recall and false-alert rates stay null; no accuracy gate is passed.
+
+All acquired models/media and intermediates remain under a new hosted
+RUNNER_TEMP child and are deleted on success/failure; no artifacts are uploaded.
+The five-minute job stays unchanged, with a cooperative 180-second evidence
+budget, remaining-time-capped HTTP inactivity timeouts, phase logs and cleanup
+reserve. HTTP opening/header parsing is inactivity-bounded rather than a strict
+wall-clock interruption. Metadata and media byte/request ceilings are explicit;
+there is no mirror, repeated retry, source sweep or background watcher.
+
+This distinct live compatibility work starts from PR #149's verified merge
+`8f5ccf4df0487248266bc04b1c14f01b05cb4e49`; exact-head #369
+(`39160332882`) and automatic main #370 (`39160463159`) passed Linux/Windows
+and the gate, running 829 tests with existing optional skips. That related
+association repair family used two total requests and stays closed. Preserve
+parked PR #148's two requests, PR #146's eight and FPN's four. No old OCR/source
+or donor experiment is retried. This new live work has zero CI requests at
+preparation; the actual live result is pending here.
+
+Local validation ran 877 tests with three existing optional-native skips;
+guardrails, compilation, deterministic replay and diff checks passed. Generated
+controls cover bounded acquisition/cleanup and actual tracker confirmation when
+decoded indices are sparse. Tracking uses dense sample ordinals while retaining
+original decoded indices. Publisher metadata demonstrated changing bandwidth,
+attribute ordering and media playlist versions 3/4; parse those reviewed forms
+without weakening URI, codec, dimensions or forbidden-feature checks. An initial
+segment HEAD returned 404; a fresh metadata request with cache revalidation then
+returned HTTP 200 and fixed Content-Length 188,000 for the current segment. No
+segment body, model or native runtime was acquired locally. The reader requests
+cache revalidation and will preserve any live-source failure without fallback.
+
 ## October 18 core perception correctness follow-up
 
 The owner's minimum 90% requirement is an accuracy goal across weapons,
