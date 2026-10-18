@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import math
 from typing import Any, Iterable, Protocol
 
+from .association import maximum_cardinality_weighted_matching
 from .video import PerceptionObservation
 
 
@@ -168,39 +169,21 @@ class IoUTracker:
                   if frame_index - state.last_frame - 1 <= self.config.max_missed_frames}
         result: list[str | None] = [None] * len(boxes)
 
-        # Greedy highest-IoU assignment can fragment tracks when a flexible track
-        # takes the only valid box available to a more constrained track. Use a
-        # deterministic augmenting-path matching over all above-threshold edges so
-        # the association preserves the maximum possible number of existing tracks.
-        # Edge order still prefers higher IoU; this remains geometric session-local
-        # association and makes no identity/ReID claim.
-        adjacency: dict[str, tuple[int, ...]] = {}
-        for track_id, state in active.items():
-            candidates: list[tuple[float, float, float, float, float, int]] = []
-            for index, box in enumerate(boxes):
-                score = state.bbox.iou(box)
-                if score >= self.config.min_iou:
-                    candidates.append((-score, box.x1, box.y1, box.x2, box.y2, index))
-            candidates.sort()
-            adjacency[track_id] = tuple(item[-1] for item in candidates)
-
-        matched_boxes: dict[int, str] = {}
-
-        def augment(track_id: str, seen_boxes: set[int]) -> bool:
-            for index in adjacency.get(track_id, ()):
-                if index in seen_boxes:
-                    continue
-                seen_boxes.add(index)
-                incumbent = matched_boxes.get(index)
-                if incumbent is None or augment(incumbent, seen_boxes):
-                    matched_boxes[index] = track_id
-                    return True
-            return False
-
-        for track_id in sorted(adjacency, key=lambda value: (len(adjacency[value]), value)):
-            augment(track_id, set())
-        for index, track_id in matched_boxes.items():
-            result[index] = track_id
+        # Preserve the maximum number of valid links, then maximize total IoU.
+        # Unweighted cardinality alone can give a departed track a remaining
+        # person's perfect match, merging or resetting their posture histories.
+        track_ids = tuple(sorted(active))
+        box_indices = tuple(sorted(range(len(boxes)), key=lambda index: (
+            boxes[index].x1, boxes[index].y1, boxes[index].x2, boxes[index].y2, index,
+        )))
+        weights: list[tuple[float | None, ...]] = []
+        for track_id in track_ids:
+            scores = tuple(active[track_id].bbox.iou(boxes[index]) for index in box_indices)
+            weights.append(tuple(score if score >= self.config.min_iou else None for score in scores))
+        for track_index, box_index in maximum_cardinality_weighted_matching(
+            tuple(weights), max_size=self.config.max_tracks,
+        ):
+            result[box_indices[box_index]] = track_ids[track_index]
 
         unmatched = [index for index, track_id in enumerate(result) if track_id is None]
         if len(active) + len(unmatched) > self.config.max_tracks:

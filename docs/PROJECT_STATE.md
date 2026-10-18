@@ -1,3 +1,75 @@
+## October 18 core priority and tracking accuracy repair
+
+The owner set weapons, LPR/OCR and detection/tracking as the core deliverables,
+with a minimum 90% engineering-completion target and high measured accuracy.
+Face detection/privacy remains at its existing engineering checkpoint. These
+are delivery targets, not achieved accuracy scores. Retain donor-first reuse:
+the admitted OIDv4 weapons baseline, Tesseract/OMZ LPR boundaries and portable
+MIT ByteTrack association slice remain available. No new model is adopted based
+only on upstream benchmark scores, source licenses or successful compilation.
+
+This focused change repairs a newly demonstrated default-setting association
+failure in the reusable OMZ/pose/IoU/temporal pipeline. Two stationary person
+boxes overlap at IoU 3/13, above the unchanged 0.15 threshold. Person A is down
+at 0..2,250 ms then exits; B is other at 0..2,250 ms and down at 2,500..3,000 ms.
+Neither has three seconds down, but unweighted matching gives A's handle to B
+and emits one candidate spanning 0..3,000 ms. The inverse continuous-positive
+control loses B's valid episode when A exits. Both are reproduced using generated
+SSD rows and pose heatmaps through the actual core composition, not native media.
+
+A deterministic stdlib rectangular Hungarian assignment now preserves maximum
+valid association cardinality, then maximizes exact total IoU. Exact binary-float
+integer scaling prevents the cardinality bonus from erasing small differences.
+Canonical track/box order, configured capacity, expiration, retryable failure
+state, confidence and temporal cutoffs are unchanged. The generated false
+candidate falls from one to zero; the continuous positive is restored from zero
+to one. Both two-person fixtures retain exactly 23 actual observations. Missing
+observations are not fabricated. Geometric handles remain session-local and do
+not establish person identity or solve every real-world tracking ambiguity.
+
+Fifteen new tests cover both composed cases, the previous maximum-cardinality
+trap, weight/greedy counterexamples, 21,279 exhaustive tiny weighted matrices,
+subnormal precision, permutations, capacity/atomicity and dense default256
+assignment. An independent read-only review passed 1,792 additional exact-oracle
+checks and twelve tracker permutations without finding a blocker. No model,
+media, new dependency, training or deployment is introduced. Full local verification passed 810 tests with three existing optional OpenCV
+skips; guardrails, compilation, deterministic replay and diff checks passed.
+Exact-head hosted qualification is pending when this snapshot is authored. Synthetic evidence does not establish field accuracy.
+
+This work starts from main `dac3c6372c1ff77dad90e0f920062eabe899446a` and contains
+only the new weighted association, perception integration, its tests and this
+substantive state update. It has received zero hosted CI requests. It is distinct
+from PR #146's unmerged participant-source/readiness/parser work and its separate
+zero-IoU configuration correction. Preserve that PR's eight runs (#357..#364;
+six passing heads and two deterministic failures), prepared review commit
+`0bf0321f4fe3648a8315571c16e22420ae370185` and local patch. Park that exhausted
+proposal before opening this sole focused implementation PR; no failed source
+parser test or old donor experiment is retried or renamed by this tracking fix.
+
+GMDCSA24/Figshare participant-media commercial permissions remain operationally
+on hold pending independent review. Their proposed code enforcement in PR #146
+is unmerged, and is not claimed as shipped by this change. Acquire no held media.
+Existing parked OCR glyph, FaceSSD and FPN hypothesis counters remain preserved.
+
+Next core evidence boundaries: independently authored boxes/track IDs for the
+already reviewed CC0 tracking window; a frozen positive/hard-negative weapons
+comparison using exact model/source/annotation identities; and whole-plate exact
+OCR correctness plus false accepted reads and abstentions on a reserved labeled
+set. The historical three OCR reads were wrong, and no stronger weapons donor
+has yet demonstrated a measured gain. These gaps must close before reporting
+high accuracy or raising completion estimates to 90%.
+
+Preregister these initial high-accuracy targets before selecting fresh held-out
+evidence: weapon precision >=95% and recall >=90% for each declared supported
+class; LPR exact whole-plate accuracy >=95% on the frozen readable/in-scope
+positive set (abstentions count as misses), reporting false accepted reads separately; object
+detection precision >=95%, recall >=90%, and tracking IDF1 >=90% on the declared
+tracking set. Alarm-producing paths still require zero observed false alerts
+on declared held-out negative exposure, with exposure, misses and uncertainty
+reported. These are future qualification targets, not achieved scores or a
+universal no-error guarantee. Exposed historical examples are regressions and
+cannot become fresh held-out evidence by renaming them.
+
 # Project state — 2026-09-24
 
 ## October 14 accuracy repair and guarded donor recovery
