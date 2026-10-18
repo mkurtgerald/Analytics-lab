@@ -17,6 +17,7 @@ from dataclasses import dataclass
 import math
 from typing import Iterable
 
+from .association import maximum_cardinality_weighted_matching
 from .tracking import NormalizedBox, TrackedDetection
 
 
@@ -135,44 +136,26 @@ def _match_frame(
     ground_truth: tuple[GroundTruthObject, ...],
     tracks: tuple[TrackedDetection, ...],
     min_iou: float,
+    *,
+    max_objects: int = 512,
 ) -> tuple[tuple[tuple[int, int, float], ...], tuple[int, ...], tuple[int, ...]]:
-    """Return deterministic maximum-cardinality IoU-gated frame matches."""
+    """Maximize IoU-gated match count, then total IoU, with canonical ID ties."""
 
-    adjacency: dict[int, tuple[tuple[int, float], ...]] = {}
-    for gt_index, gt in enumerate(ground_truth):
-        edges: list[tuple[int, float]] = []
-        for track_index, track in enumerate(tracks):
-            if gt.category != track.category:
-                continue
-            value = _iou(gt.box, track.box)
-            if value >= min_iou:
-                edges.append((track_index, value))
-        edges.sort(key=lambda item: (-item[1], tracks[item[0]].track_id, item[0]))
-        adjacency[gt_index] = tuple(edges)
-
-    by_track: dict[int, int] = {}
-
-    def augment(gt_index: int, seen_tracks: set[int]) -> bool:
-        for track_index, _ in adjacency.get(gt_index, ()):
-            if track_index in seen_tracks:
-                continue
-            seen_tracks.add(track_index)
-            incumbent = by_track.get(track_index)
-            if incumbent is None or augment(incumbent, seen_tracks):
-                by_track[track_index] = gt_index
-                return True
-        return False
-
-    for gt_index in sorted(
-        adjacency,
-        key=lambda index: (len(adjacency[index]), ground_truth[index].object_id, index),
-    ):
-        augment(gt_index, set())
-
-    matches: list[tuple[int, int, float]] = []
-    for track_index, gt_index in by_track.items():
-        matches.append((gt_index, track_index, _iou(ground_truth[gt_index].box, tracks[track_index].box)))
-    matches.sort()
+    gt_indices = tuple(sorted(range(len(ground_truth)), key=lambda i: ground_truth[i].object_id))
+    track_indices = tuple(sorted(range(len(tracks)), key=lambda i: tracks[i].track_id))
+    weights: list[tuple[float | None, ...]] = []
+    for gt_index in gt_indices:
+        gt = ground_truth[gt_index]
+        row: list[float | None] = []
+        for track_index in track_indices:
+            track = tracks[track_index]
+            value = _iou(gt.box, track.box) if gt.category == track.category else None
+            row.append(value if value is not None and value >= min_iou else None)
+        weights.append(tuple(row))
+    matches = sorted(
+        (gt_indices[row], track_indices[column], weights[row][column])
+        for row, column in maximum_cardinality_weighted_matching(tuple(weights), max_size=max_objects)
+    )
     matched_gt = {item[0] for item in matches}
     matched_tracks = {item[1] for item in matches}
     return (
@@ -224,7 +207,8 @@ def evaluate_tracking(
             raise RuntimeError("object count exceeds configured evaluation bound")
 
         matches, unmatched_gt, unmatched_tracks = _match_frame(
-            frame.ground_truth, frame.tracks, cfg.min_iou
+            frame.ground_truth, frame.tracks, cfg.min_iou,
+            max_objects=cfg.max_objects_per_frame,
         )
         gt_total += len(frame.ground_truth)
         matched_total += len(matches)

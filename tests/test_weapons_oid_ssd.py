@@ -10,6 +10,18 @@ from analytics_lab.weapons_oid_ssd import (
 )
 
 
+def _generated_weapon_outputs(count):
+    """Distinct boxes in valid model tensors; the last proposal is a rifle."""
+    return {
+        "boxes": [[[(row + .1) / 10, (column + .1) / 10,
+                    (row + .8) / 10, (column + .8) / 10]
+                   for row, column in (divmod(index, 10) for index in range(count))]],
+        "scores": [[.9] * count],
+        "classes": [[285.0] * (count - 1) + [351.0]],
+        "num_detections": [float(count)],
+    }
+
+
 class WeaponOIDSSDTests(unittest.TestCase):
     def test_weapon_allowlist_is_exact_and_pinned(self):
         self.assertEqual(
@@ -85,6 +97,60 @@ class WeaponOIDSSDTests(unittest.TestCase):
                 ),
             ),
         )
+
+
+class WeaponCompleteOutputTests(unittest.TestCase):
+    def test_default_capacity_overflow_cannot_silently_drop_admitted_rifle(self):
+        # All 65 boxes survive the class, confidence and geometry filters.
+        outputs = _generated_weapon_outputs(65)
+        with self.assertRaisesRegex(RuntimeError, "weapon count exceeds configured bound"):
+            parse_oid_v4_weapon_detections(**outputs)
+
+    def test_exact_default_capacity_preserves_every_admitted_weapon(self):
+        detections = parse_oid_v4_weapon_detections(**_generated_weapon_outputs(64))
+        self.assertEqual(len(detections), 64)
+        self.assertEqual([item.category for item in detections], ["knife"] * 63 + ["rifle"])
+        self.assertEqual(len({item.box for item in detections}), 64)
+
+    def test_configured_capacity_one_rejects_two_admitted_weapons(self):
+        with self.assertRaisesRegex(RuntimeError, "weapon count exceeds configured bound"):
+            parse_oid_v4_weapon_detections(**_generated_weapon_outputs(2), max_detections=1)
+
+    def test_filtered_proposals_do_not_consume_weapon_capacity(self):
+        for capacity in (1, 64):
+            with self.subTest(capacity=capacity):
+                outputs = _generated_weapon_outputs(capacity)
+                for index in range(100 - capacity):
+                    kind = index % 3
+                    outputs["boxes"][0].append(
+                        [.2, .2, .2, .4] if kind == 2 else [.2, .2, .4, .4]
+                    )
+                    outputs["scores"][0].append(.49 if kind == 1 else .99)
+                    outputs["classes"][0].append(502.0 if kind == 0 else 533.0)
+                outputs["num_detections"] = [100.0]
+                detections = parse_oid_v4_weapon_detections(**outputs, max_detections=capacity)
+                self.assertEqual(len(detections), capacity)
+                self.assertEqual(sum(item.category == "rifle" for item in detections), 1)
+
+    def test_runtime_propagates_overflow_without_counting_success(self):
+        outputs = _generated_weapon_outputs(65)
+
+        class Detector:
+            def detect(self, _frame):
+                return parse_oid_v4_weapon_detections(**outputs)
+
+        runtime = OpenVINOOIDSSDWeaponRuntime(Detector(), compile_count=1)
+        with self.assertRaisesRegex(RuntimeError, "weapon count exceeds configured bound"):
+            runtime.detect(object())
+        self.assertEqual(runtime.inference_count, 0)
+        self.assertEqual(runtime.compile_count, 1)
+
+        outputs = _generated_weapon_outputs(64)
+        detections = runtime.detect(object())
+        self.assertEqual(len(detections), 64)
+        self.assertEqual(sum(item.category == "rifle" for item in detections), 1)
+        self.assertEqual(runtime.inference_count, 1)
+        self.assertEqual(runtime.compile_count, 1)
 
 
 class WeaponRuntimeLifecycleTests(unittest.TestCase):

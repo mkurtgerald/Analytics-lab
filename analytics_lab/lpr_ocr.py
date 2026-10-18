@@ -202,15 +202,24 @@ def _image_size(image: Any) -> tuple[int, int]:
     return width, height
 
 
+def _pixel_coordinate(normalized: float, extent: int) -> float:
+    scaled = normalized * extent
+    nearest = round(scaled)
+    # Recover an integer pixel boundary only when it reproduces the original
+    # normalized float exactly. An epsilon would also snap genuinely fractional
+    # neighboring floats and could exclude pixels from their floor/ceil crop.
+    return float(nearest) if normalized == nearest / extent else scaled
+
+
 def encode_plate_crop_ppm(image: Any, plate: PlateDetection) -> bytes:
     """Encode one BGR plate crop as binary PPM using only Python primitives."""
     if not isinstance(plate, PlateDetection):
         raise ValueError("plate must be a PlateDetection")
     width, height = _image_size(image)
-    left = max(0, min(width - 1, int(math.floor(plate.x1 * width))))
-    top = max(0, min(height - 1, int(math.floor(plate.y1 * height))))
-    right = max(left + 1, min(width, int(math.ceil(plate.x2 * width))))
-    bottom = max(top + 1, min(height, int(math.ceil(plate.y2 * height))))
+    left = max(0, min(width - 1, math.floor(_pixel_coordinate(plate.x1, width))))
+    top = max(0, min(height - 1, math.floor(_pixel_coordinate(plate.y1, height))))
+    right = max(left + 1, min(width, math.ceil(_pixel_coordinate(plate.x2, width))))
+    bottom = max(top + 1, min(height, math.ceil(_pixel_coordinate(plate.y2, height))))
     # Apply the downstream 16 MiB PPM limit before accessing or allocating pixels.
     crop_width, crop_height = right - left, bottom - top
     header = f"P6\n{crop_width} {crop_height}\n255\n".encode("ascii")

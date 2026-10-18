@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Callable, Iterable
 
+from .association import maximum_cardinality_weighted_matching
 from .tracking import DetectionCandidate, NormalizedBox, TrackedDetection
 
 BYTE_TRACK_REVISION = "d1bf0191adff59bc8fcfeaa0b33d3d1642552a99"
@@ -88,8 +89,13 @@ class _Track:
         return f"bt-{self.numeric_id:06d}"
 
 
-def _box_order(box: NormalizedBox, index: int) -> tuple[float, float, float, float, int]:
-    return (box.x_min, box.y_min, box.x_max, box.y_max, index)
+def _detection_order(detection: DetectionCandidate, index: int) -> tuple:
+    model_id = detection.model_class_id
+    model_key = ((0, 0) if model_id is None else
+                 (1, model_id) if type(model_id) is int else (2, model_id))
+    box = detection.box
+    return (detection.category, box.x_min, box.y_min, box.x_max, box.y_max,
+            -detection.confidence, model_key, index)
 
 
 def _associate(
@@ -97,43 +103,30 @@ def _associate(
     detections: tuple[DetectionCandidate, ...],
     similarity: Callable[[_Track, DetectionCandidate], float],
     minimum: float,
+    *,
+    max_size: int,
 ) -> tuple[tuple[tuple[int, int], ...], tuple[int, ...], tuple[int, ...]]:
-    """Deterministic max-cardinality association with donor-aligned score ordering.
+    """Maximize valid links, then total donor-style similarity within the gate.
 
     This intentionally avoids upstream ``lap``/``cython_bbox`` admission in the
-    first portable slice. Edges are donor-style similarity gated, then ordered
-    highest-first; an augmenting path preserves the maximum feasible number of
-    existing tracks. Full LAP/Kalman parity remains a separately measured step.
+    portable slice. Canonical ordering resolves equal objectives independently
+    of input order. Full LAP/Kalman parity remains a separately measured step.
     """
-    adjacency: dict[int, tuple[int, ...]] = {}
-    for track_index, track in enumerate(tracks):
-        candidates: list[tuple[float, tuple[float, float, float, float, int], int]] = []
-        for detection_index, detection in enumerate(detections):
-            if track.category != detection.category:
-                continue
-            value = similarity(track, detection)
-            if value >= minimum:
-                candidates.append((-value, _box_order(detection.box, detection_index), detection_index))
-        candidates.sort()
-        adjacency[track_index] = tuple(item[-1] for item in candidates)
-
-    by_detection: dict[int, int] = {}
-
-    def augment(track_index: int, seen: set[int]) -> bool:
-        for detection_index in adjacency.get(track_index, ()):
-            if detection_index in seen:
-                continue
-            seen.add(detection_index)
-            incumbent = by_detection.get(detection_index)
-            if incumbent is None or augment(incumbent, seen):
-                by_detection[detection_index] = track_index
-                return True
-        return False
-
-    for track_index in sorted(adjacency, key=lambda i: (len(adjacency[i]), tracks[i].numeric_id)):
-        augment(track_index, set())
-
-    matches = tuple(sorted(((track_index, detection_index) for detection_index, track_index in by_detection.items())))
+    track_indices = tuple(sorted(range(len(tracks)), key=lambda i: tracks[i].numeric_id))
+    detection_indices = tuple(sorted(range(len(detections)), key=lambda i: _detection_order(detections[i], i)))
+    weights: list[tuple[float | None, ...]] = []
+    for track_index in track_indices:
+        track = tracks[track_index]
+        row: list[float | None] = []
+        for detection_index in detection_indices:
+            detection = detections[detection_index]
+            value = similarity(track, detection) if track.category == detection.category else None
+            row.append(value if value is not None and value >= minimum else None)
+        weights.append(tuple(row))
+    matches = tuple(sorted(
+        (track_indices[row], detection_indices[column])
+        for row, column in maximum_cardinality_weighted_matching(tuple(weights), max_size=max_size)
+    ))
     matched_tracks = {item[0] for item in matches}
     matched_detections = {item[1] for item in matches}
     return (
@@ -218,6 +211,7 @@ class ByteTrackAssociationBackend:
             high,
             lambda track, detection: _iou(track.box, detection.box) * detection.confidence,
             self.config.primary_min_similarity,
+            max_size=self.config.max_tracks,
         )
         for track_index, detection_index in matches:
             self._update_track(confirmed[track_index], high[detection_index], frame_index)
@@ -231,6 +225,7 @@ class ByteTrackAssociationBackend:
             low,
             lambda track, detection: _iou(track.box, detection.box),
             self.config.secondary_min_iou,
+            max_size=self.config.max_tracks,
         )
         matched_second_ids: set[int] = set()
         for track_index, detection_index in matches_low:
@@ -251,6 +246,7 @@ class ByteTrackAssociationBackend:
             remaining_high,
             lambda track, detection: _iou(track.box, detection.box) * detection.confidence,
             self.config.unconfirmed_min_similarity,
+            max_size=self.config.max_tracks,
         )
         for track_index, detection_index in matches_new:
             self._update_track(unconfirmed[track_index], remaining_high[detection_index], frame_index)
@@ -264,7 +260,8 @@ class ByteTrackAssociationBackend:
             if not (track.state == "lost" and frame_index - track.last_frame > self.config.track_buffer_frames)
         }
 
-        for detection_index in unmatched_remaining_high:
+        for detection_index in sorted(unmatched_remaining_high,
+                                      key=lambda i: _detection_order(remaining_high[i], i)):
             detection = remaining_high[detection_index]
             if detection.confidence < self.config.new_track_threshold:
                 continue

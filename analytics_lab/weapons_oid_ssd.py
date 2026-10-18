@@ -52,7 +52,10 @@ def parse_oid_v4_weapon_detections(
     confidence_threshold: float = _DEFAULT_CONFIDENCE_THRESHOLD,
     max_detections: int = _MAX_WEAPON_DETECTIONS,
 ) -> tuple[DetectionCandidate, ...]:
-    """Filter standard OIDv4 SSD outputs into weapon-category candidates."""
+    """Filter standard OIDv4 SSD outputs into weapon-category candidates.
+
+    Excess admitted weapons raise instead of returning a partial detection set.
+    """
     cutoff = _finite_number(confidence_threshold, "confidence_threshold")
     if not 0.0 <= cutoff <= 1.0:
         raise ValueError("confidence_threshold must be within [0, 1]")
@@ -111,6 +114,8 @@ def parse_oid_v4_weapon_detections(
         bottom = max(0.0, min(1.0, y_max))
         if right <= left or bottom <= top:
             continue
+        if len(detections) >= max_detections:
+            raise RuntimeError("weapon count exceeds configured bound")
         detections.append(
             DetectionCandidate(
                 category=category,
@@ -131,7 +136,7 @@ def parse_oid_v4_weapon_detections(
             int(item.model_class_id) if isinstance(item.model_class_id, int) else -1,
         )
     )
-    return tuple(detections[:max_detections])
+    return tuple(detections)
 
 
 class OpenVINOOIDSSDWeaponDetector:
