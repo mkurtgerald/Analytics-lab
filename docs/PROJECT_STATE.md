@@ -1,7 +1,89 @@
+## October 18 core perception correctness follow-up
+
+The owner's minimum 90% requirement is an accuracy goal across weapons,
+LPR/OCR and detection/tracking; engineering completion is separate. This change
+repairs four reproduced normal-input failures using admitted components. No
+model, media, training, threshold sweep, new framework or deployment is added.
+Generated controls demonstrate correctness changes, not field accuracy.
+
+The portable ByteTrack slice still used unweighted association after PR #147
+repaired the separate perception tracker. At default settings, two 0.90 person
+detections overlap at IoU 3/13. When A exits, stationary B is assigned A's handle
+and B's own track is marked lost. Actual OMZ-row parsing into TrackingSession
+reproduces one ID switch over three correctly localized observations. Reuse
+the existing stdlib weighted assignment to maximize valid cardinality first,
+then exact total stage similarity. Retain all donor stages, category gates,
+confidence cutoffs, recovery and capacity behavior; this is an adapted portable
+slice, not full upstream Kalman/LAP accuracy parity.
+
+Tracking evaluation also needs weighted matching: on two overlapping objects
+with stable supplied IDs and a valid jittered box, its former augmenting-path
+choice reports two spurious ID switches despite a strictly better total-IoU
+matching with zero switches. Canonical weighted frame matching preserves
+maximum cardinality, misses and false-track accounting while correcting that
+measurement. This remains the repository's documented diagnostic protocol,
+not MOTChallenge, HOTA or IDF1; the registered 90% IDF1 target is unqualified.
+
+The weapon parser silently returned the first 64 accepted proposals. A valid
+65-proposal SSD output (64 knives and a rifle, all confidence 0.90) dropped the
+rifle while reporting successful inference. Preserve the 64-output capacity,
+but reject excess admitted detections instead of returning an incomplete result.
+Exactly 64 still succeeds; below-cutoff, nonweapon and zero-area proposals do
+not consume accepted capacity. This prevents a silent omission, not the model's
+historical zero-output rifle failure or an independently measured recall gain.
+
+The plate proposal path also round-tripped integer pixel coordinates through
+normalized floats. A contour (245,50,160,40) in a 960x200 generated image scales
+back to left 244.99999999999997; floor includes a foreign column and emits a
+161x40 crop. Recover a scaled integer only when dividing it by the source
+extent reproduces the original normalized float exactly. This avoids a broad
+epsilon: distinct fractional neighbor floats retain floor/ceil behavior, as
+does the existing PPM bound.
+The composed proposal/crop/recognizer regression uses generated pixels and
+fake native TSV output; it does not establish real OCR improvement.
+
+PR #147 is merged at `83197b1a86555c0062a23d55aac7013d8581745b`;
+exact-head #365 (`39156878925`) and automatic main #366 (`39157027152`) passed
+all required jobs. Conservatively carry its one CI request into this related
+association follow-up: one additional request remains in the two-request family
+budget, with zero unchanged retries. Before publication this follow-up has used
+zero new requests. Preserve parked PR #146's eight requests, FPN's four and
+PR #148's two. No stalled hypothesis is reopened or reset.
+
+PR #148 remains closed unmerged at `1e1b3812158fb47ce2f9956be933b24bf90d4393`.
+Run #367 failed on generated Windows temporary-path aliases; the correction
+passed all 827 tests on Linux/Windows in #368, then the third canonical Wikimedia
+plate-image GET returned HTTP 429. The first two sources were verified; cleanup
+ran without a reported cleanup error. Installer/model acquisition and native OCR
+never started: no PSM comparison result or gain exists. The prepared post-run
+review commit is `850ecafbe695319df96be7892094896676778d7b`; do not retry under
+a renamed lane or silently substitute images. This follow-up contains no PSM
+change, source acquisition or workflow change.
+
+Representative independently labeled positives and hard negatives remain the
+main accuracy gap. Face stays at its existing engineering checkpoint. The
+owner-supplied JAIJANYANI surveillance repository was reviewed at
+`4f4c988891347290156a789061af00e92d858cb8`: it supplies whole-frame label-change
+timestamps, not the missing core detectors, OCR, tracks or accuracy data; no
+code or weights were adopted.
+
+Nineteen new generated tests cover the four repairs. Before implementation,
+ByteTrack/evaluator regressions failed in twelve subcases, weapon overflow
+failed three tests and LPR precision failed six checks. After implementation,
+the full local suite passed 829 tests with three existing optional OpenCV skips;
+guardrails, compilation, deterministic replay and diff checks passed. Targeted
+controls retain actual ID switches, maximum match cardinality, lower-confidence
+and unconfirmed association stages, failure atomicity, exact-cap weapons,
+filtered proposals, fractional crop edges and separated plate observations.
+One bounded generated dense-512 probe retained all 512 ByteTrack outputs and
+all 512 evaluator matches; it is a configured-capacity check, not a product
+latency or throughput claim. Independent crop review found no blocker.
+Exact-head hosted checks are pending when this implementation snapshot is authored.
+
 ## October 18 core priority and tracking accuracy repair
 
 The owner set weapons, LPR/OCR and detection/tracking as the core deliverables,
-with a minimum 90% engineering-completion target and high measured accuracy.
+with a minimum 90% accuracy goal and a request to materially advance completion.
 Face detection/privacy remains at its existing engineering checkpoint. These
 are delivery targets, not achieved accuracy scores. Retain donor-first reuse:
 the admitted OIDv4 weapons baseline, Tesseract/OMZ LPR boundaries and portable
@@ -34,16 +116,17 @@ assignment. An independent read-only review passed 1,792 additional exact-oracle
 checks and twelve tracker permutations without finding a blocker. No model,
 media, new dependency, training or deployment is introduced. Full local verification passed 810 tests with three existing optional OpenCV
 skips; guardrails, compilation, deterministic replay and diff checks passed.
-Exact-head hosted qualification is pending when this snapshot is authored. Synthetic evidence does not establish field accuracy.
+Exact-head #365 and automatic main #366 subsequently passed, as recorded above.
+Synthetic evidence does not establish field accuracy.
 
 This work starts from main `dac3c6372c1ff77dad90e0f920062eabe899446a` and contains
 only the new weighted association, perception integration, its tests and this
-substantive state update. It has received zero hosted CI requests. It is distinct
+substantive state update. It received one hosted CI request. It is distinct
 from PR #146's unmerged participant-source/readiness/parser work and its separate
 zero-IoU configuration correction. Preserve that PR's eight runs (#357..#364;
 six passing heads and two deterministic failures), prepared review commit
-`0bf0321f4fe3648a8315571c16e22420ae370185` and local patch. Park that exhausted
-proposal before opening this sole focused implementation PR; no failed source
+`0bf0321f4fe3648a8315571c16e22420ae370185` and local patch. That exhausted
+proposal was parked before PR #147 opened; no failed source
 parser test or old donor experiment is retried or renamed by this tracking fix.
 
 GMDCSA24/Figshare participant-media commercial permissions remain operationally
