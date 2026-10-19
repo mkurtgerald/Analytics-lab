@@ -2,6 +2,42 @@
 
 Every external library, repository, model, weight file, dataset, code fragment, or other donor component used by Analytics Lab must be recorded here before it is merged into a production candidate.
 
+## Plate-specialist OCR donor candidate
+
+The optional CCT recognizer adapts preprocessing and fixed-slot decoding from
+[ankandrew/fast-plate-ocr](https://github.com/ankandrew/fast-plate-ocr) at
+`9ce7a5b64a939aa421c243b331d42e6bc25ffd44`, especially
+`fast_plate_ocr/core/process.py` and `inference/plate_recognizer.py`.
+The publisher distributes the project and associated model release under its
+[MIT notice](https://github.com/ankandrew/fast-plate-ocr/blob/9ce7a5b64a939aa421c243b331d42e6bc25ffd44/LICENSE),
+retained in [notices/fast-plate-ocr-MIT.txt](notices/fast-plate-ocr-MIT.txt).
+No upstream package, training code or model bytes are vendored.
+
+The selected publisher `arg-plates` release artifact is
+`cct_s_v2_global.onnx`, 5,262,230 bytes, SHA-256
+`384bbbd2cea3ef54761d3df70822ef3a349ee1a112aeafddbe0e3ba06bc6e47b`.
+Its `cct_s_v2_global_plate_config.yaml` is 1,725 bytes, SHA-256
+`0335c74a305173bb6f393efed0fde03cadeaa0b649ed8e19f431016d8232d0a6`.
+Both sizes/digests were independently read from the publisher's release API;
+config contents were checked against that digest before implementing the
+RGB uint8 64x128 input and ten-slot Latin alphabet contract. OpenVINO's existing
+ONNX frontend loads this exact model; ONNX Runtime and training frameworks are
+not added. The existing runtime versions use official hash-locked Windows wheels.
+
+Code, model distribution and evaluation-media provenance remain distinct. The
+publisher's global training corpus is private and its overlap with our two
+exposed CC0 plate examples is unknown. This admission supports bounded local
+engineering evaluation only, not training-corpus acquisition, weight/model
+redistribution, production packaging, default promotion or a field accuracy
+claim. Keep all donor and transitive notices for later release review. Published
+donor validation rates and GPU timings are not Analytics Lab measurements.
+
+The paired evidence path reuses the separately admitted CC0 Land Rover and South
+Carolina sources, pre-OCR crop hashes and exact expected texts, plus three
+explicitly generated blank controls. It does not acquire the held Washington
+source or a new dataset. The official Tesseract installer and Apache-2.0 English
+model retain their existing separate identities and evidence-only restrictions.
+
 ## Bounded Caltrans public live evaluation source
 
 Caltrans public CWWP2 district 1 camera index `88`, `US-101 : Eureka / 14th -

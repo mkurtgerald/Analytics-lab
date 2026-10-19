@@ -1,3 +1,67 @@
+## October 19 plate-specialist donor comparison
+
+The owner asked for more accuracy today. A short live-feed compatibility pass
+does not resolve the core accuracy gaps. PR #150 merged at
+`086118d9e4ec77a3122a7bfa46c86e36481a54b3`; exact-head run #372
+(`39171990896`) and automatic main #373 (`39172152104`) passed Linux, Windows
+and the quality gate. Its actual Caltrans run decoded 608 frames and sampled 57,
+with zero vehicle detections/tracks and cleanup complete. That output remains
+unscored, not proof of no false positives or 90% accuracy. The live work is closed
+at two requests and is not run again here.
+
+Select one small pretrained plate-text donor, CCT-S-v2 from
+`ankandrew/fast-plate-ocr@9ce7a5b64a939aa421c243b331d42e6bc25ffd44` (MIT).
+The exact publisher ONNX is 5,262,230 bytes, SHA-256
+`384bbbd2cea3ef54761d3df70822ef3a349ee1a112aeafddbe0e3ba06bc6e47b`;
+its 1,725-byte plate config has SHA-256
+`0335c74a305173bb6f393efed0fde03cadeaa0b649ed8e19f431016d8232d0a6`.
+Release API digests and config contents were reviewed before implementation.
+Retain MIT attribution; no donor package or weights enter Git. The private global
+training corpus and sample overlap remain unknown; this is engineering
+evaluation, not model redistribution or production packaging admission.
+
+The optional local recognizer fits the existing RGB PPM contract, verifies the
+model before native loading, compiles once through the existing OpenVINO ONNX
+frontend, and follows the donor's RGB uint8 NHWC 64x128 linear resize and
+graph-owned normalization. Decode ten Latin-character slots without CTC collapse;
+reject incomplete/blank reads. Preregister a minimum probability of 0.90 across
+all slots including padding, before observing native predictions. This score is
+uncalibrated. Region classification is unused. Tesseract remains the default.
+
+Run both recognizers on the same hosted Windows CPU and independently pre-bound
+CC0 Land Rover `MPR318` and South Carolina `354AVV` crops, preserving their raw
+RGB24 identities. Tesseract retains exact 5.5.3, pinned English data, PSM 7 and
+gray/Otsu preprocessing. CCT uses its published RGB preprocessing. Each arm runs
+the two real positives plus three generated black/gray/white blank controls,
+with exact text, wrong accepted reads, abstentions and edit distance reported.
+Blank-control outputs are separate from real negative exposure. These exposed
+positives are retrospective regressions; even 2/2 cannot establish held-out
+accuracy, general false-positive rates or the requested minimum 90% target.
+
+The dedicated `evidence/lpr-cct-*` Windows lane uses the four existing runtime
+versions via official hash-locked Windows wheels. Six bounded one-time downloads
+total: two CC0 sources, CCT ONNX/config, official Tesseract installer and English
+model. No Washington source, retry, mirror, live feed or participant media.
+All acquired assets stay under RUNNER_TEMP and are deleted on success/failure;
+no media/model/frame artifacts or training. Preserve the five-minute job and
+cooperative 180-second evidence budget. Exclude the Linux generic media lane.
+
+This distinct learned-recognizer replacement starts with zero CI requests;
+local/full native comparison results are pending at preparation. Preserve the
+parked PR #148 PSM/source comparison at 2/2, PR #146 at eight, FPN at four and
+the completed association family at two. None is retried or renamed. Actual
+native outcomes and final request counters will be persisted in the PR body.
+
+Preparation validation: 899 local tests passed with three existing optional
+skips; all 20 focused donor/paired-runner tests passed with zero skips.
+Guardrails, compilation, deterministic replay and diff checks passed. Independent
+review also ran 13 metadata-only cases with native imports blocked. Review fixed
+a valid-file access-time checksum rejection and accommodated uniquely identified
+unnamed ONNX plate outputs without confusing the region head. The Windows lane
+reruns both focused modules after hash-locked runtime provisioning. No model,
+media body, installer or native donor execution occurred locally. Actual native
+reads, resource timings and request #1 outcome remain pending at this snapshot.
+
 ## October 18 bounded public live traffic test
 
 The owner asked to watch public live streams for testing. Select one public

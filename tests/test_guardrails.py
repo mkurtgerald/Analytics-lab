@@ -242,6 +242,21 @@ class GuardrailsTests(unittest.TestCase):
         generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
         self.assertIn("!startsWith(github.head_ref, 'evidence/person-down-regression-')", generic['if'])
 
+    def test_cct_comparison_uses_only_its_paired_hosted_windows_lane(self):
+        name = 'Bounded paired CCT and exact Tesseract OCR comparison'
+        steps = self.workflow['jobs']['windows']['steps']
+        lane = next(step for step in steps if step.get('name') == name)
+        self.assertIn("github.event_name == 'pull_request'", lane['if'])
+        self.assertIn("startsWith(github.head_ref, 'evidence/lpr-cct-')", lane['if'])
+        self.assertIn('--only-binary=:all: --require-hashes', lane['run'])
+        self.assertIn('requirements/lpr-cct-windows.txt', lane['run'])
+        self.assertIn('python -m analytics_lab.lpr_cct_evidence', lane['run'])
+        self.assertIn('$RUNNER_TEMP/analytics-lpr-cct', lane['run'])
+        linux = self.workflow['jobs']['linux']['steps']
+        self.assertFalse(any(step.get('name') == name for step in linux))
+        generic = next(step for step in linux if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/lpr-cct-')", generic['if'])
+
     def test_windows_requires_linux(self):
         self.workflow['jobs']['windows']['needs'] = []
         with self.assertRaises(ValueError):

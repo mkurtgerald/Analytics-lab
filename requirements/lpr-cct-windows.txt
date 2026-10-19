@@ -1,0 +1,10 @@
+# Official PyPI CPython 3.11 Windows x86-64 wheels; no source builds.
+# Runtime versions match the existing reviewed Linux stack.
+openvino==2026.3.1 \
+    --hash=sha256:3e778e8b68645bab69258d95fd91ca65024d35bdf374eaf2bbf70b4169336873
+opencv-python-headless==4.12.0.88 \
+    --hash=sha256:86b413bdd6c6bf497832e346cd5371995de148e579b9774f8eba686dee3f5528
+numpy==2.2.6 \
+    --hash=sha256:e8213002e427c69c45a52bbd94163084025f533a55a59d6f9c5b820774ef3303
+openvino-telemetry==2025.2.0 \
+    --hash=sha256:bcb667e83a44f202ecf4cfa49281715c6d7e21499daec04ff853b7f964833599
