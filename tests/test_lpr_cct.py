@@ -112,7 +112,8 @@ class CCTRuntimeTests(unittest.TestCase):
         self.path = Path(self.temp.name).resolve() / "generated.onnx"
         self.payload = b"generated fake model identity"
         self.path.write_bytes(self.payload)
-        self.events, self.inputs = [], []
+        self.events, self.inputs, self.compile_configs = [], [], []
+        self.effective_precision = None
         self.input_port = Port("input", (None, 64, 128, 3), "u8")
         self.plate = Port("plate", (None, 370), "f32")
         self.region = Port("region", (None, 66), "f32")
@@ -122,6 +123,13 @@ class CCTRuntimeTests(unittest.TestCase):
 
         class Compiled:
             inputs = [owner.input_port]
+
+            def get_property(self, name):
+                owner.events.append(("property", name))
+                if name != "INFERENCE_PRECISION_HINT":
+                    raise AssertionError("unexpected compiled property")
+                precision = owner.effective_precision or owner.compile_configs[-1].get("INFERENCE_PRECISION_HINT", "bf16")
+                return SimpleNamespace(get_type_name=lambda: precision)
 
             def output(self, index):
                 owner.events.append(("output", index))
@@ -140,8 +148,9 @@ class CCTRuntimeTests(unittest.TestCase):
                 owner.events.append(("read", path))
                 return owner.model
 
-            def compile_model(self, model, device):
+            def compile_model(self, model, device, config):
                 owner.events.append(("compile", device))
+                owner.compile_configs.append(dict(config))
                 return Compiled()
 
         def resize(rgb, size, *, interpolation):
@@ -166,6 +175,8 @@ class CCTRuntimeTests(unittest.TestCase):
             self.assertEqual(result.text, "MPR318")
             self.assertAlmostEqual(result.confidence, .99, places=6)
         self.assertEqual(recognizer.runtime_version, "2026.3.1-test")
+        self.assertEqual(self.compile_configs, [{"INFERENCE_PRECISION_HINT": "f32"}])
+        self.assertEqual((recognizer.requested_inference_precision, recognizer.effective_inference_precision), ("f32", "f32"))
         self.assertEqual((recognizer.compile_count, recognizer.inference_count), (1, 2))
         self.assertEqual(self.events.count(("compile", "CPU")), 1)
         self.assertIn(("output", 1), self.events)
@@ -174,6 +185,67 @@ class CCTRuntimeTests(unittest.TestCase):
             self.assertEqual(blob[0, 0, 0].tolist(), [255, 2, 3])
             self.assertTrue(blob.flags.owndata)
         self.assertEqual(ppm[-6:], b"\xff\x02\x03\x04\x05\x06")
+
+    def test_legacy_default_records_actual_precision_without_override(self):
+        recognizer = OpenVINOCCTPlateRecognizer(self.path, inference_precision="default")
+        self.assertEqual(self.compile_configs, [{}])
+        self.assertEqual((recognizer.requested_inference_precision, recognizer.effective_inference_precision), ("default", "bf16"))
+        self.assertEqual(recognizer.inference_count, 0)
+
+    def test_invalid_precision_rejects_before_model_verification_or_native_load(self):
+        self.path.unlink()
+        for precision in ("bf16", "f16", "FP32", "auto", None, True, 32, []):
+            with self.subTest(precision=precision), self.assertRaisesRegex(ValueError, "inference_precision"):
+                OpenVINOCCTPlateRecognizer(self.path, inference_precision=precision)
+        self.assertEqual(self.events, [])
+
+    def test_fp32_effective_mismatch_refuses_inference_and_unknown_default_fails(self):
+        for effective, requested in (("bf16", "f32"), ("f16", "f32"), ("unknown", "default")):
+            self.effective_precision = effective
+            with self.subTest(effective=effective), self.assertRaisesRegex(RuntimeError, "effective inference precision"):
+                OpenVINOCCTPlateRecognizer(self.path, inference_precision=requested)
+        self.assertNotIn("infer", self.events)
+
+    def test_same_call_diagnostics_cover_all_admission_reasons_and_are_immutable(self):
+        recognizer = OpenVINOCCTPlateRecognizer(self.path)
+        self.assertIsNone(recognizer.last_read_diagnostics)
+        ppm = b"P6\n2 1\n255\n\xff\x02\x03\x04\x05\x06"
+        for text, confidence, reason in (("MPR318", .99, None), ("MPR318", .89, "low_confidence"),
+                                         ("", .99, "blank"), ("AB_C", .99, "interior_padding")):
+            self.output = self.np.array(probabilities(text, confidence), dtype=self.np.float32).reshape((1, 370))
+            observed = recognizer(ppm)
+            diagnostics = recognizer.last_read_diagnostics
+            self.assertEqual(diagnostics.raw_text, text.ljust(10, "_"))
+            self.assertEqual(diagnostics.rejection_reason, reason)
+            self.assertEqual(len(diagnostics.slot_maxima), 10)
+            self.assertAlmostEqual(diagnostics.min_probability, confidence, places=6)
+            self.assertEqual(diagnostics.min_probability, min(diagnostics.slot_maxima))
+            self.assertEqual(observed is None, reason is not None)
+            with self.assertRaises(FrozenInstanceError):
+                diagnostics.rejection_reason = "changed"
+            with self.assertRaises(TypeError):
+                diagnostics.slot_maxima[0] = 0.
+            with self.assertRaises(AttributeError):
+                recognizer.last_read_diagnostics = None
+        self.assertEqual(recognizer.inference_count, 4)
+
+    def test_failed_calls_clear_prior_diagnostics(self):
+        recognizer = OpenVINOCCTPlateRecognizer(self.path)
+        ppm = b"P6\n2 1\n255\n\xff\x02\x03\x04\x05\x06"
+        recognizer(ppm)
+        self.assertIsNotNone(recognizer.last_read_diagnostics)
+        with self.assertRaises(ValueError):
+            recognizer(b"bad ppm")
+        self.assertIsNone(recognizer.last_read_diagnostics)
+        recognizer(ppm)
+        self.output = self.np.zeros((2, 370), dtype=self.np.float32)
+        with self.assertRaises(RuntimeError):
+            recognizer(ppm)
+        self.assertIsNone(recognizer.last_read_diagnostics)
+        self.output = self.np.full((1, 370), self.np.nan, dtype=self.np.float32)
+        with self.assertRaises(ValueError):
+            recognizer(ppm)
+        self.assertIsNone(recognizer.last_read_diagnostics)
 
     def test_unchanged_model_access_time_and_fixed_batch_are_valid(self):
         os.utime(self.path, (1, 1))
@@ -254,3 +326,4 @@ class CCTRuntimeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+from dataclasses import FrozenInstanceError
