@@ -1,3 +1,65 @@
+## October 19 minimum accuracy and CPU precision comparison
+
+The owner requires a minimum 90% for every analytic, with LPR/OCR first.
+Each analytic must qualify separately; averaging stronger results over an
+unqualified analytic does not meet the requirement. Retain the stricter already
+registered whole-plate target of 95% and weapon/detection precision targets.
+LPR end-to-end success requires a correctly localized, exact complete serial
+against every independently labeled readable/in-scope plate. Detector misses,
+wrong strings and OCR abstentions count as misses; wrong, duplicate or unmatched
+accepted outputs remain false positives. A 0.90 model score is not 90% accuracy.
+
+PR #151 merged as `3dd32640f0bce0e7608e787feeffe80cca01799f`; exact-head
+#374 (`39246897014`) and automatic main #375 (`39247408765`) passed all jobs.
+The actual paired native result recovered `MPR318` from the previous wrong read
+`IFMPR318J`; South Carolina `354AVV` remained an abstention in both arms.
+Exact reads were 0/2 versus 1/2, positive wrong accepted reads 1 versus 0, and
+character edits 9 versus 6 over 12 reference characters. Three generated blank
+controls produced `AN`/`OO`/`OO` under Tesseract and no accepted text under CCT.
+This is measured retrospective progress, not end-to-end qualification: it
+bypassed detection/automatic cropping and has no real negative-image exposure.
+
+Three broader data candidates were screened without media acquisition. The
+publisher's Arg benchmark has legacy labels but no separate dataset-rights or
+CCT-training-disjointness statement; OpenALPR has labels but repository AGPL
+terms without an established image-specific grant; UFPR-ALPR restricts access
+to academic/noncommercial use and requires permission. None is admitted here.
+The existing CC0 images and crops stay frozen; no new dataset, image-specific
+crop, lowered cutoff or success-selected sample is introduced.
+
+One documented runtime risk can be checked with the remaining CCT request.
+OpenVINO 2026 CPU documentation says default PERFORMANCE mode may automatically
+select BF16/FP16 on capable hardware, while explicit `INFERENCE_PRECISION_HINT`
+`f32` requests full precision. A float32 model/output port alone does not fix
+internal arithmetic. The previous evidence did not record effective precision,
+so do not assert that its host actually used BF16 or that this caused a miss.
+Compare the default plugin setting with explicit FP32 on the same host/model,
+same RGB preprocessing, same five inputs and unchanged 0.90 complete-read gate.
+Record actual requested/effective precision and slot maxima/raw argmax/rejection
+reason from the same inferences. Diagnostics cannot become accepted OCR text.
+
+The `evidence/lpr-cct-fp32-*` lane uses the existing four hash-locked Windows
+runtime packages and four downloads: the same two CC0 sources and pinned CCT
+ONNX/config. No Tesseract installer, English model, new media or framework.
+Compile exactly once per arm, five calls per arm, preserve the existing
+180-second cooperative/five-minute job limits, ephemeral cleanup and no-artifact
+rules. The previous native lane is excluded. Actual precision, accuracy delta
+and local/hosted results are pending at preparation; a zero gain must stay zero.
+
+CCT donor work used request one in PR #151. This precision comparison uses its
+last request two, without resetting counters through the new branch. Preserve
+parked PR #148=2, PR #146=8, FPN=4, completed association=2 and live PR #150=2.
+No third CCT attempt or old experiment retry is available. The larger accuracy
+blocker remains an independent, rights-cleared full-scene box/text test set and
+real negative exposure; no analytic is declared 90% qualified by this change.
+
+Local preparation passed 913 tests with three existing optional skips, all 25
+focused adapter/precision tests with zero skips, guardrails, compilation,
+deterministic replay and diff checks. Independent review ran 21 offline cases
+with actual native imports blocked and found no blocker. No model/media was
+acquired locally. Hosted precision/read outcomes remain pending at this snapshot
+and will be preserved in the PR body alongside the final CCT counter of two.
+
 ## October 19 plate-specialist donor comparison
 
 The owner asked for more accuracy today. A short live-feed compatibility pass

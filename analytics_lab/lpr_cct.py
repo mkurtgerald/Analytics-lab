@@ -7,6 +7,7 @@ plate accuracy. Region output is deliberately unused.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import hashlib
 from itertools import islice
 import math
@@ -25,6 +26,16 @@ CCT_MAX_INPUT_BYTES = 16 * 1024 * 1024
 _PPM_HEADER = re.compile(rb"P6\n([1-9][0-9]{0,7}) ([1-9][0-9]{0,7})\n255\n")
 
 
+@dataclass(frozen=True)
+class CCTReadDiagnostics:
+    """Uncalibrated slot metadata from one inference, before read admission."""
+
+    raw_text: str
+    slot_maxima: tuple[float, ...]
+    min_probability: float
+    rejection_reason: str | None
+
+
 def _probability(value: Any, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, Real):
         raise ValueError(f"{name} must be numeric")
@@ -38,6 +49,12 @@ def parse_cct_plate_probabilities(
     rows: Iterable[Sequence[float]], *, min_confidence: float = .90,
 ) -> OCRText | None:
     """Decode ten ordered 37-class probability rows without partial reads."""
+    return _decode_cct_plate_probabilities(rows, min_confidence=min_confidence)[0]
+
+
+def _decode_cct_plate_probabilities(
+    rows: Iterable[Sequence[float]], *, min_confidence: float,
+) -> tuple[OCRText | None, CCTReadDiagnostics]:
     cutoff = _probability(min_confidence, "min_confidence")
     if isinstance(rows, (str, bytes)):
         raise ValueError("CCT output must contain ten probability rows")
@@ -64,12 +81,17 @@ def parse_cct_plate_probabilities(
         confidences.append(best)
         chars.append(CCT_ALPHABET[values.index(best)])
     confidence = min(confidences)
+    raw_text = "".join(chars)
+    text = raw_text.rstrip("_")
+    rejection_reason = None
     if confidence < cutoff:
-        return None
-    text = "".join(chars).rstrip("_")
-    if not text or "_" in text:
-        return None
-    return OCRText(text, confidence)
+        rejection_reason = "low_confidence"
+    elif not text:
+        rejection_reason = "blank"
+    elif "_" in text:
+        rejection_reason = "interior_padding"
+    diagnostics = CCTReadDiagnostics(raw_text, tuple(confidences), confidence, rejection_reason)
+    return (None if rejection_reason is not None else OCRText(text, confidence)), diagnostics
 
 
 def _ppm_pixels(payload: bytes) -> tuple[int, int, memoryview]:
@@ -144,8 +166,13 @@ def _plate_output_index(outputs: tuple[Any, ...]) -> int:
 class OpenVINOCCTPlateRecognizer:
     """Compile the verified local CCT-S-v2 model once for CPU OCR."""
 
-    def __init__(self, model_path: str | Path, *, min_confidence: float = .90) -> None:
+    def __init__(
+        self, model_path: str | Path, *, min_confidence: float = .90, inference_precision: str = "f32",
+    ) -> None:
         self.min_confidence = _probability(min_confidence, "min_confidence")
+        if type(inference_precision) is not str or inference_precision not in ("f32", "default"):
+            raise ValueError("inference_precision must be f32 or default")
+        self._requested_inference_precision = inference_precision
         path = Path(model_path)
         _verify_model(path)
         try:
@@ -164,7 +191,14 @@ class OpenVINOCCTPlateRecognizer:
             raise RuntimeError("CCT requires one input")
         _validate_input(inputs[0])
         plate_index = _plate_output_index(tuple(model.outputs))
-        compiled = core.compile_model(model, "CPU")
+        # Preserve the donor's float32 execution. The legacy option exists only
+        # for an explicit comparison with the CPU plugin's automatic policy.
+        compile_config = {"INFERENCE_PRECISION_HINT": "f32"} if inference_precision == "f32" else {}
+        compiled = core.compile_model(model, "CPU", compile_config)
+        effective = compiled.get_property("INFERENCE_PRECISION_HINT").get_type_name()
+        if effective not in ("f32", "bf16", "f16") or (inference_precision == "f32" and effective != "f32"):
+            raise RuntimeError("CCT effective inference precision does not match requested policy")
+        self._effective_inference_precision = effective
         compiled_inputs = tuple(compiled.inputs)
         if len(compiled_inputs) != 1:
             raise RuntimeError("CCT compiled input count changed")
@@ -175,8 +209,22 @@ class OpenVINOCCTPlateRecognizer:
         self._compiled, self._plate_output = compiled, plate_output
         self.compile_count = 1
         self.inference_count = 0
+        self._last_read_diagnostics: CCTReadDiagnostics | None = None
+
+    @property
+    def requested_inference_precision(self) -> str:
+        return self._requested_inference_precision
+
+    @property
+    def effective_inference_precision(self) -> str:
+        return self._effective_inference_precision
+
+    @property
+    def last_read_diagnostics(self) -> CCTReadDiagnostics | None:
+        return self._last_read_diagnostics
 
     def __call__(self, ppm_bytes: bytes) -> OCRText | None:
+        self._last_read_diagnostics = None
         width, height, pixels = _ppm_pixels(ppm_bytes)
         rgb = self._np.frombuffer(pixels, dtype=self._np.uint8).reshape((height, width, 3))
         resized = self._cv2.resize(rgb, (128, 64), interpolation=self._cv2.INTER_LINEAR)
@@ -187,4 +235,8 @@ class OpenVINOCCTPlateRecognizer:
         output = self._np.asarray(result[self._plate_output])
         if output.shape not in ((1, 370), (1, 10, 37)) or output.dtype != self._np.float32:
             raise RuntimeError("CCT inference must return one float32 plate with 370 probabilities")
-        return parse_cct_plate_probabilities(output.reshape((10, 37)), min_confidence=self.min_confidence)
+        text, diagnostics = _decode_cct_plate_probabilities(
+            output.reshape((10, 37)), min_confidence=self.min_confidence,
+        )
+        self._last_read_diagnostics = diagnostics
+        return text

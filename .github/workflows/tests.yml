@@ -286,12 +286,21 @@
         },
         {
           "name": "Bounded paired CCT and exact Tesseract OCR comparison",
-          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-cct-') }}",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-cct-') && !startsWith(github.head_ref, 'evidence/lpr-cct-fp32-') }}",
           "env": {
             "PIP_DISABLE_PIP_VERSION_CHECK": "1"
           },
           "shell": "bash",
           "run": "set -euo pipefail\npython -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements/lpr-cct-windows.txt\npython -m unittest tests.test_lpr_cct tests.test_lpr_cct_evidence -v\npython -m analytics_lab.lpr_cct_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-cct\"\n"
+        },
+        {
+          "name": "Bounded paired CCT CPU precision comparison",
+          "if": "${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'evidence/lpr-cct-fp32-') }}",
+          "env": {
+            "PIP_DISABLE_PIP_VERSION_CHECK": "1"
+          },
+          "shell": "bash",
+          "run": "set -euo pipefail\npython -m pip install --no-cache-dir --only-binary=:all: --require-hashes -r requirements/lpr-cct-windows.txt\npython -m unittest tests.test_lpr_cct tests.test_lpr_cct_precision_evidence -v\npython -m analytics_lab.lpr_cct_precision_evidence --work-dir \"$RUNNER_TEMP/analytics-lpr-cct-precision\"\n"
         }
       ]
     },
