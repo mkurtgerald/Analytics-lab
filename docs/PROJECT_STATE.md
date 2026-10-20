@@ -1,5 +1,15 @@
 ## October 20 measured public-webcam accuracy
 
+The first PR check exposed a missed branch exclusion: the new evidence prefix
+entered the legacy generic video lane after its offline regressions passed.
+The same PR now excludes this prefix from that lane and adds a regression
+while retaining all required Linux/Windows tests and existing acquisition lanes.
+That first request stays counted; corrected-head CI is the second and final
+request. The first run completed the unintended generic diagnostic lane; this is
+recorded as a scope failure even though tests passed. Zero artifacts were
+uploaded. Its outputs are excluded from this comparison; detailed incident
+metadata stays local and final checks are recorded in the PR body.
+
 The owner requested public-webcam accuracy checks with a minimum 90% target.
 This work actually acquired and evaluated one intentionally public Caltrans
 CWWP2 traffic snapshot, rather than interpreting an unlabeled stream smoke as
@@ -44,7 +54,7 @@ The next useful accuracy work needs representative independently labeled road
 video and a separate, sufficiently detailed plate test set. Do not train on
 these exposed evaluation frames; no training job ran in this measurement.
 
-Local validation: 928 tests, three existing optional skips; guardrails,
+Local validation: 929 tests, three existing optional skips; guardrails,
 compilation, deterministic replay and diff checks passed. Independent review
 found no adapter/scorer blocker and separately exercised parser/matching cases.
 Three local CPU compile/inference attempts total (two baseline including the

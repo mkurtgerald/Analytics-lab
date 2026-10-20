@@ -829,6 +829,19 @@
     "schema": "analytics.webcam-provisional-measurement.v1",
     "sensitivity_label_set": "independent_reviewer"
   },
+  "hosted_CI_routing_correction": {
+    "CI_requests_after_corrected_push": 2,
+    "correction": "exclude evidence/webcam-labeled- from generic lane; preserve required Linux/Windows tests",
+    "detailed_incident_metadata": "retained locally; excluded from public record",
+    "failure": "new branch prefix entered legacy generic evidence lane unexpectedly",
+    "first_head": "9a4431639a90bf49af94bbc54ab21834c4c4acdc",
+    "first_run": 39446056797,
+    "first_run_artifacts_total_count": 0,
+    "first_run_cancelled": false,
+    "first_run_conclusion": "test gates passed; acquisition scope failed",
+    "measurement_inferences_rerun_for_CI_fix": false,
+    "unchanged_retries": 0
+  },
   "limitations": [
     "One unique low-resolution still, not independent video exposure",
     "Four versus five provisional AI labels; no human-gold or agreement manufactured",
@@ -839,7 +852,8 @@
     "Not 90-percent qualified; no field-wide accuracy claim"
   ],
   "local_native_resource_accounting": {
-    "CI_media_acquisition": false,
+    "CI_media_acquisition": true,
+    "CI_media_acquisition_note": "Local accounting excludes unintended legacy CI lane; actual scope recorded separately below.",
     "GPU_jobs": 0,
     "asset_GETs": 11,
     "baseline_attempts": 2,
@@ -1112,5 +1126,5 @@
     ],
     "uses": "transient non-identity traffic evaluation only; no retained pixels, training, redistribution or camera control"
   },
-  "work_item_CI_requests": 0
+  "work_item_CI_requests_at_measurement": 0
 }
