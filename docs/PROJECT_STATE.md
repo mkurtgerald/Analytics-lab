@@ -1,3 +1,64 @@
+## October 20 measured public-webcam accuracy
+
+The owner requested public-webcam accuracy checks with a minimum 90% target.
+This work actually acquired and evaluated one intentionally public Caltrans
+CWWP2 traffic snapshot, rather than interpreting an unlabeled stream smoke as
+accuracy. Three bounded GETs 15 seconds apart returned identical 68,062-byte
+JPEGs (320x260); score one unique image, excluding two duplicates. Receipt UTC
+is known, camera-capture UTC remains unknown. Metadata, hashes, labels and
+counts are retained in `ops/reviews/public-webcam-accuracy-20261020.json`;
+all acquired images, weights, wheels and isolated runtime were deleted.
+
+Two separate AI agents labeled before native predictions. They disagreed on
+four versus five vehicles in the distant queue and agreed that no complete
+plate serial was readable. Preserve both frozen label sets as separate
+sensitivity analyses, not consensus, human gold or pooled exposure. Scope is
+visible cars/vans/trucks/buses at least 12x6 pixels in the traffic image,
+excluding the footer; both confidence cutoff and matching IoU stay 0.50.
+
+Actual OMZ 0106 baseline output: zero accepted vehicles, TP0/FP0/FN4 or FN5,
+recall0/F1=0 and precision undefined. Zero outputs do not establish high
+precision or a useful false-positive rate. One report-serialization lookup
+failed after its native call; the exact error was corrected with one recorded
+replacement call and frozen labels/settings. Keep both attempts in accounting.
+
+Donor-first diagnosis selected one road-scene candidate, Apache-2.0 OMZ
+`person-vehicle-bike-detection-crossroad-0078` from the same pinned source
+commit. Its exact 2,883,302-byte FP16 pair uses BGR NCHW 1024-square input and
+vehicle class2. The optional offline CPU adapter verifies local artifacts,
+checks native contracts and exposes only vehicle proposals. No runtime,
+model, default-pipeline or production dependency is silently promoted.
+The same-image native comparison also accepted zero vehicles; its maximum
+vehicle confidence was 0.399736762, below the unchanged 0.50 cutoff. Both
+predeclared label sets again give recall0, with no measured accuracy gain.
+The donor's published 74.94% vehicle AP is a different benchmark, not a claim
+about this camera or the owner's 90% target. This comparison is closed without
+threshold tuning, another precision experiment or a source/model sweep.
+
+The new offline still scorer reuses one-to-one IoU matching, preserves raw
+duplicate detections and empty-image exposure, rejects repeated frame hashes,
+and leaves undefined ratios null. Independent images never create track
+identity. LPR/OCR remains unscored with denominator0; tracking, weapons and
+face were not tested by this still. No analytic is declared 90% qualified.
+The next useful accuracy work needs representative independently labeled road
+video and a separate, sufficiently detailed plate test set. Do not train on
+these exposed evaluation frames; no training job ran in this measurement.
+
+Local validation: 928 tests, three existing optional skips; guardrails,
+compilation, deterministic replay and diff checks passed. Independent review
+found no adapter/scorer blocker and separately exercised parser/matching cases.
+Three local CPU compile/inference attempts total (two baseline including the
+failed report, one donor), no GPU/paid service or ongoing watcher. Normal
+hosted CI remains offline; exact-head/main results and CI request counts will
+be recorded in the PR body. Preserve exhausted CCT=2, live PR150=2,
+association=2, parked PSM PR148=2, PR146=8 and FPN=4 counters.
+
+Previous PR152 is now verified on main `e770ad6`: its default-BF16 versus FP32
+CCT comparison produced no accuracy gain (both one exact read/two positives,
+one abstention, zero wrong accepted positive reads, zero/three generated blank
+outputs). The raw rejected `354AVV` diagnostic did not become an accepted read.
+Exact-head376 and main377 passed; the CCT work stays closed at two requests.
+
 ## October 19 minimum accuracy and CPU precision comparison
 
 The owner requires a minimum 90% for every analytic, with LPR/OCR first.
