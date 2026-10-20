@@ -321,6 +321,13 @@ class GuardrailsTests(unittest.TestCase):
         generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
         self.assertIn("!startsWith(github.head_ref, 'evidence/public-live-caltrans-')", generic['if'])
 
+    def test_labeled_webcam_measurement_keeps_hosted_ci_offline(self):
+        steps = self.workflow['jobs']['linux']['steps']
+        generic = next(step for step in steps if step.get('name') == 'Bounded real-video CPU evidence')
+        self.assertIn("!startsWith(github.head_ref, 'evidence/webcam-labeled-')", generic['if'])
+        self.assertFalse(any("startsWith(github.head_ref, 'evidence/webcam-labeled-')" in step.get('if', '')
+                             and step is not generic for step in steps))
+
     def test_preflight_allows_bounded_work(self):
         self.assertTrue(g.preflight(self.snapshot, self.policy)['allowed'])
 

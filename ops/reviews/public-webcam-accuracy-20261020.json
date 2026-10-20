@@ -1,0 +1,1130 @@
+{
+  "baseline_result": {
+    "compile_count": 2,
+    "compile_seconds": 0.1854758759999413,
+    "diagnostic_rows_note": "All accepted vehicles remain in raw_vehicle_detections; retain top five below-gate vehicle rows and hash/count of all output rows; diagnostic scores do not become detections.",
+    "duplicate_captures_excluded": 2,
+    "effective_precision": "<Type: 'bfloat16'>",
+    "first_attempt_failure": "native call completed; unsupported CompiledModel FULL_DEVICE_NAME lookup failed before report serialization; no result persisted",
+    "hardware": {
+      "cpu_name": "AMD EPYC 9V74 80-Core Processor                ",
+      "logical_cpus": 5,
+      "machine": "x86_64"
+    },
+    "human_gold": false,
+    "inference_completed_utc": "2026-10-20T15:00:59.027601+00:00",
+    "inference_count": 2,
+    "inference_seconds": 0.008100759000058133,
+    "inference_started_utc": "2026-10-20T15:00:58.827800+00:00",
+    "max_output_confidence_by_class": {
+      "1": null,
+      "2": null
+    },
+    "metrics_by_label_set": {
+      "author": {
+        "detection_count": 0,
+        "f1": 0.0,
+        "false_detections_per_image": 0.0,
+        "false_negatives": 4,
+        "false_positives": 0,
+        "ground_truth_count": 4,
+        "image_count": 1,
+        "min_iou": 0.5,
+        "per_image": [
+          {
+            "detection_count": 0,
+            "false_negatives": 4,
+            "false_positives": 0,
+            "frame_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+            "ground_truth_count": 4,
+            "image_id": "caltrans-c039-0",
+            "true_positives": 0
+          }
+        ],
+        "precision": null,
+        "recall": 0.0,
+        "true_positives": 0
+      },
+      "independent_reviewer": {
+        "detection_count": 0,
+        "f1": 0.0,
+        "false_detections_per_image": 0.0,
+        "false_negatives": 5,
+        "false_positives": 0,
+        "ground_truth_count": 5,
+        "image_count": 1,
+        "min_iou": 0.5,
+        "per_image": [
+          {
+            "detection_count": 0,
+            "false_negatives": 5,
+            "false_positives": 0,
+            "frame_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+            "ground_truth_count": 5,
+            "image_id": "caltrans-c039-0",
+            "true_positives": 0
+          }
+        ],
+        "precision": null,
+        "recall": 0.0,
+        "true_positives": 0
+      }
+    },
+    "model_specs": [
+      {
+        "component": "open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
+        "license_id": "Apache-2.0",
+        "license_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/6697dead54ed1cdd664b0313189c2cb52ee6335e/LICENSE",
+        "relative_path": "vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.xml",
+        "sha384": "b0a70cfc4ccbe85dd5ba5549c2d142d7f922a0a1116657cdcc9f48cb6afc7cc40a596a655b9e6566396c48b72232ff65",
+        "size_bytes": 325452,
+        "source_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.xml"
+      },
+      {
+        "component": "open-model-zoo/vehicle-license-plate-detection-barrier-0106/fp16",
+        "license_id": "Apache-2.0",
+        "license_url": "https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/6697dead54ed1cdd664b0313189c2cb52ee6335e/LICENSE",
+        "relative_path": "vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.bin",
+        "sha384": "0406e296c9822f4a5e8ee300ad40e5c0a0eeeaf9206f829556cb836cb8f10a4f8a4dd94d1bb16a60562bf1568fd12618",
+        "size_bytes": 1286772,
+        "source_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/vehicle-license-plate-detection-barrier-0106/FP16/vehicle-license-plate-detection-barrier-0106.bin"
+      }
+    ],
+    "ocr_accuracy": null,
+    "plate_detection_count": 0,
+    "protocol_sha256": "ff3221963842b9eda9d87c0a13ba0c97837dfb9348690fc0074a8183ee3a62de",
+    "qualified_90_percent": false,
+    "raw_output_row_count": 199,
+    "raw_output_rows_sha256": "b5e9a3e478f8c1a8386ecd2fb47763bbc73c5c73fc290b4d5be52f357b0a6d14",
+    "raw_output_shape": [
+      200,
+      7
+    ],
+    "raw_vehicle_detections": [],
+    "readable_plate_count": 0,
+    "schema": "analytics.webcam-native-provisional-result.v1",
+    "scope_excluded_detections": [],
+    "successful_result_attempt": 2,
+    "top_five_vehicle_rows_below_gate": [],
+    "tracking_accuracy": null,
+    "unique_images_scored": 1,
+    "versions": {
+      "numpy": "2.2.6",
+      "opencv": "4.12.0",
+      "openvino": "2026.3.1-22476-759c5a6ab8c-releases/2026/3",
+      "python": "3.12.14"
+    }
+  },
+  "cleanup": {
+    "complete": true,
+    "completed_utc": "2026-10-20T15:06:56.446752+00:00",
+    "media_model_runtime_artifacts_uploaded": false,
+    "removed": "all three JPEGs, both model pairs, four wheels and isolated runtime below the task-specific /tmp child",
+    "retained": "metadata, labels, predictions and metric counts only"
+  },
+  "code_sha256": {
+    "analytics_lab/road_vehicle.py": "7e561cef2a48699df5e379757d9a352dba7f7c524751cb510ca8193902422cae",
+    "analytics_lab/still_detection_evaluation.py": "1c5ff73ca959ba383b5847140e0492f547a5151b448a117c6653a9523e0a38a0",
+    "tests/test_road_vehicle.py": "245809f467cc7d617ae8bef1e74c7936d63d59b11b9bd55234597da8f05b3b0d",
+    "tests/test_still_detection_evaluation.py": "713104ac91c8df6789ab0ff182772cb50f93e7ff7ba82bf5a061d2371b69c55e"
+  },
+  "conclusion": {
+    "baseline_accepted_vehicles": 0,
+    "crossroad_accepted_vehicles": 0,
+    "crossroad_max_vehicle_confidence": 0.39973676204681396,
+    "measured_accuracy_gain": 0,
+    "next_requirement": "independently labeled representative road footage and a separate sufficiently detailed plate test set; no threshold tuning on this exposed image",
+    "precision": null,
+    "recall_against_both_label_sets": 0.0,
+    "status": "failed tiny-vehicle sample at frozen cutoff; no default promotion",
+    "threshold_unchanged": 0.5
+  },
+  "crossroad_comparison_protocol": {
+    "compile_budget": 1,
+    "donor_review": {
+      "architecture": "SSD;RMNet backbone;learnable image downscale block with extra pooling",
+      "assessment": {
+        "accuracy_claim": false,
+        "default_change": false,
+        "qualification_claim": false,
+        "reason": "Existing admitted OpenVINO SSD format, vehicle class, surveillance/crossroad use and 1024-square input provide a concrete small/distant road-vehicle hypothesis after 0106 zero proposals",
+        "risks": [
+          "1024x1024 input increases CPU cost versus 0106; retain existing bounded job/frame scope",
+          "Input resizing does not restore lost native image detail",
+          "Publisher vehicle AP is below90 and uses undisclosed scene/domain mix; actual frozen4/5label-set comparison needed",
+          "Do not use person/bike classes as vehicle or tune cutoff after inspecting candidate outputs",
+          "Only provisional AI labels exist; keep both predeclared sensitivity denominators separate"
+        ],
+        "suitable_for_controlled_candidate_test": true
+      },
+      "cap_bytes": 33554432,
+      "fp16_artifacts": [
+        {
+          "name": "FP16/person-vehicle-bike-detection-crossroad-0078.xml",
+          "sha384": "7997f14109662b3d422ee5b9c7a812690eb00227b17e366ab6098fb5924a9a8c5077b326e3dcc3d2e2cbce91797bab4d",
+          "size_bytes": 526260,
+          "url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-vehicle-bike-detection-crossroad-0078/FP16/person-vehicle-bike-detection-crossroad-0078.xml"
+        },
+        {
+          "name": "FP16/person-vehicle-bike-detection-crossroad-0078.bin",
+          "sha384": "9fa3031c27af7e934a61ff02a01820d990b257a21ea0f9e195d79941fcbe97fac9c731bd404bd0c8dddfa4c1e1937cb4",
+          "size_bytes": 2357042,
+          "url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-vehicle-bike-detection-crossroad-0078/FP16/person-vehicle-bike-detection-crossroad-0078.bin"
+        }
+      ],
+      "fp16_total_bytes": 2883302,
+      "input": {
+        "color_order": "BGR",
+        "external_mean_or_scale": "none specified in pinned README/model.yml; do not invent scaling",
+        "input_element_type": "verify exact IR input contract after identity verification; not specified in README",
+        "layout": "NCHW",
+        "name": "data",
+        "shape": [
+          1,
+          3,
+          1024,
+          1024
+        ]
+      },
+      "intended_use": "Security surveillance; various scenes and weather/lighting; documented Crossroad Camera demo",
+      "metadata_only": true,
+      "model_assets_downloaded": false,
+      "model_id": "person-vehicle-bike-detection-crossroad-0078",
+      "native_execution": false,
+      "output": {
+        "classes": {
+          "1": "person",
+          "2": "vehicle",
+          "3": "bike"
+        },
+        "max_proposals": 200,
+        "row": [
+          "image_id",
+          "label",
+          "confidence",
+          "x_min",
+          "y_min",
+          "x_max",
+          "y_max"
+        ],
+        "selected_class_id": 2,
+        "shape": [
+          1,
+          1,
+          200,
+          7
+        ]
+      },
+      "primary_sources": {
+        "license": {
+          "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+          "spdx": "Apache-2.0",
+          "url": "https://github.com/openvinotoolkit/open_model_zoo/blob/6697dead54ed1cdd664b0313189c2cb52ee6335e/LICENSE"
+        },
+        "model_yml": {
+          "git_blob_sha1": "f0c4f3b41e3358a8e3b412a7f8c3b9ecc544849f",
+          "url": "https://github.com/openvinotoolkit/open_model_zoo/blob/6697dead54ed1cdd664b0313189c2cb52ee6335e/models/intel/person-vehicle-bike-detection-crossroad-0078/model.yml"
+        },
+        "readme": {
+          "git_blob_sha1": "5899c4bcc294aabf4e5314533c43048c681b5f53",
+          "url": "https://github.com/openvinotoolkit/open_model_zoo/blob/6697dead54ed1cdd664b0313189c2cb52ee6335e/models/intel/person-vehicle-bike-detection-crossroad-0078/README.md"
+        }
+      },
+      "published_training": {
+        "dataset_names_or_released_data_terms": "not specified in these primary metadata files",
+        "images": 160297,
+        "vehicle_boxes": 501548
+      },
+      "published_validation": {
+        "all_class_map_percent": 65.12,
+        "images": 34757,
+        "metric": "publisher AP; not this webcam accuracy and not a 90% guarantee",
+        "vehicle_ap_percent": 74.94,
+        "vehicle_boxes": 229503
+      },
+      "repository": "openvinotoolkit/open_model_zoo",
+      "repository_commit": "6697dead54ed1cdd664b0313189c2cb52ee6335e",
+      "review_date": "2026-10-20",
+      "rights": {
+        "model_license": "Model metadata explicitly points to OMZ Apache-2.0 LICENSE; use commit-pinned license URL above",
+        "source_metadata_license": "Apache-2.0",
+        "training_data_note": "No training corpus acquisition or reuse rights inferred from model license",
+        "training_data_redistribution_authorized": false
+      },
+      "schema": "webcam-crossroad-donor-metadata-review-v1",
+      "within_cap": true
+    },
+    "frozen_before_comparison_utc": "2026-10-20T15:03:26.774848+00:00",
+    "inference_budget": 1,
+    "matching_iou": 0.5,
+    "original_protocol_sha256": "ff3221963842b9eda9d87c0a13ba0c97837dfb9348690fc0074a8183ee3a62de",
+    "retrospective_comparison": true,
+    "same_image_and_label_sets": true,
+    "threshold": 0.5,
+    "training": false
+  },
+  "crossroad_result": {
+    "comparison_protocol_sha256": "80e1f15a643a261c0e084305eda643c48ff097f6406084ca3f1d44a01e96f7ab",
+    "compile_count": 1,
+    "compile_seconds": 0.2641430749999927,
+    "diagnostic_rows_note": "All accepted vehicles remain in raw_vehicle_detections; retain top five below-gate vehicle rows and hash/count of all output rows; diagnostic scores do not become detections.",
+    "duplicate_captures_excluded": 2,
+    "effective_precision": "<Type: 'bfloat16'>",
+    "hardware": {
+      "cpu_name": "AMD EPYC 9V74 80-Core Processor                ",
+      "logical_cpus": 5,
+      "machine": "x86_64"
+    },
+    "human_gold": false,
+    "inference_completed_utc": "2026-10-20T15:06:09.961859+00:00",
+    "inference_count": 1,
+    "inference_seconds": 0.04819786900009149,
+    "inference_started_utc": "2026-10-20T15:06:09.647322+00:00",
+    "max_output_confidence_by_class": {
+      "1": 0.059369735419750214,
+      "2": 0.39973676204681396,
+      "3": 0.0558847077190876
+    },
+    "metrics_by_label_set": {
+      "author": {
+        "detection_count": 0,
+        "f1": 0.0,
+        "false_detections_per_image": 0.0,
+        "false_negatives": 4,
+        "false_positives": 0,
+        "ground_truth_count": 4,
+        "image_count": 1,
+        "min_iou": 0.5,
+        "per_image": [
+          {
+            "detection_count": 0,
+            "false_negatives": 4,
+            "false_positives": 0,
+            "frame_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+            "ground_truth_count": 4,
+            "image_id": "caltrans-c039-0",
+            "true_positives": 0
+          }
+        ],
+        "precision": null,
+        "recall": 0.0,
+        "true_positives": 0
+      },
+      "independent_reviewer": {
+        "detection_count": 0,
+        "f1": 0.0,
+        "false_detections_per_image": 0.0,
+        "false_negatives": 5,
+        "false_positives": 0,
+        "ground_truth_count": 5,
+        "image_count": 1,
+        "min_iou": 0.5,
+        "per_image": [
+          {
+            "detection_count": 0,
+            "false_negatives": 5,
+            "false_positives": 0,
+            "frame_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+            "ground_truth_count": 5,
+            "image_id": "caltrans-c039-0",
+            "true_positives": 0
+          }
+        ],
+        "precision": null,
+        "recall": 0.0,
+        "true_positives": 0
+      }
+    },
+    "model_specs": [
+      {
+        "component": "open-model-zoo/person-vehicle-bike-detection-crossroad-0078/fp16",
+        "license_id": "Apache-2.0",
+        "license_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/6697dead54ed1cdd664b0313189c2cb52ee6335e/LICENSE",
+        "relative_path": "FP16/person-vehicle-bike-detection-crossroad-0078.xml",
+        "sha384": "7997f14109662b3d422ee5b9c7a812690eb00227b17e366ab6098fb5924a9a8c5077b326e3dcc3d2e2cbce91797bab4d",
+        "size_bytes": 526260,
+        "source_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-vehicle-bike-detection-crossroad-0078/FP16/person-vehicle-bike-detection-crossroad-0078.xml"
+      },
+      {
+        "component": "open-model-zoo/person-vehicle-bike-detection-crossroad-0078/fp16",
+        "license_id": "Apache-2.0",
+        "license_url": "https://github.com/openvinotoolkit/open_model_zoo/blob/6697dead54ed1cdd664b0313189c2cb52ee6335e/LICENSE",
+        "relative_path": "FP16/person-vehicle-bike-detection-crossroad-0078.bin",
+        "sha384": "9fa3031c27af7e934a61ff02a01820d990b257a21ea0f9e195d79941fcbe97fac9c731bd404bd0c8dddfa4c1e1937cb4",
+        "size_bytes": 2357042,
+        "source_url": "https://storage.openvinotoolkit.org/repositories/open_model_zoo/2023.0/models_bin/1/person-vehicle-bike-detection-crossroad-0078/FP16/person-vehicle-bike-detection-crossroad-0078.bin"
+      }
+    ],
+    "ocr_accuracy": null,
+    "plate_detection_count": null,
+    "protocol_sha256": "ff3221963842b9eda9d87c0a13ba0c97837dfb9348690fc0074a8183ee3a62de",
+    "qualified_90_percent": false,
+    "raw_output_row_count": 199,
+    "raw_output_rows_sha256": "e1be201eb54d52d6361598dfb6d9adfb0b2cf9005ea8377dc3da56c913aa3015",
+    "raw_output_shape": [
+      200,
+      7
+    ],
+    "raw_vehicle_detections": [],
+    "readable_plate_count": 0,
+    "schema": "analytics.webcam-crossroad-provisional-result.v1",
+    "scope_excluded_detections": [],
+    "successful_result_attempt": 1,
+    "top_five_vehicle_rows_below_gate": [
+      [
+        0.0,
+        2.0,
+        0.39973676204681396,
+        0.6198197603225708,
+        0.14190679788589478,
+        0.65703284740448,
+        0.1826629638671875
+      ],
+      [
+        0.0,
+        2.0,
+        0.3922624886035919,
+        0.5863334536552429,
+        0.16698339581489563,
+        0.62349933385849,
+        0.21401730179786682
+      ],
+      [
+        0.0,
+        2.0,
+        0.30072179436683655,
+        0.5403417348861694,
+        0.16283589601516724,
+        0.6068788766860962,
+        0.20775288343429565
+      ],
+      [
+        0.0,
+        2.0,
+        0.2688390016555786,
+        0.6639077663421631,
+        0.13603490591049194,
+        0.6986196041107178,
+        0.16935113072395325
+      ],
+      [
+        0.0,
+        2.0,
+        0.18219339847564697,
+        0.020216377452015877,
+        0.07092927396297455,
+        0.05864633619785309,
+        0.12404380738735199
+      ]
+    ],
+    "tracking_accuracy": null,
+    "unique_images_scored": 1,
+    "versions": {
+      "numpy": "2.2.6",
+      "opencv": "4.12.0",
+      "openvino": "2026.3.1-22476-759c5a6ab8c-releases/2026/3",
+      "python": "3.12.14"
+    }
+  },
+  "frozen_protocol": {
+    "annotation_status": "ai_provisional_unresolved_4_vs_5",
+    "captures": [
+      {
+        "camera_capture_utc": null,
+        "canonical_rgb24_frame_sha256": "d4a7919b99b7553da0bda201f65d8c0b4e7f355aba73851c63ca0b8b6fc33afa",
+        "height": 260,
+        "http_date": null,
+        "image_id": "caltrans-c039-0",
+        "independent_frame_index": 0,
+        "last_modified": null,
+        "local_path": "/tmp/analytics-webcam-20261020-95abwrot/images/snapshot-0.jpg",
+        "receipt_completed_utc": "2026-10-20T14:56:57.345962+00:00",
+        "receipt_started_utc": "2026-10-20T14:56:57.069956+00:00",
+        "sample_index": 0,
+        "sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+        "size_bytes": 68062,
+        "url": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/us101eureka14thlookingnorth.jpg",
+        "width": 320
+      },
+      {
+        "camera_capture_utc": null,
+        "canonical_rgb24_frame_sha256": "d4a7919b99b7553da0bda201f65d8c0b4e7f355aba73851c63ca0b8b6fc33afa",
+        "height": 260,
+        "http_date": null,
+        "image_id": "caltrans-c039-1",
+        "independent_frame_index": 0,
+        "last_modified": null,
+        "local_path": "/tmp/analytics-webcam-20261020-95abwrot/images/snapshot-1.jpg",
+        "receipt_completed_utc": "2026-10-20T14:57:12.587915+00:00",
+        "receipt_started_utc": "2026-10-20T14:57:12.346266+00:00",
+        "sample_index": 1,
+        "sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+        "size_bytes": 68062,
+        "url": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/us101eureka14thlookingnorth.jpg",
+        "width": 320
+      },
+      {
+        "camera_capture_utc": null,
+        "canonical_rgb24_frame_sha256": "d4a7919b99b7553da0bda201f65d8c0b4e7f355aba73851c63ca0b8b6fc33afa",
+        "height": 260,
+        "http_date": null,
+        "image_id": "caltrans-c039-2",
+        "independent_frame_index": 0,
+        "last_modified": null,
+        "local_path": "/tmp/analytics-webcam-20261020-95abwrot/images/snapshot-2.jpg",
+        "receipt_completed_utc": "2026-10-20T14:57:28.268913+00:00",
+        "receipt_started_utc": "2026-10-20T14:57:27.588238+00:00",
+        "sample_index": 2,
+        "sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+        "size_bytes": 68062,
+        "url": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/us101eureka14thlookingnorth.jpg",
+        "width": 320
+      }
+    ],
+    "code_base": "e770ad6948e0efa06b9484b180c26aac3dba0e8d",
+    "frozen_before_inference_utc": "2026-10-20T15:00:26.470986+00:00",
+    "human_gold": false,
+    "label_sets": [
+      {
+        "annotation": {
+          "ambiguous_candidates": [],
+          "annotation_basis": "Two view_image inspections of the original snapshot only; no detector, tracker, OCR or model outputs exist or were inspected.",
+          "annotation_limitations": "Bounding edges and smallest candidates are provisional estimates from the original low-resolution pixels. These labels cannot establish human-validated accuracy or a 90% qualification.",
+          "annotation_status": "ai_provisional",
+          "author_identity": "OpenAI Codex agent /root/review_tracking_temporal",
+          "coordinate_convention": "half_open_integer_visible_box_xyxy;normalized_boxes_use_full_320x260_image",
+          "dimensions": {
+            "height": 260,
+            "width": 320
+          },
+          "excluded_candidate_count": 4,
+          "excluded_candidates": [
+            {
+              "candidate_id": "excluded-001",
+              "certainty": "provisional_vehicle",
+              "reason": "visible width 11 px is below the frozen 12 px minimum",
+              "visible_box_xyxy_px": [
+                223,
+                29,
+                234,
+                37
+              ]
+            },
+            {
+              "candidate_id": "excluded-002",
+              "certainty": "provisional_vehicle",
+              "reason": "visible width 10 px is below the frozen 12 px minimum",
+              "visible_box_xyxy_px": [
+                39,
+                38,
+                49,
+                46
+              ]
+            },
+            {
+              "candidate_id": "excluded-003",
+              "certainty": "ambiguous_small_road_object",
+              "reason": "visible width 9 px is below the frozen 12 px minimum",
+              "visible_box_xyxy_px": [
+                30,
+                42,
+                39,
+                50
+              ]
+            },
+            {
+              "candidate_id": "excluded-004",
+              "certainty": "ambiguous_partial_vehicle",
+              "reason": "left-edge partial object visible width 8 px is below the frozen 12 px minimum",
+              "visible_box_xyxy_px": [
+                0,
+                51,
+                8,
+                61
+              ]
+            }
+          ],
+          "human_gold": false,
+          "image_bytes": 68062,
+          "image_path": "/tmp/analytics-webcam-20261020-95abwrot/images/snapshot-0.jpg",
+          "image_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+          "model_blind": true,
+          "objects": [
+            {
+              "appearance": "dark/gray vehicle nearest the far approach crosswalk",
+              "box_certainty": "provisional_original_resolution",
+              "category": "vehicle",
+              "normalized_box_xyxy_full_image": [
+                0.5375,
+                0.17692307692307693,
+                0.5875,
+                0.21153846153846154
+              ],
+              "object_id": "vehicle-001",
+              "visible_box_xyxy_px": [
+                172,
+                46,
+                188,
+                55
+              ],
+              "visible_height_px": 9,
+              "visible_width_px": 16
+            },
+            {
+              "appearance": "light vehicle immediately behind/above vehicle-001",
+              "box_certainty": "provisional_original_resolution",
+              "category": "vehicle",
+              "normalized_box_xyxy_full_image": [
+                0.578125,
+                0.16153846153846155,
+                0.63125,
+                0.19615384615384615
+              ],
+              "object_id": "vehicle-002",
+              "visible_box_xyxy_px": [
+                185,
+                42,
+                202,
+                51
+              ],
+              "visible_height_px": 9,
+              "visible_width_px": 17
+            },
+            {
+              "appearance": "light vehicle farther up the same approach",
+              "box_certainty": "provisional_original_resolution",
+              "category": "vehicle",
+              "normalized_box_xyxy_full_image": [
+                0.621875,
+                0.1423076923076923,
+                0.671875,
+                0.17692307692307693
+              ],
+              "object_id": "vehicle-003",
+              "visible_box_xyxy_px": [
+                199,
+                37,
+                215,
+                46
+              ],
+              "visible_height_px": 9,
+              "visible_width_px": 16
+            },
+            {
+              "appearance": "light vehicle farthest along the approach meeting the frozen minimum size",
+              "box_certainty": "provisional_original_resolution",
+              "category": "vehicle",
+              "normalized_box_xyxy_full_image": [
+                0.6625,
+                0.12692307692307692,
+                0.70625,
+                0.16153846153846155
+              ],
+              "object_id": "vehicle-004",
+              "visible_box_xyxy_px": [
+                212,
+                33,
+                226,
+                42
+              ],
+              "visible_height_px": 9,
+              "visible_width_px": 14
+            }
+          ],
+          "other_background_detail": "Additional distant street/roof/parking-area pixels are too small or indistinct to identify as countable vehicles at original resolution; they are not positive labels.",
+          "plate_readability_assessment": "No complete serial is readable at original 320x260 pixels. No plate text guessed or transcribed.",
+          "predictions_viewed": false,
+          "readable_plate_count": 0,
+          "review_status": "awaiting_independent_review_before_inference",
+          "reviewer_identity": null,
+          "roi_xyxy_px": [
+            0,
+            0,
+            320,
+            240
+          ],
+          "schema": "analytics.webcam-ai-provisional-annotation.v1",
+          "scope": {
+            "aggregate_category": "vehicle",
+            "classes": [
+              "car",
+              "van",
+              "truck",
+              "bus"
+            ],
+            "footer_excluded": true,
+            "include_parked": true,
+            "include_partial": true,
+            "minimum_visible_height_px": 6,
+            "minimum_visible_width_px": 12,
+            "occlusion_policy": "visible_extent_only_no_hidden_full_box_estimation"
+          },
+          "target_count": 4
+        },
+        "frozen_file_sha256": "bdcfe7319a69b61aef1eebfc9a79d0731c50ee8b31847fa4a8fd7f0c65e2015e",
+        "role": "author"
+      },
+      {
+        "annotation": {
+          "ai_provisional": true,
+          "author_identity": "OpenAI Codex independent reviewer /root/repo_orientation",
+          "author_type": "AI",
+          "boxes": [
+            {
+              "annotation_id": "independent-01",
+              "bbox_xyxy_half_open": [
+                171,
+                45,
+                187,
+                54
+              ],
+              "category": "car"
+            },
+            {
+              "annotation_id": "independent-02",
+              "bbox_xyxy_half_open": [
+                182,
+                42,
+                198,
+                51
+              ],
+              "category": "car"
+            },
+            {
+              "annotation_id": "independent-03",
+              "bbox_xyxy_half_open": [
+                194,
+                39,
+                211,
+                48
+              ],
+              "category": "car"
+            },
+            {
+              "annotation_id": "independent-04",
+              "bbox_xyxy_half_open": [
+                205,
+                35,
+                222,
+                44
+              ],
+              "category": "car"
+            },
+            {
+              "annotation_id": "independent-05",
+              "bbox_xyxy_half_open": [
+                215,
+                32,
+                230,
+                41
+              ],
+              "category": "car"
+            }
+          ],
+          "excluded_objects": [
+            {
+              "description": "red compact vehicle on upper-left approach; visible vehicle itself appears below width cutoff, surrounding region is not its annotation box",
+              "reason": "tiny; cutoff-boundary requires reconciliation",
+              "region_xyxy_half_open": [
+                32,
+                36,
+                50,
+                49
+              ]
+            },
+            {
+              "description": "left-edge vehicle-like fragments",
+              "reason": "partial visible widths below 12px or ambiguous",
+              "region_xyxy_half_open": [
+                0,
+                34,
+                19,
+                73
+              ]
+            },
+            {
+              "description": "distant background vehicle-like objects on roads/parking areas",
+              "reason": "tiny or insufficiently distinct to label a visible vehicle extent confidently",
+              "region_xyxy_half_open": [
+                0,
+                0,
+                320,
+                35
+              ]
+            },
+            {
+              "description": "distant right-background vehicle-like structures",
+              "reason": "ambiguous/tiny; no full-box inference",
+              "region_xyxy_half_open": [
+                272,
+                28,
+                320,
+                55
+              ]
+            }
+          ],
+          "human_gold": false,
+          "image_dimensions_px": [
+            320,
+            260
+          ],
+          "model_predictions_seen": false,
+          "other_annotator_labels_seen": false,
+          "plate_readability_basis": "native 320x260 pixels only; no complete serial is legible; no inferred plate strings",
+          "readable_plate_count": 0,
+          "review_notes": "Five scoped vehicle candidates in the upper-center/right queue. Boxes are provisional visual estimates and require blind-author reconciliation, especially adjacent overlaps and size-boundary exclusions. No model inference or enlarged-pixel text inference used.",
+          "roi_xyxy_half_open": [
+            0,
+            0,
+            320,
+            240
+          ],
+          "schema": "webcam-independent-vehicle-annotation-v1",
+          "scope": {
+            "boxes": "visible vehicle extent only; integer half-open xyxy",
+            "classes": [
+              "car",
+              "van",
+              "truck",
+              "bus"
+            ],
+            "footer_excluded": true,
+            "include_parked_and_partial": true,
+            "minimum_visible_height_px": 6,
+            "minimum_visible_width_px": 12
+          },
+          "source_file": "/tmp/analytics-webcam-20261020-95abwrot/images/snapshot-0.jpg",
+          "source_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea"
+        },
+        "frozen_file_sha256": "a4f6f9650ceda39bd74031a1ac7e51399a50a16e0222431267812730fbc15658",
+        "role": "independent_reviewer"
+      }
+    ],
+    "plan": {
+      "capture_requests": 3,
+      "classes": [
+        "vehicle"
+      ],
+      "confidence_threshold": 0.5,
+      "do_not_train_on_test_frames": true,
+      "matching_iou": 0.5,
+      "minimum_visible_height_px": 6,
+      "minimum_visible_width_px": 12,
+      "no_crossframe_identity": true,
+      "ocr_accuracy": null,
+      "prediction_scope": "clip to ROI then require width>=12,height>=6; preserve every qualifying raw detection; no tracker suppression",
+      "readable_plate_count": 0,
+      "roi_xyxy_px": [
+        0,
+        0,
+        320,
+        240
+      ],
+      "source_camera": "Caltrans CWWP2 D1 index88 C039",
+      "tracking_accuracy": null,
+      "unique_images": 1
+    },
+    "primary_label_set": "author",
+    "qualification_passed": false,
+    "schema": "analytics.webcam-provisional-measurement.v1",
+    "sensitivity_label_set": "independent_reviewer"
+  },
+  "hosted_CI_routing_correction": {
+    "CI_requests_after_corrected_push": 2,
+    "correction": "exclude evidence/webcam-labeled- from generic lane; preserve required Linux/Windows tests",
+    "detailed_incident_metadata": "retained locally; excluded from public record",
+    "failure": "new branch prefix entered legacy generic evidence lane unexpectedly",
+    "first_head": "9a4431639a90bf49af94bbc54ab21834c4c4acdc",
+    "first_run": 39446056797,
+    "first_run_artifacts_total_count": 0,
+    "first_run_cancelled": false,
+    "first_run_conclusion": "test gates passed; acquisition scope failed",
+    "measurement_inferences_rerun_for_CI_fix": false,
+    "unchanged_retries": 0
+  },
+  "limitations": [
+    "One unique low-resolution still, not independent video exposure",
+    "Four versus five provisional AI labels; no human-gold or agreement manufactured",
+    "Zero proposals gives null precision, not perfect precision",
+    "No readable plate denominator; OCR is unscored",
+    "Independent stills do not establish tracking continuity or camera-hour false alert rates",
+    "No weapons or face model tested",
+    "Not 90-percent qualified; no field-wide accuracy claim"
+  ],
+  "local_native_resource_accounting": {
+    "CI_media_acquisition": true,
+    "CI_media_acquisition_note": "Local accounting excludes unintended legacy CI lane; actual scope recorded separately below.",
+    "GPU_jobs": 0,
+    "asset_GETs": 11,
+    "baseline_attempts": 2,
+    "compile_attempts": 3,
+    "cpu_only": true,
+    "failed_report_attempts": 1,
+    "inference_attempts": 3,
+    "model_GETs": 4,
+    "model_bytes": 4495526,
+    "new_paid_services": 0,
+    "ongoing_capture": false,
+    "road_donor_attempts": 1,
+    "snapshot_GETs": 3,
+    "snapshot_bytes": 204186,
+    "training_jobs": 0,
+    "unique_images": 1,
+    "wheel_GETs": 4,
+    "wheel_bytes": 128086734
+  },
+  "native_reporting_failure": {
+    "cause": "FULL_DEVICE_NAME requested from CompiledModel instead of Core CPU device",
+    "native_compile_count": 1,
+    "native_inference_count": 1,
+    "new_assets_or_changed_labels_or_thresholds": false,
+    "observed_failure_utc": "2026-10-20T15:00:58.576893+00:00",
+    "outcome": "report serialization failed before persistence",
+    "replacement_budget": 1
+  },
+  "pre_inference_label_review": {
+    "accuracy_qualification": false,
+    "ai_provisional": true,
+    "author_annotation_sha256": "bdcfe7319a69b61aef1eebfc9a79d0731c50ee8b31847fa4a8fd7f0c65e2015e",
+    "blind_annotation_files_unchanged": true,
+    "blind_counts": {
+      "agreement": false,
+      "author": 4,
+      "independent": 5
+    },
+    "box_differences": [
+      {
+        "area": "nearest vehicle",
+        "author": [
+          172,
+          46,
+          188,
+          55
+        ],
+        "independent": [
+          171,
+          45,
+          187,
+          54
+        ],
+        "review": "same likely object; one-pixel edge differences"
+      },
+      {
+        "area": "second vehicle",
+        "author": [
+          185,
+          42,
+          202,
+          51
+        ],
+        "independent": [
+          182,
+          42,
+          198,
+          51
+        ],
+        "review": "same likely object; independent box shifted left"
+      },
+      {
+        "area": "middle/far queue",
+        "author": [
+          [
+            199,
+            37,
+            215,
+            46
+          ],
+          [
+            212,
+            33,
+            226,
+            42
+          ]
+        ],
+        "independent": [
+          [
+            194,
+            39,
+            211,
+            48
+          ],
+          [
+            205,
+            35,
+            222,
+            44
+          ],
+          [
+            215,
+            32,
+            230,
+            41
+          ]
+        ],
+        "review": "count/extent discrepancy concentrated here; independent provisional estimate may oversegment the queue; author four is a plausible conservative interpretation, without human resolution"
+      }
+    ],
+    "consensus_label_set_created": false,
+    "count_disagreement_unresolved": true,
+    "exclusion_notes": "Both exclude upper-left red car and left-edge fragments as below width cutoff; author explicitly also excludes farthest vehicle [223,29,234,37] at width11px. Tiny background detail stays unscored.",
+    "human_gold": false,
+    "image_sha256": "56c0a6f4ad69ff9f72bbeaeec8ad3daff73e755d5bfcc4033ca24175668942ea",
+    "independent_annotation_sha256": "a4f6f9650ceda39bd74031a1ac7e51399a50a16e0222431267812730fbc15658",
+    "limitations": "Both labels are AI provisional. Unresolved small neighboring targets and approximate pixel edges in one snapshot cannot establish human-validated or 90% real-world accuracy.",
+    "model_predictions_seen": false,
+    "plate_readability_agreement": true,
+    "predeclared_analysis": "Evaluate author four and independent five as separate provisional label-set sensitivity analyses; do not combine denominators or select a set after predictions.",
+    "readable_plate_count": 0,
+    "reviewed_before_model_inference": true,
+    "reviewer_identity": "OpenAI Codex independent reviewer /root/repo_orientation",
+    "schema": "webcam-ai-label-review-notes-v1"
+  },
+  "preserved_historical_CI_counters": {
+    "CCT": 2,
+    "FPN": 4,
+    "PR146": 8,
+    "PSM_PR148": 2,
+    "association": 2,
+    "public_live_PR150": 2
+  },
+  "runtime_wheels": [
+    {
+      "digests": {
+        "blake2b_256": "3791bb4cee4b1cbc244d6090fdb7625a0b3e1fe4f368bd2075bff67455451fbe",
+        "md5": "233e6c792d20fd3660d4d569622d0a0c",
+        "sha256": "40bf3724ec70bce0fce4f9547cd1f19a576ef299172ce4ce2552249d10064acc"
+      },
+      "filename": "openvino-2026.3.1-22476-cp312-cp312-manylinux_2_28_x86_64.whl",
+      "name": "openvino",
+      "size": 57510470,
+      "url": "https://files.pythonhosted.org/packages/37/91/bb4cee4b1cbc244d6090fdb7625a0b3e1fe4f368bd2075bff67455451fbe/openvino-2026.3.1-22476-cp312-cp312-manylinux_2_28_x86_64.whl",
+      "version": "2026.3.1"
+    },
+    {
+      "digests": {
+        "blake2b_256": "8953e19c21e0c4eb1275c3e2c97b081103b6dfb3938172264d283a519bf728b9",
+        "md5": "8a76cbb97bce5191a6d280b8afe1fcca",
+        "sha256": "236c8df54a90f4d02076e6f9c1cc763d794542e886c576a6fee46ec8ff75a7a9"
+      },
+      "filename": "opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "name": "opencv-python-headless",
+      "size": 54023419,
+      "url": "https://files.pythonhosted.org/packages/89/53/e19c21e0c4eb1275c3e2c97b081103b6dfb3938172264d283a519bf728b9/opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "version": "4.12.0.88"
+    },
+    {
+      "digests": {
+        "blake2b_256": "8c3d1e1db36cfd41f895d266b103df00ca5b3cbe965184df824dec5c08c6b803",
+        "md5": "2f9ac35f955d9217b6841568ce13d636",
+        "sha256": "fd83c01228a688733f1ded5201c678f0c53ecc1006ffbc404db9f7a899ac6249"
+      },
+      "filename": "numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "name": "numpy",
+      "size": 16527618,
+      "url": "https://files.pythonhosted.org/packages/8c/3d/1e1db36cfd41f895d266b103df00ca5b3cbe965184df824dec5c08c6b803/numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "version": "2.2.6"
+    },
+    {
+      "digests": {
+        "blake2b_256": "3bac5ab0ca0aa269ad3c73f7bfc3801b10e5f56f75a31bf68c1ae8bd51cf70a4",
+        "md5": "4bde18f63a1515f79ed2286b6bc4b8ae",
+        "sha256": "bcb667e83a44f202ecf4cfa49281715c6d7e21499daec04ff853b7f964833599"
+      },
+      "filename": "openvino_telemetry-2025.2.0-py3-none-any.whl",
+      "name": "openvino-telemetry",
+      "size": 25227,
+      "url": "https://files.pythonhosted.org/packages/3b/ac/5ab0ca0aa269ad3c73f7bfc3801b10e5f56f75a31bf68c1ae8bd51cf70a4/openvino_telemetry-2025.2.0-py3-none-any.whl",
+      "version": "2025.2.0"
+    }
+  ],
+  "scope": "One intentionally public Caltrans traffic still; engineering measurement only",
+  "source_metadata": {
+    "camera": {
+      "imageData": {
+        "imageDescription": "",
+        "static": {
+          "currentImageURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/us101eureka14thlookingnorth.jpg",
+          "currentImageUpdateFrequency": "5",
+          "referenceImage10UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-10.jpg",
+          "referenceImage11UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-11.jpg",
+          "referenceImage12UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-12.jpg",
+          "referenceImage1UpdateAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-1.jpg",
+          "referenceImage2UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-2.jpg",
+          "referenceImage3UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-3.jpg",
+          "referenceImage4UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-4.jpg",
+          "referenceImage5UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-5.jpg",
+          "referenceImage6UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-6.jpg",
+          "referenceImage7UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-7.jpg",
+          "referenceImage8UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-8.jpg",
+          "referenceImage9UpdatesAgoURL": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/previous/us101eureka14thlookingnorth-9.jpg",
+          "referenceImageUpdateFrequency": "5"
+        },
+        "streamingVideoURL": "https://wzmedia.dot.ca.gov/D1/eureka_14th_320x240.stream/playlist.m3u8"
+      },
+      "inService": "true",
+      "index": "88",
+      "location": {
+        "alignment": "",
+        "county": "Humboldt",
+        "direction": "North",
+        "district": "1",
+        "elevation": "15",
+        "latitude": "40.793965",
+        "locationName": "US-101 : Eureka / 14th - Looking North (C039)",
+        "longitude": "-124.177156",
+        "milepost": "701.969",
+        "nearbyPlace": "Eureka",
+        "postmile": "77.475",
+        "postmilePrefix": "",
+        "route": "US-101",
+        "routeSuffix": ""
+      },
+      "recordTimestamp": {
+        "recordDate": "2026-10-12",
+        "recordEpoch": "1791832033",
+        "recordTime": "12:07:13"
+      }
+    },
+    "catalog_bytes": 460186,
+    "catalog_response_headers": {
+      "accept-ranges": "bytes",
+      "access-control-allow-origin": "*",
+      "connection": "close",
+      "content-length": "460186",
+      "content-type": "application/json",
+      "date": "Tue, 20 Oct 2026 14:56:05 GMT",
+      "etag": "\"6ad6a367-7059a\"",
+      "last-modified": "Mon, 19 Oct 2026 23:10:31 GMT",
+      "server": "envoy",
+      "x-envoy-upstream-service-time": "260"
+    },
+    "catalog_url": "https://cwwp2.dot.ca.gov/data/d1/cctv/cctvStatusD01.json",
+    "static_head": {
+      "headers": {
+        "accept-ranges": "bytes",
+        "access-control-allow-origin": "*",
+        "connection": "close",
+        "content-length": "68062",
+        "content-type": "image/jpeg",
+        "date": "Tue, 20 Oct 2026 14:56:06 GMT",
+        "etag": "\"6ad780c6-109de\"",
+        "last-modified": "Tue, 20 Oct 2026 14:55:02 GMT",
+        "server": "envoy",
+        "x-envoy-upstream-service-time": "58"
+      },
+      "status": 200,
+      "url": "https://cwwp2.dot.ca.gov/data/d1/cctv/image/us101eureka14thlookingnorth/us101eureka14thlookingnorth.jpg"
+    }
+  },
+  "source_rights": {
+    "basis": "Caltrans-created material public domain unless contrary or third-party notice; public CWWP application integration permitted subject to fair use; no contrary notice in selected record",
+    "operator": "Caltrans",
+    "reviewed_primary_urls": [
+      "https://dot.ca.gov/programs/traffic-operations/traveler-information/cwwp",
+      "https://cwwp2.dot.ca.gov/closed-circuit-television-cameras.html",
+      "https://dot.ca.gov/conditions-of-use"
+    ],
+    "uses": "transient non-identity traffic evaluation only; no retained pixels, training, redistribution or camera control"
+  },
+  "work_item_CI_requests_at_measurement": 0
+}
